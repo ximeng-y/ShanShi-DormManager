@@ -6,3 +6,4 @@ release/
 .opencode/
 .agents/
 .claude/
+CMakeUserPresets.json
