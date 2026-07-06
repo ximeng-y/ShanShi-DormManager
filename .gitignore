@@ -1,0 +1,8 @@
+.qtcreator/
+.vs/
+build/
+debug/
+release/
+.opencode/
+.agents/
+.claude/
