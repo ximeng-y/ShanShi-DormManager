@@ -17,6 +17,12 @@ set(PROJECT_SOURCES
         src/ui/mainwidget.cpp
         src/ui/mainwidget.h
         src/ui/mainwidget.ui
+        src/core/student.cpp
+        src/core/student.h
+        src/core/dorm.cpp
+        src/core/dorm.h
+        src/system/check.cpp
+        src/system/check.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
