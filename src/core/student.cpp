@@ -7,6 +7,8 @@ student::student()//构造函数
 	name = "";
 	class_num = 0;
 	id = 10000000;
+	bed_id = 0;
+	dorm_id = 0;
 }
 
 //获取信息

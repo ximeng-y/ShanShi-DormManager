@@ -12,16 +12,22 @@ public:
 	QString get_name() const;//获取学生姓名
 	int get_class_num() const;//获取学生班级
 	int get_id() const;//获取学生学号
+	int get_dorm_id() const;//获取所在宿舍号
+	int get_bed_id() const;//获取所在床位号(自然数，从1开始)
 
 	//设置信息
-	void set_name(const QString& name);//设置学生姓名
-	void set_class_num(int class_num);//设置学生班级
-	void set_id(int id);//设置学生学号
+	bool set_name(const QString& name);//设置学生姓名
+	bool set_class_num(int class_num);//设置学生班级
+	bool set_id(int id);//设置学生学号
+	bool set_dorm_id(int dorm_id);//设置所在宿舍号
+	bool set_bed_id(int bed_id);//设置所在床位号(自然数，从1开始)
 
 private:
 	QString name;
-	int class_num;
+	int class_num;//班级号(1~99)
 	int id;//前2位年级 3~4位班级 5~8位序列号
+	int dorm_id;//所在宿舍号
+	int bed_id;//所在床位号(自然数，从1开始)
 };
 
 #endif // STUDENT_H
