@@ -43,6 +43,22 @@ QString dorm::get_student_name(int bed_id) const//获取宿舍内指定床位学
 
 	return students[true_bed_id].get_name();
 }
+int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学号
+{
+	if (!check::is_valid_bed_id(bed_id, max_num))
+		return -1;
+	int true_bed_id = bed_id - 1;
+
+	return students[true_bed_id].get_id();
+}
+int dorm::get_student_class_num(int bed_id) const//获取宿舍内指定床位学生班级号
+{
+	if (!check::is_valid_bed_id(bed_id, max_num))
+		return -1;
+	int true_bed_id = bed_id - 1;
+
+	return students[true_bed_id].get_class_num();
+}
 
 //设置信息
 bool dorm::set_id(int id)//设置宿舍号

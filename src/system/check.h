@@ -6,7 +6,7 @@
 class check
 {
 public:
-	static bool is_valid_student_id(const QString& id);//检查学号是否合法(10000000~99999999)
+	static bool is_valid_student_id(int id);//检查学号是否合法(10000000~99999999)
 	static bool is_valid_class_num(int class_num);//检查班级号是否合法(1~99)
 	static bool is_valid_grade(int grade);//检查年级是否合法(2000~2999)
 	static bool is_valid_dorm_id(int dorm_id);//检查宿舍号是否合法(1001~9999)

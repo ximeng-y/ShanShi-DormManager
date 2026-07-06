@@ -29,6 +29,14 @@ int student::get_grade() const//获取学生年级
 {
 	return grade;
 }
+int student::get_dorm_id() const//获取所在宿舍号
+{
+	return dorm_id;
+}
+int student::get_bed_id() const//获取所在床位号
+{
+	return bed_id;
+}
 
 //设置信息(使用bool返回是否成功)
 bool student::set_name(const QString& name)//设置学生姓名
@@ -57,5 +65,19 @@ bool student::set_grade(int grade)//设置学生年级
 	if (!check::is_valid_grade(grade))
 		return false;
 	this->grade = grade;
+	return true;
+}
+bool student::set_dorm_id(int dorm_id)//设置所在宿舍号
+{
+	if (!check::is_valid_dorm_id(dorm_id))
+		return false;
+	this->dorm_id = dorm_id;
+	return true;
+}
+bool student::set_bed_id(int bed_id)//设置所在床位号
+{
+	if (bed_id < 1)
+		return false;
+	this->bed_id = bed_id;
 	return true;
 }
