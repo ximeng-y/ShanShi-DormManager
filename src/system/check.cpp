@@ -30,9 +30,23 @@ bool check::is_valid_dorm_id(int dorm_id)//检查宿舍号是否合法(1001~9999
 	return true;
 }
 
+bool check::is_valid_building_id(int building_id)//检查宿舍楼号是否合法(1~99)
+{
+	if (building_id < 1 || building_id > 99)
+		return false;
+	return true;
+}
+
 bool check::is_valid_bed_id(int bed_id, int max_num)//检查自然数床位号是否合法(1~max_num)
 {
 	if (bed_id < 1 || bed_id > max_num)
+		return false;
+	return true;
+}
+
+bool check::is_valid_floor(int floor, int max_floor)//检查楼层是否合法(1~max_floor)
+{
+	if (floor < 1 || floor > max_floor)
 		return false;
 	return true;
 }
