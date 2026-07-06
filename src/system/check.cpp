@@ -16,6 +16,13 @@ bool check::is_valid_class_num(int class_num)//检查班级号是否合法(1~99)
 	return true;
 }
 
+bool check::is_valid_grade(int grade)//检查年级是否合法(2000~2999)
+{
+	if (grade < 2000 || grade > 2999)
+		return false;
+	return true;
+}
+
 bool check::is_valid_dorm_id(int dorm_id)//检查宿舍号是否合法(1001~9999)
 {
 	if (dorm_id < 1001 || dorm_id > 9999)

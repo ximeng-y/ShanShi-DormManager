@@ -9,6 +9,7 @@ student::student()//构造函数
 	id = 10000000;
 	bed_id = 0;
 	dorm_id = 0;
+	grade = 0;
 }
 
 //获取信息
@@ -23,6 +24,10 @@ int student::get_class_num() const//获取学生班级
 int student::get_id() const//获取学生学号
 {
 	return id;
+}
+int student::get_grade() const//获取学生年级
+{
+	return grade;
 }
 
 //设置信息(使用bool返回是否成功)
@@ -45,5 +50,12 @@ bool student::set_id(int id)//设置学生学号
 	if (!check::is_valid_student_id(id))
 		return false;
 	this->id = id;
+	return true;
+}
+bool student::set_grade(int grade)//设置学生年级
+{
+	if (!check::is_valid_grade(grade))
+		return false;
+	this->grade = grade;
 	return true;
 }
