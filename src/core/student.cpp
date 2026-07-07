@@ -9,6 +9,7 @@ student::student()//构造函数
 	id = 10000000;
 	bed_id = 0;
 	dorm_id = 0;
+	building_id = 0;
 	grade = 0;
 }
 
@@ -36,6 +37,10 @@ int student::get_dorm_id() const//获取所在宿舍号
 int student::get_bed_id() const//获取所在床位号
 {
 	return bed_id;
+}
+int student::get_building_id() const//获取所在宿舍楼号
+{
+	return building_id;
 }
 
 //设置信息(使用bool返回是否成功)
@@ -79,5 +84,12 @@ bool student::set_bed_id(int bed_id)//设置所在床位号
 	if (bed_id < 1)
 		return false;
 	this->bed_id = bed_id;
+	return true;
+}
+bool student::set_building_id(int building_id)//设置所在宿舍楼号
+{
+	if (!check::is_valid_building_id(building_id))
+		return false;
+	this->building_id = building_id;
 	return true;
 }

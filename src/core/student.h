@@ -15,6 +15,7 @@ public:
 	int get_dorm_id() const;//获取所在宿舍号
 	int get_bed_id() const;//获取所在床位号(自然数，从1开始)
 	int get_grade() const;//获取学生年级
+	int get_building_id() const;//获取所在宿舍楼号
 
 	//设置信息
 	bool set_name(const QString& name);//设置学生姓名
@@ -23,6 +24,7 @@ public:
 	bool set_dorm_id(int dorm_id);//设置所在宿舍号
 	bool set_bed_id(int bed_id);//设置所在床位号(自然数，从1开始)
 	bool set_grade(int grade);//设置学生年级
+	bool set_building_id(int building_id);//设置所在宿舍楼号
 
 private:
 	QString name;
@@ -31,6 +33,7 @@ private:
 	int grade;//年级（4位，例如2026）
 	int dorm_id;//所在宿舍号
 	int bed_id;//所在床位号(自然数，从1开始)
+	int building_id;//所在宿舍楼号
 };
 
 #endif // STUDENT_H
