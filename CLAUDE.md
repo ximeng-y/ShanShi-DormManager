@@ -28,9 +28,15 @@ out/build/debug/ShanShiDormManager.exe
 
 源码组织为三层，均在 `src/` 下，且 `src/` 已加入 include 路径（`target_include_directories`）：
 
-- `src/core/` —— 领域模型：`student`、`dorm`。纯数据 + 校验封装，不依赖 Qt Widgets（仅用 `QString`/`QVector`）。
+- `src/core/` —— 领域模型：`student`（学生）、`dorm`（宿舍）、`studentmanager`（管理全校学生本体）、`building`（宿舍楼，目前仅骨架）。纯数据 + 校验封装，不依赖 Qt Widgets（仅用 `QString`/`QVector`/`QHash`）。
 - `src/system/` —— `check` 静态工具类，集中所有字段合法性校验。
 - `src/ui/` —— Qt Widgets 界面，目前只有空的 `MainWidget`。
+
+### 学生本体归属与存储模型（重要）
+
+全校学生对象只存一份，归 `studentmanager` 持有（`QHash<int, student>`，学号→学生本体）。`dorm` 不再存学生对象，只存学号：成员 `QVector<int> beds`，下标 = 床位号 - 1、值 = 学号、`0` = 空床、长度始终等于 `max_num`。因此 `dorm` 不依赖 `student.h`，只认学号做增删查。需要学生详细信息时，拿学号去 `studentmanager::get` 换本体。
+
+这带来一条本轮**尚未补上的边界**：`dorm` 与 `studentmanager` 之间没有协调层，谁都不负责把 `student` 的位置字段（`dorm_id`/`bed_id`/`building_id`/`floor`）和 `dorm.beds` 保持同步。所以现阶段 `student` 的这四个位置字段处于无人维护状态，且 `dorm` 能存入 `studentmanager` 里并不存在的学号——「学号必须真实存在」「反向字段同步」都留给未来的住宿协调层。床位占用的权威是 `dorm.beds`。
 
 ### 关键约定（跨多文件才看得出的隐含规则）
 
@@ -41,27 +47,35 @@ out/build/debug/ShanShiDormManager.exe
 - 班级号 1~99、年级 2000~2999、宿舍号 1001~9999、宿舍楼号 1~99
 - 床位号 1~max_num、楼层 1~max_floor、姓名 1~20 字符且禁含 `"error"`
 
-**管理/查询方法返回 int 错误码**：`dorm` 的 `add_student`、`remove_student(int)`、`swap_student`、`is_student_exist(int)` 返回 `int`，正值表示成功（同时携带语义信息如床位号），负值和零区分不同失败原因。`add_student` 错误码约定：`>0=成功`/`-1=参数非法（含 bed_id 非法与传入学生字段非法）`/`-2=床位占用`/`-3=已存在`/`-4=满员`/`-5=宿舍未配置（id/building_id/floor 非法）`。具体返回值约定见 `dorm.h` 注释。`remove_student(student&)` 和 `is_student_exist(const student&)` 保持 `bool`（仅两种结果）。
+**管理/查询方法返回 int 错误码**：`dorm` 的 `add_student`、`remove_student`、`swap_student`、`is_bed_occupied`、`get_student_id` 返回 `int`，正值表示成功（同时携带语义信息如床位号、学号），负值和零区分不同失败原因。`add_student(int student_id)` 错误码约定：`>0=成功（即分配的床位号）`/`-1=student_id 非法`/`-3=已在本宿舍`/`-4=满员`/`-5=宿舍未配置（id 非法或 max_num<1）`；指定床位重载 `add_student(int student_id, int bed_id)` 额外有 `-1=bed_id 非法`、`-2=床位占用`。具体返回值约定见 `dorm.h` 注释。`is_student_exist(int student_id)`（按学号判在不在本宿舍）返回 `bool`。
 
-**`add_student` 前置校验 + 后门同步**：`dorm::add_student` 进入判重/分配前先做两项前置校验——dorm 自身 `id/building_id/floor` 必须合法（否则返回 `-5`），传入学生 `name/class_num/grade/id` 必须合法（否则返回 `-1`）。前置校验通过后，同步学生位置四字段改用 `student::assign_dorm_info(bed_id, dorm_id, building_id, floor)` 后门方法**直接赋值**（不调 setter、不重复校验），因 dorm 侧已保证传入值合法。`assign_dorm_info` 是 student 的 private 方法，通过 `friend class dorm` 暴露给 dorm，专用于此场景，绕过 setter 避免"setter 校验失败静默不赋值、学生保留旧字段、方法仍返回成功"的状态腐化。
+**`add_student` 前置校验**：`dorm::add_student` 进入判重/分配前先做两项前置校验——dorm 自身必须已配置（`id` 合法且 `max_num<1` 不成立，否则返回 `-5`），传入学号必须格式合法（否则返回 `-1`）。注意这里只校验学号**格式**（`is_valid_student_id`，8 位区间），**不校验该学号是否真的在 `studentmanager` 里注册过**——这是「dorm 只认学号、不做协调」的直接结果，真实存在性留给未来协调层。
 
-**`add_student` 自动同步原始对象**：`dorm::add_student` 传入非 const 引用，成功后通过 `assign_dorm_info` 将原始 `student` 对象的 `bed_id`、`dorm_id`、`building_id`、`floor` 同步更新。`student` 持有 `building_id` 和 `floor` 属性（分别复用 `check::is_valid_building_id` 和 `check::is_valid_floor`，`floor` 的 max_floor 当前硬编码为 99）。
+**`add_student` 只改 beds、不碰学生本体**：`dorm::add_student` 成功后只把学号写进 `beds` 对应下标，不触碰任何 `student` 对象、也不同步 `student` 的位置字段。单参版自动找最小空床位并返回床位号；双参版按指定床位入住。
 
-**`remove_student(int)` / `swap_student(int,int)` 不维护调用方原始对象**：这两个方法签名不接收 `student&`，结构上无法触及调用方原始 `student` 对象，因此**仅操作 dorm 内部 QVector 副本**，不反同步原对象。`remove_student(int bed_id)` 只删内部副本、不清零原对象；`swap_student(from, to)` 只改内部副本 `bed_id`、不更新原对象 `bed_id`。调用方若持有原对象引用并依赖其位置字段，须在操作后自行 `s.clear_dorm_info()`（移除场景）或自行同步 `bed_id`（swap 场景），或改用 `remove_student(student&)` 重载（该重载会自动 `clear_dorm_info`）。这是有意为之的值语义边界，非 bug。
+**`is_bed_occupied` 与 `is_student_exist` 区分命名**：两个方法参数同为 `int`，语义不同，特意分名以免重载歧义。`is_bed_occupied(int bed_id)`（按床位号查）三态返回 `int`：`1=有人`/`0=空床`/`-1=bed_id 非法`；`is_student_exist(int student_id)`（按学号查该生是否在本宿舍）返回 `bool`。
 
-**`remove_student(student&)` 自动清零**：`dorm::remove_student(student&)` 传入非 const 引用，移除成功后调用 `student::clear_dorm_info()` 将原对象的位置四字段（`bed_id`/`dorm_id`/`building_id`/`floor`）重置为 0。`clear_dorm_info()` 是 student 的公开方法，绕过 setter 校验直接赋 0，专用于此清零场景。
+**`remove_student(int student_id)` 按学号移除**：按学号在 `beds` 里找人，找到就把该下标置 `0`（腾出床位），返回被腾出的**床位号**（`>0`）；`0=该学生不在本宿舍`、`-1=student_id 非法`。同样只改 `beds`，不碰学生本体。
 
-**`get_student` / `get_student_by_id` 返回 const 指针**：返回指向 dorm 内部 QVector 中 student 的只读指针，不存在时返回 `nullptr`。注意：指针在 `add_student`、`remove_student`、`clear_students` 等修改 students 列表的操作后可能失效（QVector 重分配）。
+**`swap_student(from, to)` 交换两下标的值**：`from` 空返回 `0`；`from==to` 返回 `-2`；`bed_id` 非法返回 `-1`；否则直接交换 `beds[from-1]` 与 `beds[to-1]` 两个学号（`to` 空即移动、`to` 有人即互换），成功返回 `1`。
 
-**`is_full` / `clear_students`**：`is_full()` 封装 `students.size() >= max_num`，`add_student` 内部已改为调用此方法。`clear_students()` 清空整个学生列表，内部持有的 student 对象随之销毁。
+**`set_max_num` 会 resize beds 并防丢人**：`set_max_num` 成功时同步把 `beds` 调到新长度；扩容时新床位默认 `0`（空）；**缩容时若被丢弃的尾部床位仍有人，则拒绝并返回 `false`**，防止静默丢人。
 
-**哨兵值**：`get_*` 在输入非法或床位未入住时返回 `"error"`（字符串）或 `-1`（整型），**因此 `"error"` 被列为非法姓名**。消费这些返回值时需显式判哨兵，不要当作正常数据处理。
+**`is_full` / `get_current_num` / `clear_students`**：`get_current_num()` 遍历统计 `beds` 中非零床位数；`is_full()` 判断 `get_current_num() >= max_num`；`clear_students()` 把 `beds` 全部置 `0`（长度不变，不改 `max_num`）。
 
-**默认构造表达"未设置"**：`student` 默认构造将所有字段置 0/空（`name=""`、`class_num=0`、`grade=0`、`id=0`、`bed_id=0`、`dorm_id=0`、`building_id=0`、`floor=0`），统一表达"未设置"状态。`id=0` 是非法学号（`check::is_valid_student_id` 要求 10000000~99999999），配合 `add_student` 前置校验，默认/未设置 id 的 student 无法被接纳，避免多个默认 student 因共享同一合法 id（旧值 `10000000`）而互相撞号。
+**`studentmanager::get` 返回可失效指针**：`studentmanager::get(int student_id)` 按学号返回指向 `QHash` 内部 `student` 本体的指针（有 const 与非 const 两个重载），不存在返回 `nullptr`。**指针在后续 `add`/`remove` 触发 rehash 后可能失效**，请就地用完即弃；需长期引用请存学号、用时再 `get`。`add` 会校验字段合法且学号唯一（重号返回 `false`）；`ids_of_class(int)` 遍历全量列出某班所有学号。
 
-**dorm 持有动态学生列表，不按床位下标索引**：`dorm::students` 是 `QVector<student>`，按 `bed_id` 取学生信息时遍历查找（见 `dorm.cpp` 中 `get_student_name/id/class_num` 及 `get_student_*_list`）。这是有意为之的"动态列表模型"——不要改回按下标索引。空床位返回哨兵值，不占列表位置。
+**哨兵值**：`dorm::get_student_id` 在 bed_id 非法或床位为空时返回 `-1`（整型）；`studentmanager::get` 用 `nullptr`。消费这些返回值时需显式判哨兵，不要当作正常数据处理。姓名字段仍禁含 `"error"`（历史约定，`check::is_valid_student_name` 强制）。
+
+**默认构造表达"未设置"**：`student` 默认构造将所有字段置 0/空（`name=""`、`class_num=0`、`grade=0`、`id=0`、`bed_id=0`、`dorm_id=0`、`building_id=0`、`floor=0`），统一表达"未设置"状态。`id=0` 是非法学号（`check::is_valid_student_id` 要求 10000000~99999999），配合 `studentmanager::add` 与 `dorm::add_student` 的校验，默认/未设置 id 的 student 无法被接纳，避免多个默认 student 因共享同一合法 id 而互相撞号。
+
+**dorm 用定长 beds、按床位下标直接定位**：`dorm::beds` 是 `QVector<int>`，长度恒等于 `max_num`，下标 = 床位号 - 1、值 = 学号、`0` = 空床。按床位号取学号是 `beds[bed_id-1]` 直接下标访问，不再遍历。这是本轮重构的核心（旧模型是 `QVector<student>` 存对象副本 + 遍历查 bed_id）——不要改回存对象。
 
 **`dorm::set_floor` 的 max_floor 暂为占位**：当前硬编码 `max_floor = 99`，源码注释说明未来计划用顶层类管理一个 `vector`，按宿舍楼号查各自最大楼层。新增涉及楼层的逻辑时注意此约束尚未最终确定。
+
+**`student` 已摘除 `friend class dorm`**：`dorm` 不再依赖也不再触碰 `student`，原来的 friend 声明已删。`assign_dorm_info`（后门直接写入位置四字段，绕过 setter 校验）仍是 student 的 private 方法，但**本轮没有任何调用者**，留作未来住宿协调层的接口——届时由协调类通过新的 friend 声明取得访问权。`clear_dorm_info`（把位置四字段清 0）仍是公开方法，同样暂无调用者。
+
+**`building` 目前只是骨架**：`building` 类持有 `id`（宿舍楼号）、`max_floor`（最大楼层数）、`dorm_ids`（`QVector<QVector<int>>`，每层的宿舍号二维表，第一维楼层下标、第二维该层宿舍号列表），尚无任何方法实现，只是占位。
 
 **include 风格**：跨模块引用用目录前缀（`#include "system/check.h"`、`#include "core/student.h"`、`#include "ui/mainwidget.h"`），同目录文件用裸名（`#include "dorm.h"`）。`mainwidget.cpp` 中的 `#include "./ui_mainwidget.h"` 是 AUTOUIC 生成的头，无需手动创建。
 
@@ -69,5 +83,7 @@ out/build/debug/ShanShiDormManager.exe
 
 ## 待规划能力
 
-- 顶层管理类（管理多栋宿舍楼、多宿舍，承载 `set_floor` 注释中提到的 per-building max_floor 查表）尚未实现。
+- **住宿协调层**：`dorm`（存学号）与 `studentmanager`（存本体）之间目前无人协调。入住/退宿/换宿舍时同步 `student` 的位置四字段、校验学号在 `studentmanager` 中真实存在、维护 `dorm.beds` 与 `student` 反向字段一致——这些都还没做。`student::assign_dorm_info` / `clear_dorm_info` 就是为此预留的接口。
+- `dormmanager` / `buildingmanager` 等次顶层类（承载宿舍间换人、整楼搬迁等高级操作）与顶层 `school` 类尚未实现。
+- 顶层管理类还需承载 `set_floor` 注释中提到的 per-building max_floor 查表。
 - UI 层与领域模型的连接尚未开始。
