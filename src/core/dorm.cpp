@@ -126,18 +126,18 @@ bool dorm::set_floor(int floor)//设置所在楼层
 }
 
 //判断学生是否存在
-bool dorm::is_student_exist(int bed_id) const//按床位号
+int dorm::is_student_exist(int bed_id) const//按床位号
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
-		return false;
+		return -1;//bed_id非法
 	for (const student& s : students)
 	{
 		if (s.get_bed_id() == bed_id)
-			return true;
+			return 1;//存在学生
 	}
-	return false;
+	return 0;//床位为空
 }
-bool dorm::is_student_exist(const student& s) const//按学号匹配
+bool dorm::is_student_exist(const student& s) const//查找的是学生对象，但是按学号匹配（快速且唯一）
 {
 	for (const student& existing : students)
 	{
@@ -152,16 +152,17 @@ int dorm::add_student(student& s)//自动分配最小空床位
 {
 	if (is_student_exist(s))
 		return -3;//学生已在本宿舍
-	if (students.size() >= max_num)
+	if (is_full())
 		return -4;//宿舍已满
 
 	int assigned = 1;
-	while (assigned <= max_num && is_student_exist(assigned))
+	while (assigned <= max_num && is_student_exist(assigned) == 1)
 		++assigned;
 
 	s.set_bed_id(assigned);
 	s.set_dorm_id(this->id);
 	s.set_building_id(this->building_id);
+	s.set_floor(this->floor);
 	students.append(s);
 	return assigned;
 }
@@ -171,12 +172,13 @@ int dorm::add_student(student& s, int bed_id)//指定床位
 		return -1;//bed_id非法
 	if (is_student_exist(s))
 		return -3;//学生已在本宿舍
-	if (is_student_exist(bed_id))
+	if (is_student_exist(bed_id) == 1)
 		return -2;//床位已被占用
 
 	s.set_bed_id(bed_id);
 	s.set_dorm_id(this->id);
 	s.set_building_id(this->building_id);
+	s.set_floor(this->floor);
 	students.append(s);
 	return bed_id;
 }
@@ -196,13 +198,14 @@ int dorm::remove_student(int bed_id)//按床位号
 	}
 	return 0;//该床位为空
 }
-bool dorm::remove_student(const student& s)//按学号匹配
+bool dorm::remove_student(student& s)//按学号匹配, 移除后自动清零原对象位置信息
 {
 	for (int i = 0; i < students.size(); ++i)
 	{
 		if (students[i].get_id() == s.get_id())
 		{
 			students.removeAt(i);
+			s.clear_dorm_info();//自动清零：移除后清除原对象的位置四字段
 			return true;
 		}
 	}
@@ -239,4 +242,36 @@ int dorm::swap_student(int from, int to)
 	}
 
 	return 1;
+}
+
+const student* dorm::get_student(int bed_id) const//获取宿舍内指定床位学生对象
+{
+	if (!check::is_valid_bed_id(bed_id, max_num))
+		return nullptr;
+	for (const student& s : students)
+	{
+		if (s.get_bed_id() == bed_id)
+			return &s;
+	}
+	return nullptr;//该床位为空
+}
+
+const student* dorm::get_student_by_id(int student_id) const//按学号查找学生对象
+{
+	for (const student& s : students)
+	{
+		if (s.get_id() == student_id)
+			return &s;
+	}
+	return nullptr;
+}
+
+bool dorm::is_full() const//判断宿舍是否已满
+{
+	return students.size() >= max_num;
+}
+
+void dorm::clear_students()//清空所有学生
+{
+	students.clear();
 }

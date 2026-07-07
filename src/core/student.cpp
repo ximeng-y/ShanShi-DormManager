@@ -10,6 +10,7 @@ student::student()//构造函数
 	bed_id = 0;
 	dorm_id = 0;
 	building_id = 0;
+	floor = 0;
 	grade = 0;
 }
 
@@ -41,6 +42,10 @@ int student::get_bed_id() const//获取所在床位号
 int student::get_building_id() const//获取所在宿舍楼号
 {
 	return building_id;
+}
+int student::get_floor() const//获取所在楼层
+{
+	return floor;
 }
 
 //设置信息(使用bool返回是否成功)
@@ -92,4 +97,20 @@ bool student::set_building_id(int building_id)//设置所在宿舍楼号
 		return false;
 	this->building_id = building_id;
 	return true;
+}
+bool student::set_floor(int floor)//设置所在楼层
+{
+	int max_floor = 99;//暂时硬编码，与dorm::set_floor保持一致，后续由顶层类统一管理
+	if (!check::is_valid_floor(floor, max_floor))
+		return false;
+	this->floor = floor;
+	return true;
+}
+
+void student::clear_dorm_info()//自动清零：将位置四字段重置为0（未分配状态）
+{
+	bed_id = 0;
+	dorm_id = 0;
+	building_id = 0;
+	floor = 0;
 }

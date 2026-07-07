@@ -16,6 +16,7 @@ public:
 	int get_bed_id() const;//获取所在床位号(自然数，从1开始)
 	int get_grade() const;//获取学生年级
 	int get_building_id() const;//获取所在宿舍楼号
+	int get_floor() const;//获取所在楼层
 
 	//设置信息
 	bool set_name(const QString& name);//设置学生姓名
@@ -25,6 +26,9 @@ public:
 	bool set_bed_id(int bed_id);//设置所在床位号(自然数，从1开始)
 	bool set_grade(int grade);//设置学生年级
 	bool set_building_id(int building_id);//设置所在宿舍楼号
+	bool set_floor(int floor);//设置所在楼层
+
+	void clear_dorm_info();//自动清零：将bed_id、dorm_id、building_id、floor重置为0（未分配状态），供移除操作调用
 
 private:
 	QString name;
@@ -34,6 +38,7 @@ private:
 	int dorm_id;//所在宿舍号
 	int bed_id;//所在床位号(自然数，从1开始)
 	int building_id;//所在宿舍楼号
+	int floor;//所在楼层
 };
 
 #endif // STUDENT_H
