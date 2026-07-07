@@ -29,7 +29,7 @@ public:
 	QVector<int> ids_of_class(int class_num) const;//列出指定班级号的所有学生学号
 
 private:
-	QHash<int, student> students;//学号 -> 学生本体
+	QHash<int, student> students;//使用哈希表存储学生学号 -> 学生本体
 };
 
 #endif // STUDENTMANAGER_H
