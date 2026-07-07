@@ -26,6 +26,7 @@ public:
 	int is_bed_occupied(int bed_id) const;//判断指定床位是否有人(按床位号)
 	bool is_student_exist(int student_id) const;//判断指定学号的学生是否在本宿舍(按学号)
 
+
 	//设置信息
 	bool set_id(int id);//设置宿舍号
 	bool set_max_num(int max_num);//设置最大人数(会同步 resize beds; 缩容时若被丢弃床位有人则拒绝并返回 false)
@@ -36,6 +37,7 @@ public:
 	//student 的 dorm_id/bed_id/building_id/floor 反向字段本轮无人维护, 留待未来协调层处理。
 	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已在本宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)
 	int add_student(int student_id);//添加学生(自动分配最小空床位)
+
 	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已在本宿舍  -5=宿舍未配置
 	int add_student(int student_id, int bed_id);//添加学生(指定床位)
 
@@ -54,7 +56,7 @@ private:
 	int max_num;//最大人数
 	int building_id;//所在宿舍楼号(1~99)
 	int floor;//所在楼层(1~max_floor)
-	QVector<int> beds;//床位->学号映射(下标=床位号-1, 值=学号, 0=空床, size==max_num)
+	QVector<int> beds;//床位->学号映射作为伪指针(下标=床位号-1, 值=学号, 0=空床, size==max_num)
 };
 
 #endif // DORM_H

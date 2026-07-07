@@ -61,15 +61,17 @@ QVector<int> dorm::get_student_id_list() const//获取宿舍内所有已入住�
 }
 
 //判断存在性
-int dorm::is_bed_occupied(int bed_id) const//按床位号
+int dorm::is_bed_occupied(int bed_id) const//判断指定床位是否存在及其状态
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
-		return -1;//bed_id非法
-	return beds[bed_id - 1] != 0 ? 1 : 0;//1=有人 0=空
+		return -1;//bed_id非法/宿舍不存在此处床位
+	if (beds[bed_id - 1] == 0)
+		return 0;//床位存在且为空
+	return 1;//床位存在且有人
 }
-bool dorm::is_student_exist(int student_id) const//按学号
+bool dorm::is_student_exist(int student_id) const//判断指定学号的学生是否在宿舍内
 {
-	for (int existing : beds)
+	for (int existing : beds)//在以床位为下标，存储学生学号的数组中查找
 	{
 		if (existing == student_id)
 			return true;
@@ -87,12 +89,12 @@ bool dorm::set_id(int id)//设置宿舍号
 }
 bool dorm::set_max_num(int max_num)//设置最大人数(同步 resize beds)
 {
-	if (max_num < 1)
+	if (max_num < 1)//基本合法性
 		return false;
-	//缩容时: 检查将被丢弃的床位(新长度之后的部分)是否有人, 有人则拒绝, 防静默丢人
-	if (max_num < this->max_num)
+	
+	if (max_num < this->max_num)//缩容时: 检查将被丢弃的床位(新长度之后的部分)是否有人, 有人则拒绝, 防静默丢人（高层次的自动分配学生至其它宿舍或暂时令学生离宿需在dormmanager中实现）
 	{
-		for (int i = max_num; i < beds.size(); ++i)
+		for (int i = max_num; i < beds.size(); ++i)//此处不使用(max_num - 1)并非bug，而是max_num是新长度，i从新长度开始，正好是开始被丢弃的床位的下标
 		{
 			if (beds[i] != 0)
 				return false;//被丢弃的床位仍有人, 拒绝缩容
@@ -118,14 +120,12 @@ bool dorm::set_floor(int floor)//设置所在楼层
 	return true;
 }
 
-//添加学生: 仅操作 beds, 不触碰 student 本体
+//添加学生: 仅操作 beds 内存储的学生学号, 不触碰 student 本体
 int dorm::add_student(int student_id)//自动分配最小空床位
 {
-	//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
-	if (!check::is_valid_dorm_id(this->id) || max_num < 1)
+	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
 		return -5;//宿舍未配置
-	//前置校验2: 传入学号必须合法
-	if (!check::is_valid_student_id(student_id))
+	if (!check::is_valid_student_id(student_id))//前置校验2: 传入学号必须合法
 		return -1;//student_id非法
 
 	if (is_student_exist(student_id))
