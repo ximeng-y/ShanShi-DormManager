@@ -39,25 +39,59 @@ QString dorm::get_student_name(int bed_id) const//获取宿舍内指定床位学
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))//检查床位号是否合法,不合法返回error
 		return "error";
-	int true_bed_id = bed_id - 1;//将自然数床位号转换为索引
 
-	return students[true_bed_id].get_name();
+	for (const student& s : students)//遍历查找该床位学生(动态列表模型下students不按床位号索引)
+	{
+		if (s.get_bed_id() == bed_id)
+			return s.get_name();
+	}
+	return "error";//该床位未入住
 }
 int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学号
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;
-	int true_bed_id = bed_id - 1;//将自然数床位号转换为索引
 
-	return students[true_bed_id].get_id();
+	for (const student& s : students)
+	{
+		if (s.get_bed_id() == bed_id)
+			return s.get_id();
+	}
+	return -1;//该床位未入住
 }
 int dorm::get_student_class_num(int bed_id) const//获取宿舍内指定床位学生班级号
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;
-	int true_bed_id = bed_id - 1;//将自然数床位号转换为索引
 
-	return students[true_bed_id].get_class_num();
+	for (const student& s : students)
+	{
+		if (s.get_bed_id() == bed_id)
+			return s.get_class_num();
+	}
+	return -1;//该床位未入住
+}
+
+QVector<QString> dorm::get_student_name_list() const//获取宿舍内所有学生的名字表
+{
+	QVector<QString> name_list;
+	for (const student& s : students)
+		name_list.append(s.get_name());
+	return name_list;
+}
+QVector<int> dorm::get_student_id_list() const//获取宿舍内所有学生的学号表
+{
+	QVector<int> id_list;
+	for (const student& s : students)
+		id_list.append(s.get_id());
+	return id_list;
+}
+QVector<int> dorm::get_student_class_num_list() const//获取宿舍内所有学生的班级号表(不去重)
+{
+	QVector<int> class_list;
+	for (const student& s : students)
+		class_list.append(s.get_class_num());
+	return class_list;
 }
 
 //设置信息

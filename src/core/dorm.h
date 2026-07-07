@@ -19,6 +19,10 @@ public:
 	QString get_student_name(int bed_id) const;//获取宿舍内指定床位学生姓名
 	int get_student_id(int bed_id) const;//获取宿舍内指定床位学生学号
 	int get_student_class_num(int bed_id) const;//获取宿舍内指定床位学生班级号
+	QVector<QString> get_student_name_list() const;//获取宿舍内所有学生的名字表
+	QVector<int> get_student_id_list() const;//获取宿舍内所有学生的学号表
+	QVector<int> get_student_class_num_list() const;//获取宿舍内所有学生的班级号表(不去重)
+	
 
 	//设置信息
 	bool set_id(int id);//设置宿舍号
