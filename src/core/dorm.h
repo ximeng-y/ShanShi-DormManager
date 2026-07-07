@@ -37,16 +37,20 @@ public:
 	bool set_floor(int floor);//设置所在楼层
 
 	//管理学生: add_student 自动同步学生的 bed_id / dorm_id / building_id / floor
-	//返回值: >0=成功(即分配的床位号)  -3=学生已在本宿舍  -4=宿舍已满
+	//返回值: >0=成功(即分配的床位号)  -1=参数非法(含传入学生字段非法)  -3=学生已在本宿舍  -4=宿舍已满  -5=宿舍未配置(id/building_id/floor 非法)
 	int add_student(student& s);//添加学生(自动分配最小空床位)
-	//返回值: >0=成功(即指定床位号)  -1=bed_id非法  -2=床位已被占用  -3=学生已在本宿舍
+	//返回值: >0=成功(即指定床位号)  -1=bed_id非法或传入学生字段非法  -2=床位已被占用  -3=学生已在本宿舍  -5=宿舍未配置
 	int add_student(student& s, int bed_id);//添加学生(指定床位)
 
+	//注意: 按床位号移除仅删除 dorm 内部副本, 不清零调用方原始 student 对象的位置四字段。
+	//若需同步清零原对象, 请改用 remove_student(student&) 重载, 或调用方在移除后自行 s.clear_dorm_info()。
 	//返回值: 1=移除成功  0=该床位为空  -1=bed_id非法
 	int remove_student(int bed_id);//移除学生(按床位号)
 	//移除后自动清零原对象的bed_id/dorm_id/building_id/floor（通过student::clear_dorm_info）
 	bool remove_student(student& s);//移除学生(按学号匹配, 找到并移除返回true, 未找到返回false)
 
+	//注意: swap_student 仅修改 dorm 内部副本的 bed_id, 不更新调用方原始 student 对象的 bed_id。
+	//签名 (int,int) 结构上无法触及原对象。调用方持有原对象引用时, 须在 swap 后自行同步原对象 bed_id 或改用其它方式。
 	//返回值: 1=成功(to空则移入, to有人则互换)  0=from床位为空  -1=bed_id非法  -2=from==to
 	int swap_student(int from, int to);//调换/移动床位(from→to)
 

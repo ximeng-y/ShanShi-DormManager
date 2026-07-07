@@ -147,9 +147,21 @@ bool dorm::is_student_exist(const student& s) const//查找的是学生对象，
 	return false;
 }
 
-//添加学生: 自动同步学生的 bed_id / dorm_id / building_id
+//添加学生: 自动同步学生的 bed_id / dorm_id / building_id / floor
 int dorm::add_student(student& s)//自动分配最小空床位
 {
+	//前置校验1: dorm 自身必须已配置(id/building_id/floor 合法), 否则同步 setter 会静默失败
+	if (!check::is_valid_dorm_id(this->id) ||
+		!check::is_valid_building_id(this->building_id) ||
+		!check::is_valid_floor(this->floor, 99))
+		return -5;//宿舍未配置
+	//前置校验2: 传入学生自身字段必须合法(name/class_num/grade/id), 否则会破坏"宿舍内学生均合法"与哨兵契约
+	if (!check::is_valid_student_name(s.get_name()) ||
+		!check::is_valid_class_num(s.get_class_num()) ||
+		!check::is_valid_grade(s.get_grade()) ||
+		!check::is_valid_student_id(s.get_id()))
+		return -1;//参数非法(学生字段非法)
+
 	if (is_student_exist(s))
 		return -3;//学生已在本宿舍
 	if (is_full())
@@ -159,26 +171,31 @@ int dorm::add_student(student& s)//自动分配最小空床位
 	while (assigned <= max_num && is_student_exist(assigned) == 1)
 		++assigned;
 
-	s.set_bed_id(assigned);
-	s.set_dorm_id(this->id);
-	s.set_building_id(this->building_id);
-	s.set_floor(this->floor);
+	s.assign_dorm_info(assigned, this->id, this->building_id, this->floor);
 	students.append(s);
 	return assigned;
 }
 int dorm::add_student(student& s, int bed_id)//指定床位
 {
+	//前置校验1: dorm 自身必须已配置
+	if (!check::is_valid_dorm_id(this->id) ||
+		!check::is_valid_building_id(this->building_id) ||
+		!check::is_valid_floor(this->floor, 99))
+		return -5;//宿舍未配置
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;//bed_id非法
+	//前置校验2: 传入学生自身字段必须合法
+	if (!check::is_valid_student_name(s.get_name()) ||
+		!check::is_valid_class_num(s.get_class_num()) ||
+		!check::is_valid_grade(s.get_grade()) ||
+		!check::is_valid_student_id(s.get_id()))
+		return -1;//参数非法(学生字段非法)
 	if (is_student_exist(s))
 		return -3;//学生已在本宿舍
 	if (is_student_exist(bed_id) == 1)
 		return -2;//床位已被占用
 
-	s.set_bed_id(bed_id);
-	s.set_dorm_id(this->id);
-	s.set_building_id(this->building_id);
-	s.set_floor(this->floor);
+	s.assign_dorm_info(bed_id, this->id, this->building_id, this->floor);
 	students.append(s);
 	return bed_id;
 }

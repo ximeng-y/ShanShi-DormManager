@@ -41,9 +41,13 @@ out/build/debug/ShanShiDormManager.exe
 - 班级号 1~99、年级 2000~2999、宿舍号 1001~9999、宿舍楼号 1~99
 - 床位号 1~max_num、楼层 1~max_floor、姓名 1~20 字符且禁含 `"error"`
 
-**管理/查询方法返回 int 错误码**：`dorm` 的 `add_student`、`remove_student(int)`、`swap_student`、`is_student_exist(int)` 返回 `int`，正值表示成功（同时携带语义信息如床位号），负值和零区分不同失败原因。具体返回值约定见 `dorm.h` 注释。`remove_student(student&)` 和 `is_student_exist(const student&)` 保持 `bool`（仅两种结果）。
+**管理/查询方法返回 int 错误码**：`dorm` 的 `add_student`、`remove_student(int)`、`swap_student`、`is_student_exist(int)` 返回 `int`，正值表示成功（同时携带语义信息如床位号），负值和零区分不同失败原因。`add_student` 错误码约定：`>0=成功`/`-1=参数非法（含 bed_id 非法与传入学生字段非法）`/`-2=床位占用`/`-3=已存在`/`-4=满员`/`-5=宿舍未配置（id/building_id/floor 非法）`。具体返回值约定见 `dorm.h` 注释。`remove_student(student&)` 和 `is_student_exist(const student&)` 保持 `bool`（仅两种结果）。
 
-**`add_student` 自动同步原始对象**：`dorm::add_student` 传入非 const 引用，成功后将原始 `student` 对象的 `bed_id`、`dorm_id`、`building_id`、`floor` 同步更新。`student` 持有 `building_id` 和 `floor` 属性（分别复用 `check::is_valid_building_id` 和 `check::is_valid_floor`，`floor` 的 max_floor 当前硬编码为 99）。
+**`add_student` 前置校验 + 后门同步**：`dorm::add_student` 进入判重/分配前先做两项前置校验——dorm 自身 `id/building_id/floor` 必须合法（否则返回 `-5`），传入学生 `name/class_num/grade/id` 必须合法（否则返回 `-1`）。前置校验通过后，同步学生位置四字段改用 `student::assign_dorm_info(bed_id, dorm_id, building_id, floor)` 后门方法**直接赋值**（不调 setter、不重复校验），因 dorm 侧已保证传入值合法。`assign_dorm_info` 是 student 的 private 方法，通过 `friend class dorm` 暴露给 dorm，专用于此场景，绕过 setter 避免"setter 校验失败静默不赋值、学生保留旧字段、方法仍返回成功"的状态腐化。
+
+**`add_student` 自动同步原始对象**：`dorm::add_student` 传入非 const 引用，成功后通过 `assign_dorm_info` 将原始 `student` 对象的 `bed_id`、`dorm_id`、`building_id`、`floor` 同步更新。`student` 持有 `building_id` 和 `floor` 属性（分别复用 `check::is_valid_building_id` 和 `check::is_valid_floor`，`floor` 的 max_floor 当前硬编码为 99）。
+
+**`remove_student(int)` / `swap_student(int,int)` 不维护调用方原始对象**：这两个方法签名不接收 `student&`，结构上无法触及调用方原始 `student` 对象，因此**仅操作 dorm 内部 QVector 副本**，不反同步原对象。`remove_student(int bed_id)` 只删内部副本、不清零原对象；`swap_student(from, to)` 只改内部副本 `bed_id`、不更新原对象 `bed_id`。调用方若持有原对象引用并依赖其位置字段，须在操作后自行 `s.clear_dorm_info()`（移除场景）或自行同步 `bed_id`（swap 场景），或改用 `remove_student(student&)` 重载（该重载会自动 `clear_dorm_info`）。这是有意为之的值语义边界，非 bug。
 
 **`remove_student(student&)` 自动清零**：`dorm::remove_student(student&)` 传入非 const 引用，移除成功后调用 `student::clear_dorm_info()` 将原对象的位置四字段（`bed_id`/`dorm_id`/`building_id`/`floor`）重置为 0。`clear_dorm_info()` 是 student 的公开方法，绕过 setter 校验直接赋 0，专用于此清零场景。
 
@@ -52,6 +56,8 @@ out/build/debug/ShanShiDormManager.exe
 **`is_full` / `clear_students`**：`is_full()` 封装 `students.size() >= max_num`，`add_student` 内部已改为调用此方法。`clear_students()` 清空整个学生列表，内部持有的 student 对象随之销毁。
 
 **哨兵值**：`get_*` 在输入非法或床位未入住时返回 `"error"`（字符串）或 `-1`（整型），**因此 `"error"` 被列为非法姓名**。消费这些返回值时需显式判哨兵，不要当作正常数据处理。
+
+**默认构造表达"未设置"**：`student` 默认构造将所有字段置 0/空（`name=""`、`class_num=0`、`grade=0`、`id=0`、`bed_id=0`、`dorm_id=0`、`building_id=0`、`floor=0`），统一表达"未设置"状态。`id=0` 是非法学号（`check::is_valid_student_id` 要求 10000000~99999999），配合 `add_student` 前置校验，默认/未设置 id 的 student 无法被接纳，避免多个默认 student 因共享同一合法 id（旧值 `10000000`）而互相撞号。
 
 **dorm 持有动态学生列表，不按床位下标索引**：`dorm::students` 是 `QVector<student>`，按 `bed_id` 取学生信息时遍历查找（见 `dorm.cpp` 中 `get_student_name/id/class_num` 及 `get_student_*_list`）。这是有意为之的"动态列表模型"——不要改回按下标索引。空床位返回哨兵值，不占列表位置。
 

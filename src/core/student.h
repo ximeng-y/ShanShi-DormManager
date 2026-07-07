@@ -5,6 +5,8 @@
 
 class student
 {
+	friend class dorm;//使 dorm 可调用 private 的 assign_dorm_info 同步学生位置四字段
+
 public:
 	student();//构造函数
 
@@ -29,6 +31,11 @@ public:
 	bool set_floor(int floor);//设置所在楼层
 
 	void clear_dorm_info();//自动清零：将bed_id、dorm_id、building_id、floor重置为0（未分配状态），供移除操作调用
+
+	//供 dorm::add_student 在 dorm 字段已前置校验合法后直接同步学生位置四字段使用。
+	//绕过 setter 校验（dorm 侧已保证传入值合法），避免 setter 静默失败导致的位置字段与实际所在宿舍不一致。
+	//不要在 dorm 之外调用此方法。
+	void assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor);
 
 private:
 	QString name;

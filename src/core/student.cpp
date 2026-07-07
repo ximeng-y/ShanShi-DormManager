@@ -6,7 +6,7 @@ student::student()//构造函数
 {
 	name = "";
 	class_num = 0;
-	id = 10000000;
+	id = 0;
 	bed_id = 0;
 	dorm_id = 0;
 	building_id = 0;
@@ -113,4 +113,12 @@ void student::clear_dorm_info()//自动清零：将位置四字段重置为0（�
 	dorm_id = 0;
 	building_id = 0;
 	floor = 0;
+}
+
+void student::assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor)//后门同步：dorm::add_student 在 dorm 字段已校验合法后直接写入位置四字段，绕过 setter
+{
+	this->bed_id = bed_id;
+	this->dorm_id = dorm_id;
+	this->building_id = building_id;
+	this->floor = floor;
 }
