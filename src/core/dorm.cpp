@@ -1,6 +1,7 @@
 #include "dorm.h"
 #include <QVector>
 #include "system/check.h"
+#include "studentmanager.h"
 
 dorm::dorm()//构造函数
 {
@@ -120,17 +121,16 @@ bool dorm::set_floor(int floor)//设置所在楼层
 	return true;
 }
 
-//添加学生: 仅操作 beds 内存储的学生学号, 不触碰 student 本体
+//添加学生: 写入 beds 并经 studentmanager::assign_dorm_info 正向同步 student 本体位置四字段
 int dorm::add_student(int student_id)//自动分配最小空床位
 {
 	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
 		return -5;//宿舍未配置
 	if (!check::is_valid_student_id(student_id))//前置校验2: 传入学号必须合法
 		return -1;//student_id非法
-
-	if (is_student_exist(student_id))
-		return -3;//学生已在本宿舍
-	if (is_full())
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验3: 学生在有宿舍和床位的情况下不得入住
+		return -3;//学生已有宿舍
+	if (is_full())//前置校验4: 宿舍不能满员
 		return -4;//宿舍已满
 
 	for (int i = 0; i < beds.size(); ++i)//找最小空床位
@@ -138,6 +138,7 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 		if (beds[i] == 0)
 		{
 			beds[i] = student_id;
+			studentmanager::instance().assign_dorm_info(student_id, i + 1, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 			return i + 1;//返回床位号(自然数)
 		}
 	}
@@ -145,34 +146,34 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 }
 int dorm::add_student(int student_id, int bed_id)//指定床位
 {
-	//前置校验1: dorm 自身必须已配置
-	if (!check::is_valid_dorm_id(this->id) || max_num < 1)
+	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置
 		return -5;//宿舍未配置
-	//前置校验2: 学号与床位号均须合法
-	if (!check::is_valid_student_id(student_id))
+	if (!check::is_valid_student_id(student_id))//前置校验2: 学号与床位号均须合法
 		return -1;//student_id非法
-	if (!check::is_valid_bed_id(bed_id, max_num))
+	if (!check::is_valid_bed_id(bed_id, max_num))//前置校验3: 床位号合法性
 		return -1;//bed_id非法
 
-	if (is_student_exist(student_id))
-		return -3;//学生已在本宿舍
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验4: 学生在有宿舍和床位的情况下不得入住
+		return -3;//学生已有宿舍
 	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
 
 	beds[bed_id - 1] = student_id;
+	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 	return bed_id;
 }
 
 //移除学生(按学号)
 int dorm::remove_student(int student_id)
 {
-	if (!check::is_valid_student_id(student_id))
+	if (!check::is_valid_student_id(student_id))//前置校验1: 学号合法性
 		return -1;//student_id非法
 	for (int i = 0; i < beds.size(); ++i)
 	{
 		if (beds[i] == student_id)
 		{
 			beds[i] = 0;//释放床位
+			studentmanager::instance().clear_dorm_info(student_id);//同步 student 本体的 dorm_id/bed_id为0
 			return i + 1;//返回被释放的床位号
 		}
 	}
@@ -193,6 +194,13 @@ int dorm::swap_student(int from, int to)
 	int tmp = beds[from - 1];
 	beds[from - 1] = beds[to - 1];
 	beds[to - 1] = tmp;
+
+	//交换后, 两侧床位上非 0 的学号都需把 student 本体的 bed_id 同步为新床位号。
+	//dorm_id/building_id/floor 未变(仍在同一宿舍), 沿用 this 的字段。
+	if (beds[from - 1] != 0)
+		studentmanager::instance().assign_dorm_info(beds[from - 1], from, this->id, this->building_id, this->floor);
+	if (beds[to - 1] != 0)
+		studentmanager::instance().assign_dorm_info(beds[to - 1], to, this->id, this->building_id, this->floor);
 	return 1;
 }
 
@@ -203,5 +211,9 @@ bool dorm::is_full() const//判断宿舍是否已满
 
 void dorm::clear_students()//清空所有床位
 {
+	for(auto student_id : get_student_id_list())
+	{
+		studentmanager::instance().clear_dorm_info(student_id);//同步 student 本体的 dorm_id/bed_id为0
+	}
 	beds.fill(0);//长度不变, 全部置 0
 }

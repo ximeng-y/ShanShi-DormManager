@@ -2,6 +2,7 @@
 #define STUDENT_H
 
 #include <QString>
+class studentmanager;
 
 class student
 {
@@ -28,13 +29,12 @@ public:
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 	bool set_floor(int floor);//设置所在楼层
 
-	void clear_dorm_info();//自动清零：将bed_id、dorm_id、building_id、floor重置为0（未分配状态），供移除操作调用
-
 private:
 	//后门同步位置四字段, 绕过 setter 校验直接赋值。为未来的住宿协调层预留:
 	//协调层在校验合法后调用它一次性写入 bed_id/dorm_id/building_id/floor。
 	//本轮住宿协调未实现, 暂无调用者; 届时由协调类通过 friend 获得访问权(现已摘除 friend class dorm)。
 	void assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor);
+	friend class studentmanager;
 
 	QString name;
 	int class_num;//班级号(1~99)

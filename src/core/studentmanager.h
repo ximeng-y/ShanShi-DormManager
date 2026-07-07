@@ -10,26 +10,37 @@
 class studentmanager
 {
 public:
-	studentmanager();//构造函数
+	static studentmanager& instance();//单例入口
 
-	//本体管理
-	//添加学生: 校验字段合法(name/class_num/grade/id)且学号唯一。
+	studentmanager(const studentmanager&) = delete;
+	studentmanager& operator=(const studentmanager&) = delete;
+
+	//操作学生
+	//添加学生: 校验字段合法(name/class_num/grade/id)且学号唯一
 	//返回值: true=成功  false=字段非法或学号已存在
 	bool add(const student& s);
 	bool remove(int student_id);//移除学生, true=移除成功, false=学号不存在
 	bool is_exists(int student_id) const;//判断指定学号的学生是否存在
+
 	//按学号取本体(可修改)。不存在返回 nullptr。
 	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
 	//请就地使用, 不要长期持有; 需长期引用请存学号, 用时再 get。
 	student* get(int student_id);
 	const student* get(int student_id) const;//const 重载, 返回只读指针
-	int count() const;//当前学生总数
+	int count() const;//获取当前学生总数
 
+	int clear_dorm_info(int student_id);//使指定学号的学生离宿：将bed_id、dorm_id、building_id、floor重置为0，供移除操作调用
+	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供dorm::add_student成功分支调用，与clear_dorm_info对称
+
+	//逻辑判断
+	int is_student_have_dorm(int student_id);//检查指定学号的学生是否已入住任意宿舍
+	
 	//高级查询: 手握全量, 一次遍历完成
 	QVector<int> ids_of_class(int class_num) const;//列出指定班级号的所有学生学号
 
 private:
-	QHash<int, student> students;//使用哈希表存储学生学号 -> 学生本体
+	studentmanager() = default;//构造函数, 单例模式禁止外部实例化
+	QHash<int, student> students;
 };
 
 #endif // STUDENTMANAGER_H

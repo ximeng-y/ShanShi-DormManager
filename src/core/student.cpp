@@ -107,14 +107,6 @@ bool student::set_floor(int floor)//设置所在楼层
 	return true;
 }
 
-void student::clear_dorm_info()//自动清零：将位置四字段重置为0（未分配状态）
-{
-	bed_id = 0;
-	dorm_id = 0;
-	building_id = 0;
-	floor = 0;
-}
-
 void student::assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor)//后门同步：dorm::add_student 在 dorm 字段已校验合法后直接写入位置四字段，绕过 setter
 {
 	this->bed_id = bed_id;
