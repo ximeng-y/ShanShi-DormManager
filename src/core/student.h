@@ -5,8 +5,6 @@
 
 class student
 {
-	friend class dorm;//使 dorm 可调用 private 的 assign_dorm_info 同步学生位置四字段
-
 public:
 	student();//构造函数
 
@@ -32,12 +30,12 @@ public:
 
 	void clear_dorm_info();//自动清零：将bed_id、dorm_id、building_id、floor重置为0（未分配状态），供移除操作调用
 
-	//供 dorm::add_student 在 dorm 字段已前置校验合法后直接同步学生位置四字段使用。
-	//绕过 setter 校验（dorm 侧已保证传入值合法），避免 setter 静默失败导致的位置字段与实际所在宿舍不一致。
-	//不要在 dorm 之外调用此方法。
+private:
+	//后门同步位置四字段, 绕过 setter 校验直接赋值。为未来的住宿协调层预留:
+	//协调层在校验合法后调用它一次性写入 bed_id/dorm_id/building_id/floor。
+	//本轮住宿协调未实现, 暂无调用者; 届时由协调类通过 friend 获得访问权(现已摘除 friend class dorm)。
 	void assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor);
 
-private:
 	QString name;
 	int class_num;//班级号(1~99)
 	int id;//前2位年级(的后两位) 3~4位班级 5~8位序列号

@@ -21,8 +21,12 @@ set(PROJECT_SOURCES
         src/core/student.h
         src/core/dorm.cpp
         src/core/dorm.h
+        src/core/studentmanager.cpp
+        src/core/studentmanager.h
         src/system/check.cpp
         src/system/check.h
+        src/core/building.cpp
+        src/core/building.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

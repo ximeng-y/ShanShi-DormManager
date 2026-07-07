@@ -1,6 +1,4 @@
 #include "dorm.h"
-#include "student.h"
-#include <QString>
 #include <QVector>
 #include "system/check.h"
 
@@ -10,7 +8,7 @@ dorm::dorm()//构造函数
 	max_num = 0;
 	building_id = 0;
 	floor = 0;
-	students.clear();
+	beds.clear();
 }
 
 //获取信息
@@ -22,9 +20,15 @@ int dorm::get_max_num() const//获取最大人数
 {
 	return max_num;
 }
-int dorm::get_current_num() const//获取实际人数
+int dorm::get_current_num() const//获取实际人数(统计 beds 中非零床位)
 {
-	return students.size();
+	int count = 0;
+	for (int student_id : beds)
+	{
+		if (student_id != 0)
+			++count;
+	}
+	return count;
 }
 int dorm::get_building_id() const//获取所在宿舍楼号
 {
@@ -35,63 +39,42 @@ int dorm::get_floor() const//获取所在楼层
 	return floor;
 }
 
-QString dorm::get_student_name(int bed_id) const//获取宿舍内指定床位学生姓名(id使用自然数，从1开始)
-{
-	if (!check::is_valid_bed_id(bed_id, max_num))//检查床位号是否合法,不合法返回error
-		return "error";
-
-	for (const student& s : students)//遍历查找该床位学生(动态列表模型下students不按床位号索引)
-	{
-		if (s.get_bed_id() == bed_id)
-			return s.get_name();
-	}
-	return "error";//该床位未入住
-}
 int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学号
 {
-	if (!check::is_valid_bed_id(bed_id, max_num))
+	if (!check::is_valid_bed_id(bed_id, max_num))//检查床位号是否合法
 		return -1;
-
-	for (const student& s : students)//在数组内遍历
-	{
-		if (s.get_bed_id() == bed_id)//尝试找到bed id对应传入bed id的学生，返回
-			return s.get_id();
-	}
-	return -1;//该床位未入住
-}
-int dorm::get_student_class_num(int bed_id) const//获取宿舍内指定床位学生班级号
-{
-	if (!check::is_valid_bed_id(bed_id, max_num))
-		return -1;
-
-	for (const student& s : students)
-	{
-		if (s.get_bed_id() == bed_id)
-			return s.get_class_num();
-	}
-	return -1;//该床位未入住
+	int student_id = beds[bed_id - 1];//下标=床位号-1
+	if (student_id == 0)
+		return -1;//该床位为空
+	return student_id;
 }
 
-QVector<QString> dorm::get_student_name_list() const//获取宿舍内所有学生的名字表
-{
-	QVector<QString> name_list;
-	for (const student& s : students)
-		name_list.append(s.get_name());
-	return name_list;
-}
-QVector<int> dorm::get_student_id_list() const//获取宿舍内所有学生的学号表
+QVector<int> dorm::get_student_id_list() const//获取宿舍内所有已入住学生的学号表(不含空床)
 {
 	QVector<int> id_list;
-	for (const student& s : students)
-		id_list.append(s.get_id());
+	for (int student_id : beds)
+	{
+		if (student_id != 0)
+			id_list.append(student_id);
+	}
 	return id_list;
 }
-QVector<int> dorm::get_student_class_num_list() const//获取宿舍内所有学生的班级号表(不去重)
+
+//判断存在性
+int dorm::is_bed_occupied(int bed_id) const//按床位号
 {
-	QVector<int> class_list;
-	for (const student& s : students)
-		class_list.append(s.get_class_num());
-	return class_list;
+	if (!check::is_valid_bed_id(bed_id, max_num))
+		return -1;//bed_id非法
+	return beds[bed_id - 1] != 0 ? 1 : 0;//1=有人 0=空
+}
+bool dorm::is_student_exist(int student_id) const//按学号
+{
+	for (int existing : beds)
+	{
+		if (existing == student_id)
+			return true;
+	}
+	return false;
 }
 
 //设置信息
@@ -102,11 +85,21 @@ bool dorm::set_id(int id)//设置宿舍号
 	this->id = id;
 	return true;
 }
-bool dorm::set_max_num(int max_num)//设置最大人数
+bool dorm::set_max_num(int max_num)//设置最大人数(同步 resize beds)
 {
 	if (max_num < 1)
 		return false;
+	//缩容时: 检查将被丢弃的床位(新长度之后的部分)是否有人, 有人则拒绝, 防静默丢人
+	if (max_num < this->max_num)
+	{
+		for (int i = max_num; i < beds.size(); ++i)
+		{
+			if (beds[i] != 0)
+				return false;//被丢弃的床位仍有人, 拒绝缩容
+		}
+	}
 	this->max_num = max_num;
+	beds.resize(max_num);//扩容时新床位默认值为 0(空床)
 	return true;
 }
 bool dorm::set_building_id(int building_id)//设置所在宿舍楼号
@@ -125,108 +118,65 @@ bool dorm::set_floor(int floor)//设置所在楼层
 	return true;
 }
 
-//判断学生是否存在
-int dorm::is_student_exist(int bed_id) const//按床位号
+//添加学生: 仅操作 beds, 不触碰 student 本体
+int dorm::add_student(int student_id)//自动分配最小空床位
 {
-	if (!check::is_valid_bed_id(bed_id, max_num))
-		return -1;//bed_id非法
-	for (const student& s : students)
-	{
-		if (s.get_bed_id() == bed_id)
-			return 1;//存在学生
-	}
-	return 0;//床位为空
-}
-bool dorm::is_student_exist(const student& s) const//查找的是学生对象，但是按学号匹配（快速且唯一）
-{
-	for (const student& existing : students)
-	{
-		if (existing.get_id() == s.get_id())
-			return true;
-	}
-	return false;
-}
-
-//添加学生: 自动同步学生的 bed_id / dorm_id / building_id / floor
-int dorm::add_student(student& s)//自动分配最小空床位
-{
-	//前置校验1: dorm 自身必须已配置(id/building_id/floor 合法), 否则同步 setter 会静默失败
-	if (!check::is_valid_dorm_id(this->id) ||
-		!check::is_valid_building_id(this->building_id) ||
-		!check::is_valid_floor(this->floor, 99))
+	//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
+	if (!check::is_valid_dorm_id(this->id) || max_num < 1)
 		return -5;//宿舍未配置
-	//前置校验2: 传入学生自身字段必须合法(name/class_num/grade/id), 否则会破坏"宿舍内学生均合法"与哨兵契约
-	if (!check::is_valid_student_name(s.get_name()) ||
-		!check::is_valid_class_num(s.get_class_num()) ||
-		!check::is_valid_grade(s.get_grade()) ||
-		!check::is_valid_student_id(s.get_id()))
-		return -1;//参数非法(学生字段非法)
+	//前置校验2: 传入学号必须合法
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
 
-	if (is_student_exist(s))
+	if (is_student_exist(student_id))
 		return -3;//学生已在本宿舍
 	if (is_full())
 		return -4;//宿舍已满
 
-	int assigned = 1;
-	while (assigned <= max_num && is_student_exist(assigned) == 1)
-		++assigned;
-
-	s.assign_dorm_info(assigned, this->id, this->building_id, this->floor);
-	students.append(s);
-	return assigned;
+	for (int i = 0; i < beds.size(); ++i)//找最小空床位
+	{
+		if (beds[i] == 0)
+		{
+			beds[i] = student_id;
+			return i + 1;//返回床位号(自然数)
+		}
+	}
+	return -4;//理论不可达(is_full 已挡), 兜底返回已满
 }
-int dorm::add_student(student& s, int bed_id)//指定床位
+int dorm::add_student(int student_id, int bed_id)//指定床位
 {
 	//前置校验1: dorm 自身必须已配置
-	if (!check::is_valid_dorm_id(this->id) ||
-		!check::is_valid_building_id(this->building_id) ||
-		!check::is_valid_floor(this->floor, 99))
+	if (!check::is_valid_dorm_id(this->id) || max_num < 1)
 		return -5;//宿舍未配置
+	//前置校验2: 学号与床位号均须合法
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;//bed_id非法
-	//前置校验2: 传入学生自身字段必须合法
-	if (!check::is_valid_student_name(s.get_name()) ||
-		!check::is_valid_class_num(s.get_class_num()) ||
-		!check::is_valid_grade(s.get_grade()) ||
-		!check::is_valid_student_id(s.get_id()))
-		return -1;//参数非法(学生字段非法)
-	if (is_student_exist(s))
+
+	if (is_student_exist(student_id))
 		return -3;//学生已在本宿舍
-	if (is_student_exist(bed_id) == 1)
+	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
 
-	s.assign_dorm_info(bed_id, this->id, this->building_id, this->floor);
-	students.append(s);
+	beds[bed_id - 1] = student_id;
 	return bed_id;
 }
 
-//移除学生
-int dorm::remove_student(int bed_id)//按床位号
+//移除学生(按学号)
+int dorm::remove_student(int student_id)
 {
-	if (!check::is_valid_bed_id(bed_id, max_num))
-		return -1;//bed_id非法
-	for (int i = 0; i < students.size(); ++i)
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
+	for (int i = 0; i < beds.size(); ++i)
 	{
-		if (students[i].get_bed_id() == bed_id)
+		if (beds[i] == student_id)
 		{
-			students.removeAt(i);
-			return 1;//移除成功
+			beds[i] = 0;//释放床位
+			return i + 1;//返回被释放的床位号
 		}
 	}
-	return 0;//该床位为空
-}
-bool dorm::remove_student(student& s)//按学号匹配, 移除后自动清零原对象位置信息
-{
-	for (int i = 0; i < students.size(); ++i)
-	{
-		if (students[i].get_id() == s.get_id())
-		{
-			students.removeAt(i);
-			s.clear_dorm_info();//自动清零：移除后清除原对象的位置四字段
-			return true;
-		}
-	}
-	return false;
+	return 0;//该学生不在本宿舍
 }
 
 //调换/移动床位
@@ -236,59 +186,22 @@ int dorm::swap_student(int from, int to)
 		return -1;//bed_id非法
 	if (from == to)
 		return -2;//同一床位, 无需操作
-
-	student* student_from = nullptr;
-	student* student_to = nullptr;
-	for (student& s : students)
-	{
-		if (s.get_bed_id() == from)
-			student_from = &s;
-		if (s.get_bed_id() == to)
-			student_to = &s;
-	}
-
-	if (student_from == nullptr)
+	if (beds[from - 1] == 0)
 		return 0;//from床位为空
 
-	if (student_to == nullptr)
-		student_from->set_bed_id(to);//to为空, 移动
-	else
-	{
-		student_from->set_bed_id(to);//to有人, 互换
-		student_to->set_bed_id(from);
-	}
-
+	//to 为空则移动, to 有人则互换; 直接交换两下标的值即可覆盖两种情形
+	int tmp = beds[from - 1];
+	beds[from - 1] = beds[to - 1];
+	beds[to - 1] = tmp;
 	return 1;
-}
-
-const student* dorm::get_student(int bed_id) const//获取宿舍内指定床位学生对象
-{
-	if (!check::is_valid_bed_id(bed_id, max_num))
-		return nullptr;
-	for (const student& s : students)
-	{
-		if (s.get_bed_id() == bed_id)
-			return &s;
-	}
-	return nullptr;//该床位为空
-}
-
-const student* dorm::get_student_by_id(int student_id) const//按学号查找学生对象
-{
-	for (const student& s : students)
-	{
-		if (s.get_id() == student_id)
-			return &s;
-	}
-	return nullptr;
 }
 
 bool dorm::is_full() const//判断宿舍是否已满
 {
-	return students.size() >= max_num;
+	return get_current_num() >= max_num;
 }
 
-void dorm::clear_students()//清空所有学生
+void dorm::clear_students()//清空所有床位
 {
-	students.clear();
+	beds.fill(0);//长度不变, 全部置 0
 }
