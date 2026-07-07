@@ -47,7 +47,7 @@ int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;
-	int true_bed_id = bed_id - 1;
+	int true_bed_id = bed_id - 1;//将自然数床位号转换为索引
 
 	return students[true_bed_id].get_id();
 }
@@ -55,7 +55,7 @@ int dorm::get_student_class_num(int bed_id) const//获取宿舍内指定床位�
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))
 		return -1;
-	int true_bed_id = bed_id - 1;
+	int true_bed_id = bed_id - 1;//将自然数床位号转换为索引
 
 	return students[true_bed_id].get_class_num();
 }
