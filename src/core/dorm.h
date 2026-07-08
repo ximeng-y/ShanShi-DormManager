@@ -3,7 +3,7 @@
 
 #include <QVector>
 
-//存储模型: 宿舍不再持有 student 本体, 仅持有床位到学号的映射。
+//存储模型: 宿舍仅持有床位到学号的映射。
 //beds 为定长数组, 下标 = 床位号 - 1, 值 = 学号, 0 表示空床, 长度恒等于 max_num。
 //学生本体的唯一归属是 studentmanager(QHash<int,student>), dorm 只认学号。
 class dorm

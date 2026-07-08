@@ -2,9 +2,9 @@
 #define STUDENT_H
 
 #include <QString>
-class studentmanager;
+class studentmanager;//前向声明，降低编译时间，真实实现在studentmanager.h/cpp
 
-class student
+class student//学生类，最基础的学生对象
 {
 public:
 	student();//构造函数
