@@ -6,6 +6,7 @@ building::building()
 {
 	id = 0;
 	max_floor = 0;
+	for_gender = 0;
 	dorm_ids.clear();
 }
 
@@ -52,6 +53,20 @@ bool building::set_id(int building_id)//设置宿舍楼号
 	this->id = building_id;
 	return true;
 }
+
+int building::get_for_gender()//获取宿舍适用性别
+{
+	return for_gender;
+}
+
+bool building::set_for_gender(int gender)//设置宿舍适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
+{
+	if (!check::is_valid_building_gender(gender))
+		return false;
+	this->for_gender = gender;
+	return true;
+}
+
 bool building::set_max_floor(int floor)//设置最大楼层数
 {
 	if (!check::is_valid_max_floor(floor))
