@@ -23,10 +23,10 @@ dorm* dormmanager::get(int building_id, int dorm_id)
 const dorm* dormmanager::get(int building_id, int dorm_id) const
 {
 	auto building_it = dorms.constFind(building_id);
-	if (building_it == dorms.constEnd())
+	if (building_it == dorms.constEnd())//先判断楼号是否存在
 		return nullptr;
 	auto dorm_it = building_it->constFind(dorm_id);
-	if (dorm_it == building_it->constEnd())
+	if (dorm_it == building_it->constEnd())//再判断宿舍号是否存在
 		return nullptr;
 	return &dorm_it.value();
 }
@@ -36,7 +36,7 @@ int dormmanager::count() const
 {
 	int total = 0;
 	for (auto it = dorms.constBegin(); it != dorms.constEnd(); ++it)
-		total += it.value().size();
+		total += it.value().size();//统计每个楼的宿舍数(it.value()拿到QHash<int, dorm>，size()方法返回宿舍数)
 	return total;
 }
 
@@ -50,10 +50,11 @@ int dormmanager::is_dorm_exist(int building_id, int dorm_id)
 	return 1;//存在
 }
 
-//添加宿舍（以参数 building_id 为准，同步 dorm 内部 building_id）
-bool dormmanager::add_dorm(int building_id, const dorm& dorm_to_add)
+//添加宿舍（building_id 取自 dorm 内部）
+bool dormmanager::add_dorm(const dorm& dorm_to_add)
 {
-	int dorm_id = dorm_to_add.get_id();
+	int building_id = dorm_to_add.get_building_id();//从dorm对象中获取楼号
+	int dorm_id = dorm_to_add.get_id();//从dorm对象中获取宿舍号
 
 	//前置校验: building_id 合法
 	if (!check::is_valid_building_id(building_id))
@@ -67,11 +68,7 @@ bool dormmanager::add_dorm(int building_id, const dorm& dorm_to_add)
 	if (dorms.contains(building_id) && dorms[building_id].contains(dorm_id))
 		return false;
 
-	//局部拷贝并同步 building_id（参数为准，自动同步）
-	dorm dorm_copy = dorm_to_add;
-	dorm_copy.set_building_id(building_id);
-
-	dorms[building_id].insert(dorm_id, dorm_copy);
+	dorms[building_id].insert(dorm_id, dorm_to_add);//将宿舍对象插入到QHash<int, dorm>中
 	return true;
 }
 

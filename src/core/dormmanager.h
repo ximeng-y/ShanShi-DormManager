@@ -15,7 +15,7 @@ public:
 	dormmanager& operator=(const dormmanager&) = delete;//禁止拷贝赋值，维护单例唯一性
 
     //操作宿舍
-    bool add_dorm(int building_id, const dorm& dorm_to_add);//添加处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
+    bool add_dorm(const dorm& dorm_to_add);//添加宿舍（building_id 取自 dorm 内部）
     bool remove_dorm(int building_id, int dorm_id);//删除处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
 
     //按楼号、宿舍号取本体(可修改)。不存在返回 nullptr。
