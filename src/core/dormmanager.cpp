@@ -36,7 +36,7 @@ int dormmanager::count() const
 {
 	int total = 0;
 	for (auto it = dorms.constBegin(); it != dorms.constEnd(); ++it)
-		total += it.value().size();//统计每个楼的宿舍数(it.value()拿到QHash<int, dorm>，size()方法返回宿舍数)
+		total += it.value().size();//统计每个楼的宿舍数(it.value()拿到QMap<int, dorm>，size()方法返回宿舍数)
 	return total;
 }
 
@@ -68,7 +68,7 @@ bool dormmanager::add_dorm(const dorm& dorm_to_add)
 	if (dorms.contains(building_id) && dorms[building_id].contains(dorm_id))
 		return false;
 
-	dorms[building_id].insert(dorm_id, dorm_to_add);//将宿舍对象插入到QHash<int, dorm>中
+	dorms[building_id].insert(dorm_id, dorm_to_add);//将宿舍对象插入到QMap<int, dorm>中
 	return true;
 }
 
@@ -85,7 +85,7 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	//调用宿舍对象的clear_students()方法，自动清空宿舍内学生（同步清理 student 本体位置字段）
 	dorms[building_id][dorm_id].clear_students();
 
-	//从QHash<int, dorm>中移除宿舍对象，同步清理宿舍对象的内存空间
+	//从QMap<int, dorm>中移除宿舍对象，同步清理宿舍对象的内存空间
 	dorms[building_id].remove(dorm_id);//移除宿舍对象
 	if (dorms[building_id].isEmpty())//如果楼内没有宿舍了
 		dorms.remove(building_id);//移除楼对象

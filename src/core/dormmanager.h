@@ -3,9 +3,9 @@
 
 #include "dorm.h"
 #include <QVector>
-#include <QHash>
+#include <QMap>
 
-// 全校宿舍本体的唯一归属。以宿舍编号(id)为 key 存储 dorm 本体, 平均 O(1) 按宿舍编号查找。
+// 全校宿舍本体的唯一归属。两层 QMap 以 (宿舍楼号, 宿舍号) 复合键定位 dorm 本体, 按楼号、宿舍号升序有序存储。
 // building 等空间结构一律只存宿舍编号, 通过本类换取本体, 保证单一数据源、无副本一致性问题。
 class dormmanager
 {
@@ -19,7 +19,7 @@ public:
     bool remove_dorm(int building_id, int dorm_id);//删除处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
 
     //按楼号、宿舍号取本体(可修改)。不存在返回 nullptr。
-	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
+	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
     dorm* get(int building_id, int dorm_id);
     const dorm* get(int building_id, int dorm_id) const;//const 重载, 返回只读指针
@@ -30,7 +30,7 @@ public:
 
 private:
 	dormmanager() = default;//构造函数, 单例模式禁止外部实例化
-	QHash<int, QHash<int, dorm>> dorms;//宿舍本体哈希表, key为宿舍楼号, value为宿舍本体哈希表, key为宿舍楼层编号, value为宿舍本体   
+	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 
 #endif // DORMMANAGER_H
