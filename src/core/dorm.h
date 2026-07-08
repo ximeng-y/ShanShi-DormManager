@@ -17,6 +17,7 @@ public:
 	int get_current_num() const;//获取实际人数(统计 beds 中非零床位)
 	int get_building_id() const;//获取所在宿舍楼号
 	int get_floor() const;//获取所在楼层
+	int get_for_gender() const;//获取房间性别锁定(0=未锁定/1=男舍/2=女舍)
 	//返回值: >0=该床位学生学号  -1=bed_id非法或该床位为空
 	int get_student_id(int bed_id) const;//获取宿舍内指定床位学生学号
 	QVector<int> get_student_id_list() const;//获取宿舍内所有已入住学生的学号表(不含空床)
@@ -32,15 +33,19 @@ public:
 	bool set_max_num(int max_num);//设置最大人数(会同步 resize beds; 缩容时若被丢弃床位有人则拒绝并返回 false)
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 	bool set_floor(int floor);//设置所在楼层
+	//设置房间性别锁定(显式钦定): 0=未锁定/1=男舍/2=女舍(复用 check::is_valid_gender)。
+	//若房内已有住客, 只允许设为与住客性别一致或 0(解锁), 否则拒绝并返回 false, 防止和实际住客矛盾。
+	bool set_for_gender(int gender);//钦定房间性别
 
 	//管理学生: beds 是床位占用的权威, 同时经 studentmanager 正向/反向同步 student 本体的位置四字段。
 	//add_student 成功时调 studentmanager::assign_dorm_info 写入 dorm_id/bed_id/building_id/floor;
 	//remove_student/clear_students 调 studentmanager::clear_dorm_info 清零四字段。
-	//注意: 学号必须已注册于 studentmanager 且学生性别不能为 0(否则返回 -6), 以杜绝幽灵占用。
-	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)  -6=学号未注册或学生性别未设置
+	//注意: 学号必须已注册于 studentmanager 且学生性别不能为 0(否则返回 -6), 以杜绝幽灵占用并支持先到先得性别锁定。
+	//性别: 空房入住时把房间 for_gender 自动锁定为该生性别; 已锁定则要求匹配, 不符返回 -7。
+	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)  -6=学号未注册或学生性别未设置  -7=性别与房间锁定不符
 	int add_student(int student_id);//添加学生(自动分配最小空床位)
 
-	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已有宿舍  -5=宿舍未配置  -6=学号未注册或学生性别未设置
+	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已有宿舍  -5=宿舍未配置  -6=学号未注册或学生性别未设置  -7=性别与房间锁定不符
 	int add_student(int student_id, int bed_id);//添加学生(指定床位)
 
 	//返回值: >0=成功(即被释放的床位号)  0=该学生不在本宿舍  -1=student_id非法
@@ -55,13 +60,17 @@ public:
 	bool is_empty() const;//判断宿舍是否为空
 	int get_empty_count() const;//获取当前空床位数
 	int get_occupied_count() const;//获取当前已占用床位数
-	void clear_students();//清空所有床位(beds 全部置 0, 长度不变)
+	//清空所有床位(beds 全部置 0, 长度不变), 同步清零各 student 本体位置字段。
+	//clear_students 保留房间性别锁定(空男舍仍是男舍); clear_students_reset_gender 额外把 for_gender 归 0(彻底放开)。
+	void clear_students();//清空住客, 保留性别锁定
+	void clear_students_reset_gender();//清空住客并重置房间性别为未锁定
 
 private:
 	int id;//宿舍号
 	int max_num;//最大人数
 	int building_id;//所在宿舍楼号(1~99)
 	int floor;//所在楼层(1~max_floor)
+	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可显式钦定
 	QVector<int> beds;//床位->学号映射作为伪指针(下标=床位号-1, 值=学号, 0=空床, size==max_num)
 };
 

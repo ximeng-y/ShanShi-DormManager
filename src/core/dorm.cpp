@@ -10,6 +10,7 @@ dorm::dorm()//构造函数
 	max_num = 0;
 	building_id = 0;
 	floor = 0;
+	for_gender = 0;//默认未锁定, 表达"未设置"
 	beds.clear();
 }
 
@@ -39,6 +40,10 @@ int dorm::get_building_id() const//获取所在宿舍楼号
 int dorm::get_floor() const//获取所在楼层
 {
 	return floor;
+}
+int dorm::get_for_gender() const//获取房间性别锁定(0=未锁定/1=男舍/2=女舍)
+{
+	return for_gender;
 }
 
 int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学号
@@ -121,6 +126,20 @@ bool dorm::set_floor(int floor)//设置所在楼层
 	this->floor = floor;
 	return true;
 }
+bool dorm::set_for_gender(int gender)//钦定房间性别(0=未锁定/1=男舍/2=女舍)
+{
+	if (!check::is_valid_gender(gender))//复用学生性别校验(0/1/2)
+		return false;
+	//若房内已有住客, 钦定值必须与住客性别一致, 或设为 0(解锁); 否则会与实际住客矛盾, 拒绝
+	if (gender != 0 && !is_empty())
+	{
+		const student* occupant = studentmanager::instance().get(get_student_id_list().first());
+		if (occupant != nullptr && gender != occupant->get_gender())//住客存在且性别不符则拒绝(幽灵住客判空跳过)
+			return false;
+	}
+	this->for_gender = gender;
+	return true;
+}
 
 //添加学生: 写入 beds 并经 studentmanager::assign_dorm_info 正向同步 student 本体位置四字段
 int dorm::add_student(int student_id)//自动分配最小空床位
@@ -136,12 +155,16 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 		return -3;//学生已有宿舍
 	if (is_full())//前置校验5: 宿舍不能满员
 		return -4;//宿舍已满
+	if (for_gender != 0 && for_gender != s->get_gender())//前置校验6: 房间已锁定性别时要求匹配
+		return -7;//性别与房间锁定不符
 
 	for (int i = 0; i < beds.size(); ++i)//找最小空床位
 	{
 		if (beds[i] == 0)
 		{
 			beds[i] = student_id;
+			if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
+				for_gender = s->get_gender();
 			studentmanager::instance().assign_dorm_info(student_id, i + 1, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 			return i + 1;//返回床位号(自然数)
 		}
@@ -163,8 +186,12 @@ int dorm::add_student(int student_id, int bed_id)//指定床位
 		return -3;//学生已有宿舍
 	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
+	if (for_gender != 0 && for_gender != s->get_gender())//前置校验6: 房间已锁定性别时要求匹配
+		return -7;//性别与房间锁定不符
 
 	beds[bed_id - 1] = student_id;
+	if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
+		for_gender = s->get_gender();
 	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 	return bed_id;
 }
@@ -230,11 +257,17 @@ int dorm::get_occupied_count() const//获取当前已占用床位数
 	return get_current_num();
 }
 
-void dorm::clear_students()//清空所有床位
+void dorm::clear_students()//清空所有床位(保留房间性别锁定)
 {
 	for(auto student_id : get_student_id_list())
 	{
 		studentmanager::instance().clear_dorm_info(student_id);//同步 student 本体的 dorm_id/bed_id为0
 	}
 	beds.fill(0);//长度不变, 全部置 0
+}
+
+void dorm::clear_students_reset_gender()//清空住客并重置房间性别为未锁定
+{
+	clear_students();//先按常规清空住客(保留性别)
+	for_gender = 0;//再彻底放开房间性别锁定
 }
