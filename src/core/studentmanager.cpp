@@ -15,6 +15,7 @@ bool studentmanager::add(const student& s)//添加学生: 校验字段合法且�
 	if (!check::is_valid_student_name(s.get_name()) ||
 		!check::is_valid_class_num(s.get_class_num()) ||
 		!check::is_valid_grade(s.get_grade()) ||
+		!check::is_valid_gender(s.get_gender()) ||
 		!check::is_valid_student_id(s.get_id()))
 		return false;//字段非法
 	if (students.contains(s.get_id()))

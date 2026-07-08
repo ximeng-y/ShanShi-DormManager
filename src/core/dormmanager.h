@@ -15,9 +15,17 @@ public:
 	dormmanager& operator=(const dormmanager&) = delete;//禁止拷贝赋值，维护单例唯一性
 
     //操作宿舍
+    bool add_dorm(int building_id, const dorm& dorm);//添加处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
+    bool remove_dorm(int building_id, int dorm_id);//删除处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
 
-    bool add_dorm(const dorm& dorm);//添加宿舍
-    bool remove_dorm(int dorm_id);//删除宿舍
+    //按楼号、宿舍号取本体(可修改)。不存在返回 nullptr。
+	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
+	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
+    dorm* get(int building_id, int dorm_id);
+    const dorm* get(int building_id, int dorm_id) const;//const 重载, 返回只读指针
+    int count() const;//获取当前宿舍总数
+
+
 
 private:
 	dormmanager() = default;//构造函数, 单例模式禁止外部实例化

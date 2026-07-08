@@ -18,6 +18,7 @@ public:
 	int get_grade() const;//获取学生年级
 	int get_building_id() const;//获取所在宿舍楼号
 	int get_floor() const;//获取所在楼层
+	int get_gender() const;//获取性别(0=未设置, 1=男, 2=女)
 
 	//设置信息
 	bool set_name(const QString& name);//设置学生姓名
@@ -28,6 +29,7 @@ public:
 	bool set_grade(int grade);//设置学生年级
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 	bool set_floor(int floor);//设置所在楼层
+	bool set_gender(int gender);//设置性别(0=未设置, 1=男, 2=女)
 
 private:
 	//后门同步位置四字段, 绕过 setter 校验直接赋值。为未来的住宿协调层预留:
@@ -44,6 +46,7 @@ private:
 	int bed_id;//所在床位号(自然数，从1开始)
 	int building_id;//所在宿舍楼号
 	int floor;//所在楼层
+	int gender;//性别(0=未设置, 1=男, 2=女)
 };
 
 #endif // STUDENT_H

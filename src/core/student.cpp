@@ -11,6 +11,7 @@ student::student()//构造函数
 	dorm_id = 0;
 	building_id = 0;
 	floor = 0;
+	gender = 0;
 	grade = 0;
 }
 
@@ -46,6 +47,10 @@ int student::get_building_id() const//获取所在宿舍楼号
 int student::get_floor() const//获取所在楼层
 {
 	return floor;
+}
+int student::get_gender() const//获取性别
+{
+	return gender;
 }
 
 //设置信息(使用bool返回是否成功)
@@ -104,6 +109,14 @@ bool student::set_floor(int floor)//设置所在楼层
 	if (!check::is_valid_floor(floor, max_floor))
 		return false;
 	this->floor = floor;
+	return true;
+}
+
+bool student::set_gender(int gender)//设置性别
+{
+	if (!check::is_valid_gender(gender))
+		return false;
+	this->gender = gender;
 	return true;
 }
 

@@ -66,3 +66,10 @@ bool check::is_valid_max_floor(int max_floor)//检查最大楼层数是否合法
 		return false;
 	return true;
 }
+
+bool check::is_valid_gender(int gender)//检查性别是否合法(0=未设置, 1=男, 2=女)
+{
+	if (gender < 0 || gender > 2)
+		return false;
+	return true;
+}

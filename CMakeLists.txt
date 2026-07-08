@@ -23,6 +23,8 @@ set(PROJECT_SOURCES
         src/core/dorm.h
         src/core/studentmanager.cpp
         src/core/studentmanager.h
+        src/core/dormmanager.cpp
+        src/core/dormmanager.h
         src/system/check.cpp
         src/system/check.h
         src/core/building.cpp
