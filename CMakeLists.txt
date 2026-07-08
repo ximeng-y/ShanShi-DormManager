@@ -29,6 +29,8 @@ set(PROJECT_SOURCES
         src/system/check.h
         src/core/building.cpp
         src/core/building.h
+        src/core/buildingmanager.cpp
+        src/core/buildingmanager.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
