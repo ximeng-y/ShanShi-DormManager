@@ -9,13 +9,13 @@ public:
 	building();
 
 	//获取信息
-	int get_id();//获取楼号
-	int get_max_floor();//获取最大楼层数
-	QVector<int> get_dorm_ids_list(int floor);//获取指定楼层号的宿舍号表
-	QVector<QVector<int>> get_dorm_ids();//获取宿舍号二维表
-	int get_dorms_count();//获取整栋楼的宿舍数
-	int get_dorms_count(int floor);//获取指定楼层的宿舍数
-	int get_for_gender();//获取宿舍楼适用性别
+	int get_id() const;//获取楼号
+	int get_max_floor() const;//获取最大楼层数
+	QVector<int> get_dorm_ids_list(int floor) const;//获取指定楼层号的宿舍号表
+	QVector<QVector<int>> get_dorm_ids() const;//获取宿舍号二维表
+	int get_dorms_count() const;//获取整栋楼的宿舍数
+	int get_dorms_count(int floor) const;//获取指定楼层的宿舍数
+	int get_for_gender() const;//获取宿舍楼适用性别
 
 	//操作信息
 	bool set_id(int building_id);//设置宿舍楼号
