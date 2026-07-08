@@ -36,11 +36,11 @@ public:
 	//管理学生: beds 是床位占用的权威, 同时经 studentmanager 正向/反向同步 student 本体的位置四字段。
 	//add_student 成功时调 studentmanager::assign_dorm_info 写入 dorm_id/bed_id/building_id/floor;
 	//remove_student/clear_students 调 studentmanager::clear_dorm_info 清零四字段。
-	//注意: dorm 仍只认学号做增删查, 学号是否真实注册于 studentmanager 由调用方/未来协调层保证。
-	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)
+	//注意: 学号必须已注册于 studentmanager 且学生性别不能为 0(否则返回 -6), 以杜绝幽灵占用。
+	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)  -6=学号未注册或学生性别未设置
 	int add_student(int student_id);//添加学生(自动分配最小空床位)
 
-	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已有宿舍  -5=宿舍未配置
+	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已有宿舍  -5=宿舍未配置  -6=学号未注册或学生性别未设置
 	int add_student(int student_id, int bed_id);//添加学生(指定床位)
 
 	//返回值: >0=成功(即被释放的床位号)  0=该学生不在本宿舍  -1=student_id非法

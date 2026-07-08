@@ -2,6 +2,7 @@
 #include <QVector>
 #include "system/check.h"
 #include "studentmanager.h"
+#include "student.h"
 
 dorm::dorm()//构造函数
 {
@@ -128,9 +129,12 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 		return -5;//宿舍未配置
 	if (!check::is_valid_student_id(student_id))//前置校验2: 传入学号必须合法
 		return -1;//student_id非法
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验3: 学生在有宿舍和床位的情况下不得入住
+	const student* s = studentmanager::instance().get(student_id);//前置校验3: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验4: 学生在有宿舍和床位的情况下不得入住
 		return -3;//学生已有宿舍
-	if (is_full())//前置校验4: 宿舍不能满员
+	if (is_full())//前置校验5: 宿舍不能满员
 		return -4;//宿舍已满
 
 	for (int i = 0; i < beds.size(); ++i)//找最小空床位
@@ -152,8 +156,10 @@ int dorm::add_student(int student_id, int bed_id)//指定床位
 		return -1;//student_id非法
 	if (!check::is_valid_bed_id(bed_id, max_num))//前置校验3: 床位号合法性
 		return -1;//bed_id非法
-
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验4: 学生在有宿舍和床位的情况下不得入住
+	const student* s = studentmanager::instance().get(student_id);//前置校验4: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验5: 学生在有宿舍和床位的情况下不得入住
 		return -3;//学生已有宿舍
 	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
