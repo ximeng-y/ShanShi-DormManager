@@ -209,6 +209,21 @@ bool dorm::is_full() const//判断宿舍是否已满
 	return get_current_num() >= max_num;
 }
 
+bool dorm::is_empty() const//判断宿舍是否为空
+{
+	return get_current_num() == 0;
+}
+
+int dorm::get_empty_count() const//获取当前空床位数
+{
+	return max_num - get_current_num();
+}
+
+int dorm::get_occupied_count() const//获取当前已占用床位数
+{
+	return get_current_num();
+}
+
 void dorm::clear_students()//清空所有床位
 {
 	for(auto student_id : get_student_id_list())

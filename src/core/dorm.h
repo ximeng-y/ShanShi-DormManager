@@ -52,6 +52,9 @@ public:
 	int swap_student(int from, int to);//调换/移动床位(from→to)
 
 	bool is_full() const;//判断宿舍是否已满
+	bool is_empty() const;//判断宿舍是否为空
+	int get_empty_count() const;//获取当前空床位数
+	int get_occupied_count() const;//获取当前已占用床位数
 	void clear_students();//清空所有床位(beds 全部置 0, 长度不变)
 
 private:
