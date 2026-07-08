@@ -10,17 +10,15 @@
 class studentmanager
 {
 public:
-	static studentmanager& instance();//单例入口
-
-	studentmanager(const studentmanager&) = delete;
-	studentmanager& operator=(const studentmanager&) = delete;
+	static studentmanager& instance();//创建单例入口
+	studentmanager(const studentmanager&) = delete;//禁止拷贝构造，维护单例唯一性
+	studentmanager& operator=(const studentmanager&) = delete;//禁止拷贝赋值，维护单例唯一性
 
 	//操作学生
 	//添加学生: 校验字段合法(name/class_num/grade/id)且学号唯一
 	//返回值: true=成功  false=字段非法或学号已存在
 	bool add(const student& s);
 	bool remove(int student_id);//移除学生, true=移除成功, false=学号不存在
-	bool is_exists(int student_id) const;//判断指定学号的学生是否存在
 
 	//按学号取本体(可修改)。不存在返回 nullptr。
 	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
@@ -34,6 +32,7 @@ public:
 
 	//逻辑判断
 	int is_student_have_dorm(int student_id);//检查指定学号的学生是否已入住任意宿舍
+	bool is_exists(int student_id) const;//判断指定学号的学生是否存在
 	
 	//高级查询: 手握全量, 一次遍历完成
 	QVector<int> ids_of_class(int class_num) const;//列出指定班级号的所有学生学号

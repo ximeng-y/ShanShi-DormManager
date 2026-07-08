@@ -59,3 +59,10 @@ bool check::is_valid_student_name(const QString& name)//检查学生姓名是否
 		return false;
 	return true;
 }
+
+bool check::is_valid_max_floor(int max_floor)//检查最大楼层数是否合法(1~99)
+{
+	if (max_floor < 1 || max_floor > 99)
+		return false;
+	return true;
+}

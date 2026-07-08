@@ -14,6 +14,7 @@ public:
 	static bool is_valid_bed_id(int bed_id, int max_num);//检查自然数床位号是否合法(1~max_num)
 	static bool is_valid_floor(int floor, int max_floor);//检查楼层是否合法(1~max_floor)
 	static bool is_valid_student_name(const QString& name);//检查学生姓名是否合法(1~20个字符,禁止error)
+	static bool is_valid_max_floor(int max_floor);//检查最大楼层数是否合法(1~99)
 };
 
 
