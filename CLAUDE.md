@@ -28,7 +28,7 @@ out/build/debug/ShanShiDormManager.exe
 
 源码组织为三层，均在 `src/` 下，且 `src/` 已加入 include 路径（`target_include_directories`）：
 
-- `src/core/` —— 领域模型：`student`（学生）、`dorm`（宿舍）、`studentmanager`（管理全校学生本体）、`building`（宿舍楼）、`dormmanager`（管理全校宿舍本体，目前仅头文件框架）。纯数据 + 校验封装，不依赖 Qt Widgets（仅用 `QString`/`QVector`/`QHash`）。
+- `src/core/` —— 领域模型：`student`（学生）、`dorm`（宿舍）、`studentmanager`（管理全校学生本体）、`building`（宿舍楼）、`dormmanager`（管理全校宿舍本体）。纯数据 + 校验封装，不依赖 Qt Widgets（仅用 `QString`/`QVector`/`QHash`）。
 - `src/system/` —— `check` 静态工具类，集中所有字段合法性校验。
 - `src/ui/` —— Qt Widgets 界面，目前只有空的 `MainWidget`。
 
@@ -66,6 +66,8 @@ out/build/debug/ShanShiDormManager.exe
 
 **`studentmanager` 为单例**：`studentmanager::instance()` 返回全局唯一实例（静态局部变量），构造函数私有化（`= default`）、删除拷贝构造与赋值运算符，禁止外部实例化。`get(int student_id)` 按学号返回指向 `QHash` 内部 `student` 本体的指针（有 const 与非 const 两个重载），不存在返回 `nullptr`。**指针在后续 `add`/`remove` 触发 rehash 后可能失效**，请就地用完即弃；需长期引用请存学号、用时再 `get`。`add` 会校验字段合法（name/class_num/grade/gender/id）且学号唯一（重号返回 `false`）；`clear_dorm_info(int student_id)` 使指定学号学生离宿（经 friend 后门调 `student::assign_dorm_info(0,0,0,0)` 清零位置四字段，`1=成功`/`-1=学号不存在`）；`assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor)` 使学生入住（正向写入四字段，与 `clear_dorm_info` 对称，供 `dorm::add_student` 成功分支调用）；`is_student_have_dorm(int student_id)` 检查学生是否已入住任意宿舍（查本体 `dorm_id`/`bed_id` 是否非零，`1=已分配`/`0=未分配`/`-1=学号不存在`）；`ids_of_class(int)` 遍历全量列出某班所有学号。
 
+**`dormmanager` 为单例**：`dormmanager::instance()` 返回全局唯一实例（静态局部变量），构造函数私有化（`= default`）、删除拷贝构造与赋值运算符。存储结构为 `QHash<int, QHash<int, dorm>> dorms`（外层 key=building_id，内层 key=dorm_id）。`get(int building_id, int dorm_id)` 两层 `find` 查找，不存在返回 `nullptr`（指针在后续 `add_dorm`/`remove_dorm` 触发 rehash 后可能失效）。`count()` 遍历外层累加内层 `size()`。`is_dorm_exist(int building_id, int dorm_id)` 三态返回 `int`：`1=存在`/`0=不存在`/`-1=参数非法`。`add_dorm(int building_id, const dorm& dorm_to_add)` 四重前置校验——building_id 合法、dorm_id 合法、max_num≥1（dorm 已配置）、同楼 dorm_id 唯一——通过后做局部拷贝、以参数 building_id 为准调用 `set_building_id` 同步内部字段，插入双层哈希表。`remove_dorm(int building_id, int dorm_id)` 校验通过后先调 `dorm::clear_students()` 自动清空宿舍内学生（同步清理 student 本体位置字段），再移除；若该楼内层 QHash 变空则顺手清理外层条目。两个写方法均返回 `bool`。
+
 **哨兵值**：`dorm::get_student_id` 在 bed_id 非法或床位为空时返回 `-1`（整型）；`studentmanager::get` 用 `nullptr`。消费这些返回值时需显式判哨兵，不要当作正常数据处理。姓名字段仍禁含 `"error"`（历史约定，`check::is_valid_student_name` 强制）。
 
 **默认构造表达"未设置"**：`student` 默认构造将所有字段置 0/空（`name=""`、`class_num=0`、`grade=0`、`id=0`、`bed_id=0`、`dorm_id=0`、`building_id=0`、`floor=0`、`gender=0`），统一表达"未设置"状态。`id=0` 是非法学号（`check::is_valid_student_id` 要求 10000000~99999999），配合 `studentmanager::add` 与 `dorm::add_student` 的校验，默认/未设置 id 的 student 无法被接纳，避免多个默认 student 因共享同一合法 id 而互相撞号。
@@ -76,7 +78,7 @@ out/build/debug/ShanShiDormManager.exe
 
 **`student` 的 friend 关系已移交 `studentmanager`**：`student` 已摘除 `friend class dorm`，改为 `friend class studentmanager`。`assign_dorm_info`（后门直接写入位置四字段，绕过 setter 校验）是 student 的 private 方法，本轮由 `studentmanager::assign_dorm_info` / `clear_dorm_info` 经 friend 调用，再由 `dorm::add_student`/`remove_student`/`clear_students` 间接调用完成位置字段同步。原本公开的 `student::clear_dorm_info`（把位置四字段清 0）已删除，清零职责整体移交 `studentmanager::clear_dorm_info`。
 
-**`building`**：`building` 类持有 `id`（宿舍楼号）、`max_floor`（最大楼层数）、`dorm_ids`（`QVector<QVector<int>>`，每层的宿舍号二维表，第一维楼层下标、第二维该层宿舍号列表）。getter/setter 已全部实现（`set_id`/`set_max_floor` 经 `check` 校验），`add_dorm`/`remove_dorm`（向指定层增删宿舍号）目前仅有声明，尚未实现。
+**`building`**：`building` 类持有 `id`（宿舍楼号）、`max_floor`（最大楼层数）、`dorm_ids`（`QVector<QVector<int>>`，每层的宿舍号二维表，第一维楼层下标、第二维该层宿舍号列表）。getter/setter 已全部实现（`set_id`/`set_max_floor` 经 `check` 校验），`add_dorm`/`remove_dorm`（向指定层增删宿舍号）目前仅有空函数体占位，尚未实现。
 
 **include 风格**：跨模块引用用目录前缀（`#include "system/check.h"`、`#include "core/student.h"`、`#include "ui/mainwidget.h"`），同目录文件用裸名（`#include "dorm.h"`）。`mainwidget.cpp` 中的 `#include "./ui_mainwidget.h"` 是 AUTOUIC 生成的头，无需手动创建。
 
@@ -84,8 +86,8 @@ out/build/debug/ShanShiDormManager.exe
 
 ## 待规划能力
 
-- **住宿协调层**：本轮已通过 `studentmanager::assign_dorm_info` / `clear_dorm_info` / `is_student_have_dorm` 实现 dorm↔studentmanager 之间的位置字段正向/反向同步与跨宿舍判重。**尚未补上的边界**：`dorm` 仍只校验学号格式、不校验该学号是否真实注册于 `studentmanager`（`add_student` 能存入不存在的学号）。完整的住宿协调层（校验学号真实存在、换宿舍时跨 dorm 维护一致性、宿舍间换人、整楼搬迁等高级操作）仍待 `dormmanager`（已有头文件框架，`.cpp` 未实现）与顶层 `school` 类承载。
-- `dormmanager`（已有头文件单例框架，`add_dorm`/`remove_dorm`/`get`/`count` 已声明，`.cpp` 未实现）与顶层 `school` 类尚未实现。
+- **住宿协调层**：本轮已通过 `studentmanager::assign_dorm_info` / `clear_dorm_info` / `is_student_have_dorm` 实现 dorm↔studentmanager 之间的位置字段正向/反向同步与跨宿舍判重；`dormmanager` 已实现基础 CRUD（`add_dorm`/`remove_dorm`/`get`/`count`/`is_dorm_exist`）。**尚未补上的边界**：`dorm` 仍只校验学号格式、不校验该学号是否真实注册于 `studentmanager`（`add_student` 能存入不存在的学号）。完整的住宿协调层（校验学号真实存在、换宿舍时跨 dorm 维护一致性、宿舍间换人、整楼搬迁等高级操作）仍待 `dormmanager` 扩展（跨宿舍操作）与顶层 `school` 类承载。
+- 顶层 `school` 类尚未实现。
 - 顶层管理类还需承载 `set_floor` 注释中提到的 per-building max_floor 查表。
 - **性别约束**：`student` 已具备 `gender` 字段（`check::is_valid_gender` 校验 0=未设置/1=男/2=女），`studentmanager::add` 已校验 gender 合法性。但 `building` 尚未加 gender 字段（标识本楼男/女），`dormmanager` / 协调层尚未做入住时的性别-楼栋匹配校验——此为住宿协调层的待实现能力。
 - UI 层与领域模型的连接尚未开始。
