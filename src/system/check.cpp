@@ -73,3 +73,10 @@ bool check::is_valid_gender(int gender)//检查性别是否合法(0=未设置, 1
 		return false;
 	return true;
 }
+
+bool check::is_valid_building_gender(int gender)//检查宿舍楼适用性别是否合法(1=男, 2=女, 3=男女混宿)
+{
+	if (gender < 1 || gender > 3)
+		return false;
+	return true;
+}

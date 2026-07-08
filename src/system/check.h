@@ -16,6 +16,7 @@ public:
 	static bool is_valid_student_name(const QString& name);//检查学生姓名是否合法(1~20个字符,禁止error)
 	static bool is_valid_max_floor(int max_floor);//检查最大楼层数是否合法(1~99)
 	static bool is_valid_gender(int gender);//检查性别是否合法(0=未设置, 1=男, 2=女)
+	static bool is_valid_building_gender(int gender);//检查宿舍楼适用性别是否合法(1=男, 2=女, 3=男女混宿)
 };
 
 
