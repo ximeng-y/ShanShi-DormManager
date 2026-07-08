@@ -23,6 +23,8 @@ public:
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
     dorm* get(int building_id, int dorm_id);
     const dorm* get(int building_id, int dorm_id) const;//const 重载, 返回只读指针
+    dorm* get_available_dorm(int gender);//获取指定性别可用的宿舍（默认最小可用楼号中的最小可用宿舍号）
+    dorm* get_available_dorm_random(int gender);//获取指定性别可用的宿舍（随机选择）
 
     //逻辑判断
     int is_dorm_exist(int building_id, int dorm_id);//检查指定楼号、宿舍号是否存在，约定返回值-1为楼号不存在，0为宿舍号不存在，1为存在
