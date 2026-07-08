@@ -31,15 +31,6 @@ const dorm* dormmanager::get(int building_id, int dorm_id) const
 	return &dorm_it.value();
 }
 
-//获取当前宿舍总数
-int dormmanager::count() const
-{
-	int total = 0;
-	for (auto it = dorms.constBegin(); it != dorms.constEnd(); ++it)
-		total += it.value().size();//统计每个楼的宿舍数(it.value()拿到QMap<int, dorm>，size()方法返回宿舍数)
-	return total;
-}
-
 //检查指定楼号、宿舍号是否存在
 int dormmanager::is_dorm_exist(int building_id, int dorm_id)
 {
@@ -90,4 +81,32 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	if (dorms[building_id].isEmpty())//如果楼内没有宿舍了
 		dorms.remove(building_id);//移除楼对象
 	return true;
+}
+
+//高级信息查询
+int dormmanager::count() const//获取当前宿舍总数
+{
+	int total = 0;
+	for (auto it = dorms.constBegin(); it != dorms.constEnd(); ++it)
+		total += it.value().size();//统计每个楼的宿舍数(it.value()拿到QMap<int, dorm>，size()方法返回宿舍数)
+	return total;
+}
+
+int dormmanager::get_empty_count() const//获取当前空宿舍总数
+{
+	int empty_count = 0;
+	for (auto it = dorms.constBegin(); it != dorms.constEnd(); ++it)
+	{
+		for (auto dorm_it = it.value().constBegin(); dorm_it != it.value().constEnd(); ++dorm_it)
+		{
+			if (dorm_it.value().is_empty())//如果宿舍内没有学生(此处is_empty()是dorm类的方法)
+				empty_count++;//空宿舍数增加
+		}
+	}
+	return empty_count;
+}
+
+int dormmanager::get_occupied_count() const//获取当前已占用宿舍总数
+{
+	return count() - get_empty_count();//已占用宿舍数=总宿舍数-空宿舍数
 }

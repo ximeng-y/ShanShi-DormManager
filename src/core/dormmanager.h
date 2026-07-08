@@ -23,10 +23,14 @@ public:
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
     dorm* get(int building_id, int dorm_id);
     const dorm* get(int building_id, int dorm_id) const;//const 重载, 返回只读指针
-    int count() const;//获取当前宿舍总数
 
     //逻辑判断
     int is_dorm_exist(int building_id, int dorm_id);//检查指定楼号、宿舍号是否存在，约定返回值-1为楼号不存在，0为宿舍号不存在，1为存在
+
+    //高级信息查询
+    int count() const;//获取当前宿舍总数。获取指定楼号的宿舍数等功能可调用get()通过building类的方法实现
+    int get_empty_count() const;//获取当前空宿舍总数
+    int get_occupied_count() const;//获取当前已占用宿舍总数
 
 private:
 	dormmanager() = default;//构造函数, 单例模式禁止外部实例化
