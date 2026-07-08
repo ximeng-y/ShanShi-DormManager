@@ -11,10 +11,10 @@ dormmanager& dormmanager::instance()
 dorm* dormmanager::get(int building_id, int dorm_id)
 {
 	auto building_it = dorms.find(building_id);
-	if (building_it == dorms.end())
+	if (building_it == dorms.end())//先判断楼号是否存在
 		return nullptr;
 	auto dorm_it = building_it->find(dorm_id);
-	if (dorm_it == building_it->end())
+	if (dorm_it == building_it->end())//再判断宿舍号是否存在
 		return nullptr;
 	return &dorm_it.value();
 }
@@ -82,12 +82,12 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	if (!dorms.contains(building_id) || !dorms[building_id].contains(dorm_id))
 		return false;
 
-	//自动清空宿舍内学生（同步清理 student 本体位置字段）
+	//调用宿舍对象的clear_students()方法，自动清空宿舍内学生（同步清理 student 本体位置字段）
 	dorms[building_id][dorm_id].clear_students();
 
-	//移除
-	dorms[building_id].remove(dorm_id);
-	if (dorms[building_id].isEmpty())
-		dorms.remove(building_id);
+	//从QHash<int, dorm>中移除宿舍对象，同步清理宿舍对象的内存空间
+	dorms[building_id].remove(dorm_id);//移除宿舍对象
+	if (dorms[building_id].isEmpty())//如果楼内没有宿舍了
+		dorms.remove(building_id);//移除楼对象
 	return true;
 }
