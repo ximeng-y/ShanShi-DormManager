@@ -46,6 +46,11 @@ int dorm::get_for_gender() const//获取房间性别锁定(0=未锁定/1=男舍/
 	return for_gender;
 }
 
+bool dorm::accepts_gender(int gender) const//判断本房间性别锁定是否接纳学生性别: 未锁定(0)接纳任意, 否则要求相等
+{
+	return for_gender == 0 || for_gender == gender;
+}
+
 int dorm::get_student_id(int bed_id) const//获取宿舍内指定床位学生学号
 {
 	if (!check::is_valid_bed_id(bed_id, max_num))//检查床位号是否合法
@@ -144,18 +149,18 @@ bool dorm::set_for_gender(int gender)//钦定房间性别(0=未锁定/1=男舍/2
 //添加学生: 写入 beds 并经 studentmanager::assign_dorm_info 正向同步 student 本体位置四字段
 int dorm::add_student(int student_id)//自动分配最小空床位
 {
+	const student* s = studentmanager::instance().get(student_id);//获取学生信息指针
 	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
 		return -5;//宿舍未配置
 	if (!check::is_valid_student_id(student_id))//前置校验2: 传入学号必须合法
 		return -1;//student_id非法
-	const student* s = studentmanager::instance().get(student_id);//前置校验3: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
-	if (s == nullptr || s->get_gender() == 0)
+	if (s == nullptr || s->get_gender() == 0)//前置校验3: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
 		return -6;//学号未注册或学生性别未设置
 	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验4: 学生在有宿舍和床位的情况下不得入住
 		return -3;//学生已有宿舍
 	if (is_full())//前置校验5: 宿舍不能满员
 		return -4;//宿舍已满
-	if (for_gender != 0 && for_gender != s->get_gender())//前置校验6: 房间已锁定性别时要求匹配
+	if (!accepts_gender(s->get_gender()))//前置校验6: 房间已锁定性别时要求匹配
 		return -7;//性别与房间锁定不符
 
 	for (int i = 0; i < beds.size(); ++i)//找最小空床位
@@ -171,25 +176,25 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 	}
 	return -4;//理论不可达(is_full 已挡), 兜底返回已满
 }
-int dorm::add_student(int student_id, int bed_id)//指定床位
+int dorm::add_student(int student_id, int bed_id)//添加学生-指定床位
 {
+	const student* s = studentmanager::instance().get(student_id);//获取学生信息指针
 	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置
 		return -5;//宿舍未配置
 	if (!check::is_valid_student_id(student_id))//前置校验2: 学号与床位号均须合法
 		return -1;//student_id非法
 	if (!check::is_valid_bed_id(bed_id, max_num))//前置校验3: 床位号合法性
 		return -1;//bed_id非法
-	const student* s = studentmanager::instance().get(student_id);//前置校验4: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
-	if (s == nullptr || s->get_gender() == 0)
+	if (s == nullptr || s->get_gender() == 0)//前置校验4: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
 		return -6;//学号未注册或学生性别未设置
 	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验5: 学生在有宿舍和床位的情况下不得入住
 		return -3;//学生已有宿舍
 	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
-	if (for_gender != 0 && for_gender != s->get_gender())//前置校验6: 房间已锁定性别时要求匹配
+	if (!accepts_gender(s->get_gender()))//前置校验6: 房间已锁定性别时要求匹配
 		return -7;//性别与房间锁定不符
 
-	beds[bed_id - 1] = student_id;
+	beds[bed_id - 1] = student_id;//指定床位
 	if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
 		for_gender = s->get_gender();
 	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠

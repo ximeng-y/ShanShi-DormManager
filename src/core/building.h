@@ -16,6 +16,7 @@ public:
 	int get_dorms_count() const;//获取整栋楼的宿舍数
 	int get_dorms_count(int floor) const;//获取指定楼层的宿舍数
 	int get_for_gender() const;//获取宿舍楼适用性别
+	bool accepts_gender(int gender) const;//判断本楼适用性别是否接纳学生性别: 混宿(3)接纳任意, 否则要求相等
 
 	//操作信息
 	bool set_id(int building_id);//设置宿舍楼号

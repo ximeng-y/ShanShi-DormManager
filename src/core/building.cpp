@@ -59,6 +59,11 @@ int building::get_for_gender() const//获取宿舍适用性别
 	return for_gender;
 }
 
+bool building::accepts_gender(int gender) const//判断本楼适用性别是否接纳学生性别: 混宿(3)接纳任意, 否则要求相等
+{
+	return for_gender == 3 || for_gender == gender;
+}
+
 bool building::set_for_gender(int gender)//设置宿舍适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
 {
 	if (!check::is_valid_building_gender(gender))

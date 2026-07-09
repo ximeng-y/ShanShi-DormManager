@@ -18,6 +18,7 @@ public:
 	int get_building_id() const;//获取所在宿舍楼号
 	int get_floor() const;//获取所在楼层
 	int get_for_gender() const;//获取房间性别锁定(0=未锁定/1=男舍/2=女舍)
+	bool accepts_gender(int gender) const;//判断本房间性别锁定是否接纳学生性别: 未锁定(0)接纳任意, 否则要求相等
 	//返回值: >0=该床位学生学号  -1=bed_id非法或该床位为空
 	int get_student_id(int bed_id) const;//获取宿舍内指定床位学生学号
 	QVector<int> get_student_id_list() const;//获取宿舍内所有已入住学生的学号表(不含空床)
