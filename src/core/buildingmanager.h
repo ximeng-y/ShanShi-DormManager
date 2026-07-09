@@ -17,6 +17,9 @@ public:
 	//添加宿舍楼: 校验字段合法(building_id/for_gender/max_floor)且楼号唯一
 	//返回值: true=成功  false=字段非法或楼号已存在
 	bool add_building(const building& b);
+	//构造并添加宿舍楼: 作为 set_for_gender/set_max_floor 收 private 后的外部建楼入口
+	//返回值: 1=成功  0=楼号已存在  -1=字段非法
+	int add_building(int building_id, int gender, int max_floor);
 	//移除宿舍楼: 仅从表中删除, 不级联清理楼内宿舍(跨 manager 协调留待上层 school)
 	//返回值: true=成功  false=楼号不存在
 	bool remove_building(int building_id);

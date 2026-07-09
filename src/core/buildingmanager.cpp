@@ -22,6 +22,23 @@ bool buildingmanager::add_building(const building& b)
 	return true;
 }
 
+int buildingmanager::add_building(int building_id, int gender, int max_floor)//构造并添加宿舍楼
+{
+	if (!check::is_valid_building_id(building_id) ||
+		!check::is_valid_building_gender(gender) ||
+		!check::is_valid_max_floor(max_floor))
+		return -1;//字段非法
+	if (buildings.contains(building_id))
+		return 0;//楼号已存在
+
+	building b;
+	b.set_id(building_id);
+	b.set_for_gender(gender);
+	b.set_max_floor(max_floor);
+	buildings.insert(building_id, b);
+	return 1;
+}
+
 //移除宿舍楼(仅从表中删除, 不级联清理楼内宿舍, 该协调留待上层 school)
 bool buildingmanager::remove_building(int building_id)
 {
