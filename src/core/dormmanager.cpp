@@ -118,6 +118,13 @@ bool dormmanager::add_dorm(const dorm& dorm_to_add)
 	//唯一性校验: 同楼内 dorm_id 不得重复
 	if (dorms.contains(building_id) && dorms[building_id].contains(dorm_id))
 		return false;
+	//楼级校验: dorm_id 派生楼层(dorm_id/100)须在所在 building 的 max_floor 内。
+	//max_floor 活在 building 本体(归 buildingmanager), 故 building 必须已注册; 未注册则 dorm 不应挂到不存在的楼。
+	const building* b = buildingmanager::instance().get(building_id);
+	if (b == nullptr)
+		return false;//楼未注册
+	if (!check::is_valid_dorm_floor(dorm_id, b->get_max_floor()))
+		return false;//派生楼层越界(超过楼最大楼层)
 
 	dorms[building_id].insert(dorm_id, dorm_to_add);//将宿舍对象插入到QMap<int, dorm>中
 	return true;
