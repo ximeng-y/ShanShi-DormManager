@@ -143,6 +143,33 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	return true;
 }
 
+//钦定房间性别(经 friend 后门调 dorm::set_for_gender, 前置做楼-房一致性 G2 校验)
+int dormmanager::set_dorm_gender(int building_id, int dorm_id, int gender)
+{
+	//参数合法性: building_id/dorm_id 格式 + gender 格式(0/1/2)
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
+		return -1;//参数非法
+	if (!check::is_valid_gender(gender))
+		return -1;//gender 非法
+
+	dorm* d = get(building_id, dorm_id);
+	if (d == nullptr)
+		return 0;//宿舍不存在
+
+	//钦定(非 0)时做楼-房一致性校验; 解锁(0)是放开限制, 无需楼级校验
+	if (gender != 0)
+	{
+		const building* b = buildingmanager::instance().get(building_id);
+		if (b == nullptr || !b->accepts_gender(gender))
+			return -2;//楼未注册或楼适用性别不接纳该 gender(会在男生楼里造女舍死间)
+	}
+
+	//经 friend 后门调 dorm::set_for_gender; 其内部再校验住客性别一致性(gender 合法已保证, 此处失败只可能是住客不符)
+	if (!d->set_for_gender(gender))
+		return -3;//房间已有住客且性别与钦定值冲突
+	return 1;//成功
+}
+
 //高级信息查询
 int dormmanager::count() const//获取当前宿舍总数
 {

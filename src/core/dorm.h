@@ -34,9 +34,6 @@ public:
 	bool set_max_num(int max_num);//设置最大人数(会同步 resize beds; 缩容时若被丢弃床位有人则拒绝并返回 false)
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 	bool set_floor(int floor);//设置所在楼层
-	//设置房间性别锁定(显式钦定): 0=未锁定/1=男舍/2=女舍(复用 check::is_valid_gender)。
-	//若房内已有住客, 只允许设为与住客性别一致或 0(解锁), 否则拒绝并返回 false, 防止和实际住客矛盾。
-	bool set_for_gender(int gender);//钦定房间性别
 
 	//管理学生: beds 是床位占用的权威, 同时经 studentmanager 正向/反向同步 student 本体的位置四字段。
 	//add_student 成功时调 studentmanager::assign_dorm_info 写入 dorm_id/bed_id/building_id/floor;
@@ -67,11 +64,18 @@ public:
 	void clear_students_reset_gender();//清空住客并重置房间性别为未锁定
 
 private:
+	//set_for_gender 收 private: 钦定房间性别须校验所在 building 的 for_gender(楼-房一致性 G2),
+	//而 dorm 不依赖 buildingmanager, 故由 dormmanager::set_dorm_gender 经 friend 后门调用, 在 dormmanager 层完成楼级校验。
+	//公开会允许在男生楼里钦定女舍, 产出 get_available_dorm 永远选不中的「死间」。
+	//校验: gender 合法(0/1/2); 若房内已有住客, 只允许设为与住客性别一致或 0(解锁), 否则返回 false。
+	bool set_for_gender(int gender);//钦定房间性别
+	friend class dormmanager;
+
 	int id;//宿舍号
 	int max_num;//最大人数
 	int building_id;//所在宿舍楼号(1~99)
 	int floor;//所在楼层(1~max_floor)
-	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可显式钦定
+	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可经 dormmanager::set_dorm_gender 后门钦定
 	QVector<int> beds;//床位->学号映射作为伪指针(下标=床位号-1, 值=学号, 0=空床, size==max_num)
 };
 

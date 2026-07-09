@@ -18,6 +18,11 @@ public:
     bool add_dorm(const dorm& dorm_to_add);//添加宿舍（building_id 取自 dorm 内部）
     bool remove_dorm(int building_id, int dorm_id);//删除处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
 
+    //钦定房间性别锁定(经 friend 后门调 dorm::set_for_gender, 前置做楼-房一致性 G2 校验)。
+    //gender=0 解锁时跳过楼级校验; gender=1/2 须所在 building 接纳该性别, 否则拒绝(防「死间」)。
+    //返回值: 1=成功  0=宿舍不存在  -1=参数非法(building_id/dorm_id/gender 格式)  -2=楼未注册或不接纳该性别  -3=房间住客性别与钦定值冲突
+    int set_dorm_gender(int building_id, int dorm_id, int gender);
+
     //按楼号、宿舍号取本体(可修改)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
