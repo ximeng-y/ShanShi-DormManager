@@ -43,19 +43,6 @@ int dormmanager::is_dorm_exist(int building_id, int dorm_id)
 	return 1;//存在
 }
 
-//判断某楼的适用性别 for_gender 是否接纳学生性别 gender: 混宿(3)接纳任意, 否则要求相等
-static bool building_accepts_gender(int for_gender, int gender)
-{
-	return for_gender == 3 || for_gender == gender;
-}
-
-//判断某房间的性别锁定 for_gender 是否接纳学生性别 gender: 未锁定(0)接纳任意, 否则要求相等
-//单性别楼里房间锁定必与楼一致, 该谓词只在混宿楼里真正区分男舍/女舍
-static bool dorm_accepts_gender(int for_gender, int gender)
-{
-	return for_gender == 0 || for_gender == gender;
-}
-
 //获取指定性别可用的宿舍(默认最小可用楼号中的最小可用宿舍号)
 //QMap 遍历天然按 building_id 升序、内层按 dorm_id 升序, 故首个命中的即最小顺位。
 //匹配条件: 楼已在 buildingmanager 注册且性别接纳该 gender, 且宿舍未满。无可用返回 nullptr。
@@ -68,16 +55,16 @@ dorm* dormmanager::get_available_dorm(int gender)
 	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
 	{
 		//横向问 buildingmanager: 这栋楼的适用性别
-		const building* b = buildingmanager::instance().get(b_it.key());
+		const building* b = buildingmanager::instance().get(b_it.key());//获取楼信息指针
 		if (b == nullptr)//楼未注册, 该楼所有宿舍视为不可用, 跳过
 			continue;
-		if (!building_accepts_gender(b->get_for_gender(), gender))//性别不接纳, 整栋跳过
+		if (!b->accepts_gender(gender))//性别不接纳, 整栋跳过
 			continue;
 
 		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
 		{
 			const dorm& d = d_it.value();
-			if (dorm_accepts_gender(d.get_for_gender(), gender) && !d.is_full())//房间性别接纳且未满, 首个命中即最小顺位
+			if (d.accepts_gender(gender) && !d.is_full())//房间性别接纳且未满, 首个命中即最小顺位
 				return &d_it.value();
 		}
 	}
@@ -97,13 +84,13 @@ dorm* dormmanager::get_available_dorm_random(int gender)
 		const building* b = buildingmanager::instance().get(b_it.key());
 		if (b == nullptr)
 			continue;
-		if (!building_accepts_gender(b->get_for_gender(), gender))
+		if (!b->accepts_gender(gender))
 			continue;
 
 		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
 		{
 			const dorm& d = d_it.value();
-			if (dorm_accepts_gender(d.get_for_gender(), gender) && !d.is_full())//房间性别接纳且未满
+			if (d.accepts_gender(gender) && !d.is_full())//房间性别接纳且未满
 				candidates.append(&d_it.value());
 		}
 	}
