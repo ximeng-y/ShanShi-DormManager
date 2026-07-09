@@ -79,7 +79,3 @@ bool building::set_max_floor(int floor)//设置最大楼层数
 	this->max_floor = floor;
 	return true;
 }
-int building::add_dorm(int floor){ return 0; }//向指定层新增一个宿舍（无宿舍号参数指定，默认填入最小可用顺位（如已有401、403、404则填入402））
-int building::add_dorm(int floor, int dorm_id){ return 0; }//向指定层新增一个指定号宿舍
-int building::remove_dorm(int floor){ return 0; }//减少指定层的一个宿舍（无宿舍号参数指定，默认删除最大宿舍号）
-int building::remove_dorm(int floor, int dorm_id){ return 0; }//减少指定层的一个指定号宿舍

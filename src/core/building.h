@@ -20,14 +20,15 @@ public:
 
 	//操作信息
 	bool set_id(int building_id);//设置宿舍楼号
-	bool set_max_floor(int floor);//设置最大楼层数
-	bool set_for_gender(int gender);//设置宿舍楼适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
-	int add_dorm(int floor);//向指定层新增一个宿舍（无宿舍号参数指定，默认填入最小可用顺位（如已有401、403、404则填入402））
-	int add_dorm(int floor, int dorm_id);//向指定层新增一个指定号宿舍
-	int remove_dorm(int floor);//减少指定层的一个宿舍（无宿舍号参数指定，默认删除最大宿舍号）
-	int remove_dorm(int floor, int dorm_id);//减少指定层的一个指定号宿舍
 
 private:
+	//set_for_gender/set_max_floor 守护楼内 dorm 的跨聚合不变量:
+	//改楼性别可能让既有宿舍性别锁定失配, 改最大楼层可能让既有 dorm_id 派生楼层越界。
+	//building 自身无法检查 dormmanager, 因此收 private, 由 buildingmanager 包装或未来 school 协调。
+	bool set_max_floor(int floor);//设置最大楼层数
+	bool set_for_gender(int gender);//设置宿舍楼适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
+	friend class buildingmanager;
+
 	int id;//宿舍楼号
 	int max_floor;//最大楼层数
 	int for_gender;//宿舍适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
