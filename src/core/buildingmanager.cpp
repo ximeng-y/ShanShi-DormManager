@@ -37,6 +37,26 @@ const building* buildingmanager::get(int building_id) const
 	return &it.value();
 }
 
+int buildingmanager::set_building_gender(int building_id, int gender)//修改楼适用性别
+{
+	if (!check::is_valid_building_gender(gender))
+		return -1;//gender非法
+	auto it = buildings.find(building_id);
+	if (it == buildings.end())
+		return 0;//楼不存在
+	return it.value().set_for_gender(gender) ? 1 : -1;
+}
+
+int buildingmanager::set_building_max_floor(int building_id, int floor)//修改楼最大楼层
+{
+	if (!check::is_valid_max_floor(floor))
+		return -1;//floor非法
+	auto it = buildings.find(building_id);
+	if (it == buildings.end())
+		return 0;//楼不存在
+	return it.value().set_max_floor(floor) ? 1 : -1;
+}
+
 //检查指定楼号是否存在
 int buildingmanager::is_building_exist(int building_id)
 {
