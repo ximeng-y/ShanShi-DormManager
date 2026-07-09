@@ -23,9 +23,13 @@ bool check::is_valid_grade(int grade)//检查年级是否合法(2000~2999)
 	return true;
 }
 
-bool check::is_valid_dorm_id(int dorm_id)//检查宿舍号是否合法(1001~9999)
+bool check::is_valid_dorm_id(int dorm_id)//检查宿舍号是否合法(101~9999 且末两位非00)
 {
-	if (dorm_id < 1001 || dorm_id > 9999)
+	//编码规则: 末两位=房间号(01~99), 百位及以上=楼层(1~99). floor=dorm_id/100.
+	//3位(101~999)对应1~9楼, 4位(1001~9999)对应10~99楼. 末两位00(房间号缺失)非法.
+	if (dorm_id < 101 || dorm_id > 9999)
+		return false;
+	if (dorm_id % 100 == 0)//末两位为00, 房间号缺失
 		return false;
 	return true;
 }
@@ -49,6 +53,14 @@ bool check::is_valid_floor(int floor, int max_floor)//检查楼层是否合法(1
 	if (floor < 1 || floor > max_floor)
 		return false;
 	return true;
+}
+
+bool check::is_valid_dorm_floor(int dorm_id, int max_floor)//检查宿舍号派生楼层是否在楼最大楼层内
+{
+	//floor 从 dorm_id 派生(dorm_id/100), 复用 is_valid_floor 校验 ∈[1,max_floor].
+	//纯数值边界, 不依赖聚合, 与 is_valid_bed_id(bed_id,max_num) 同构. 楼级校验由 dormmanager::add_dorm 调用.
+	int floor = dorm_id / 100;
+	return is_valid_floor(floor, max_floor);
 }
 
 bool check::is_valid_student_name(const QString& name)//检查学生姓名是否合法(1~20个字符,禁止error)
