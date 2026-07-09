@@ -75,16 +75,16 @@ dorm* dormmanager::get_available_dorm(int gender)
 //先收集全部满足条件(性别接纳且未满)的候选, 再用 QRandomGenerator 等概率抽取。无可用返回 nullptr。
 dorm* dormmanager::get_available_dorm_random(int gender)
 {
-	if (gender != 1 && gender != 2)
+	if (!check::is_valid_gender(gender))// 学生性别只应为 1=男 / 2=女; 0=未设置或其它非法值直接拒绝
 		return nullptr;
 
 	QVector<dorm*> candidates;//收集所有可用宿舍的指针(就地使用, 收集期间不发生增删, 指针有效)
 	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
 	{
-		const building* b = buildingmanager::instance().get(b_it.key());
-		if (b == nullptr)
+		const building* b = buildingmanager::instance().get(b_it.key());//获取楼信息指针
+		if (b == nullptr)//楼未注册, 该楼所有宿舍视为不可用, 跳过	
 			continue;
-		if (!b->accepts_gender(gender))
+		if (!b->accepts_gender(gender))//性别不接纳, 整栋跳过
 			continue;
 
 		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
@@ -97,8 +97,8 @@ dorm* dormmanager::get_available_dorm_random(int gender)
 
 	if (candidates.isEmpty())//无可用宿舍
 		return nullptr;
-	//bounded(n) 返回 [0, n) 的等概率随机数, 从候选中抽取一间
-	return candidates[QRandomGenerator::global()->bounded(candidates.size())];
+	//bounded(n) 返回 [0, n) 的等概率随机数, 从候选中抽取一间宿舍指针
+	return candidates[QRandomGenerator::global()->bounded(candidates.size())];//QRandomGenerator::global()：Qt 的全局随机数生成器
 }
 
 //添加宿舍（building_id 取自 dorm 内部）
