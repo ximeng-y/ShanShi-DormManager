@@ -34,7 +34,7 @@ private:
 	bool set_dorm_id(int dorm_id);//设置所在宿舍号
 	bool set_bed_id(int bed_id);//设置所在床位号(自然数，从1开始)
 	bool set_building_id(int building_id);//设置所在宿舍楼号
-	bool set_floor(int floor);//设置所在楼层
+	//set_floor 已删除: floor 不再独立校验写入, 改由 assign_dorm_info 后门接收 dorm 派生的 floor(id/100) 快照（与floor等价）
 
 	//后门同步位置四字段, 绕过 setter 校验直接赋值。为未来的住宿协调层预留:
 	//协调层在校验合法后调用它一次性写入 bed_id/dorm_id/building_id/floor。

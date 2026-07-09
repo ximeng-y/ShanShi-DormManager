@@ -103,15 +103,6 @@ bool student::set_building_id(int building_id)//设置所在宿舍楼号
 	this->building_id = building_id;
 	return true;
 }
-bool student::set_floor(int floor)//设置所在楼层
-{
-	int max_floor = 99;//暂时硬编码，与dorm::set_floor保持一致，后续由顶层类统一管理
-	if (!check::is_valid_floor(floor, max_floor))
-		return false;
-	this->floor = floor;
-	return true;
-}
-
 bool student::set_gender(int gender)//设置性别
 {
 	if (!check::is_valid_gender(gender))
