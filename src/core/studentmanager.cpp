@@ -37,14 +37,6 @@ bool studentmanager::is_exists(int student_id) const//判断学生是否存在
 	return students.contains(student_id);//直接返回是否存在
 }
 
-student* studentmanager::get(int student_id)//按学号取本体(可修改)
-{
-	auto it = students.find(student_id);//此处使用find在哈希表中快速定位
-	if (it == students.end())//.end是哈希表的末尾迭代器, 表示未找到
-		return nullptr;
-	return &it.value();//返回指向学生本体的指针
-}
-
 const student* studentmanager::get(int student_id) const//按学号取本体（只读）
 {
 	auto it = students.constFind(student_id);
@@ -63,9 +55,7 @@ int studentmanager::clear_dorm_info(int student_id)//使指定学号的学生离
 	if (!check::is_valid_student_id(student_id) || !is_exists(student_id))//如果学号非法/学生不存在
 		return -1;//学号不存在
 
-	student* s = get(student_id);
-
-	s->assign_dorm_info(0, 0, 0, 0);
+	students[student_id].assign_dorm_info(0, 0, 0, 0);
 	return 1;
 }
 
@@ -73,8 +63,7 @@ int studentmanager::assign_dorm_info(int student_id, int bed_id, int dorm_id, in
 {
 	if (!check::is_valid_student_id(student_id) || !is_exists(student_id))//如果学号非法/学生不存在
 		return -1;//学号不存在
-	student* s = get(student_id);
-	s->assign_dorm_info(bed_id, dorm_id, building_id, floor);
+	students[student_id].assign_dorm_info(bed_id, dorm_id, building_id, floor);
 	return 1;
 }
 

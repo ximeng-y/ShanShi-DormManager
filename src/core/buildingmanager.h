@@ -21,11 +21,10 @@ public:
 	//返回值: true=成功  false=楼号不存在
 	bool remove_building(int building_id);
 
-	//按楼号取本体(可修改)。不存在返回 nullptr。
+	//按楼号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
-	building* get(int building_id);
-	const building* get(int building_id) const;//const 重载, 返回只读指针
+	const building* get(int building_id) const;
 
 	//逻辑判断 / 查询
 	int is_building_exist(int building_id);//检查指定楼号是否存在, 1=存在/0=不存在/-1=参数非法

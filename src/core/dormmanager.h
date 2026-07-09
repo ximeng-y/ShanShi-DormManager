@@ -23,11 +23,10 @@ public:
     //返回值: 1=成功  0=宿舍不存在  -1=参数非法(building_id/dorm_id/gender 格式)  -2=楼未注册或不接纳该性别  -3=房间住客性别与钦定值冲突
     int set_dorm_gender(int building_id, int dorm_id, int gender);
 
-    //按楼号、宿舍号取本体(可修改)。不存在返回 nullptr。
+    //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
-    dorm* get(int building_id, int dorm_id);
-    const dorm* get(int building_id, int dorm_id) const;//const 重载, 返回只读指针
+    const dorm* get(int building_id, int dorm_id) const;
     dorm* get_available_dorm(int gender);//获取指定性别可用的宿舍（默认最小可用楼号中的最小可用宿舍号）
     dorm* get_available_dorm_random(int gender);//获取指定性别可用的宿舍（随机选择）
 

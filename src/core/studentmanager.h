@@ -22,11 +22,10 @@ public:
 	int clear_dorm_info(int student_id);//使指定学号的学生离宿：将bed_id、dorm_id、building_id、floor重置为0，供移除操作调用
 	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供dorm::add_student成功分支调用，与clear_dorm_info对称
 
-	//按学号取本体(可修改)。不存在返回 nullptr。
+	//按学号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
 	//请就地使用, 不要长期持有; 需长期引用请存学号, 用时再 get。
-	student* get(int student_id);
-	const student* get(int student_id) const;//const 重载, 返回只读指针
+	const student* get(int student_id) const;
 	int count() const;//获取当前学生总数
 
 	//逻辑判断

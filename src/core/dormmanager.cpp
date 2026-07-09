@@ -9,18 +9,6 @@ dormmanager& dormmanager::instance()
 	return mgr;
 }
 
-//按楼号、宿舍号取本体（可修改）
-dorm* dormmanager::get(int building_id, int dorm_id)
-{
-	auto building_it = dorms.find(building_id);
-	if (building_it == dorms.end())//先判断楼号是否存在
-		return nullptr;
-	auto dorm_it = building_it->find(dorm_id);
-	if (dorm_it == building_it->end())//再判断宿舍号是否存在
-		return nullptr;
-	return &dorm_it.value();
-}
-
 //按楼号、宿舍号取本体（只读）
 const dorm* dormmanager::get(int building_id, int dorm_id) const
 {
@@ -38,7 +26,8 @@ int dormmanager::is_dorm_exist(int building_id, int dorm_id)
 {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
 		return -1;//参数非法
-	if (!dorms.contains(building_id) || !dorms[building_id].contains(dorm_id))
+	auto building_it = dorms.constFind(building_id);
+	if (building_it == dorms.constEnd() || !building_it->contains(dorm_id))
 		return 0;//不存在
 	return 1;//存在
 }
@@ -159,8 +148,11 @@ int dormmanager::set_dorm_gender(int building_id, int dorm_id, int gender)
 	if (!check::is_valid_gender(gender))
 		return -1;//gender 非法
 
-	dorm* d = get(building_id, dorm_id);
-	if (d == nullptr)
+	auto building_it = dorms.find(building_id);
+	if (building_it == dorms.end())
+		return 0;//宿舍不存在
+	auto dorm_it = building_it->find(dorm_id);
+	if (dorm_it == building_it->end())
 		return 0;//宿舍不存在
 
 	//钦定(非 0)时做楼-房一致性校验; 解锁(0)是放开限制, 无需楼级校验
@@ -172,7 +164,7 @@ int dormmanager::set_dorm_gender(int building_id, int dorm_id, int gender)
 	}
 
 	//经 friend 后门调 dorm::set_for_gender; 其内部再校验住客性别一致性(gender 合法已保证, 此处失败只可能是住客不符)
-	if (!d->set_for_gender(gender))
+	if (!dorm_it.value().set_for_gender(gender))
 		return -3;//房间已有住客且性别与钦定值冲突
 	return 1;//成功
 }

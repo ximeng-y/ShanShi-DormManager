@@ -28,15 +28,6 @@ bool buildingmanager::remove_building(int building_id)
 	return buildings.remove(building_id) > 0;//remove 返回移除个数, >0 表示成功
 }
 
-//按楼号取本体(可修改)
-building* buildingmanager::get(int building_id)
-{
-	auto it = buildings.find(building_id);//find 在有序表中 O(log n) 定位
-	if (it == buildings.end())//未找到
-		return nullptr;
-	return &it.value();//返回指向楼栋本体的指针
-}
-
 //按楼号取本体(只读)
 const building* buildingmanager::get(int building_id) const
 {
