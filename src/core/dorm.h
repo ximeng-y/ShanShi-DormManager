@@ -16,7 +16,7 @@ public:
 	int get_max_num() const;//获取最大人数
 	int get_current_num() const;//获取实际人数(统计 beds 中非零床位)
 	int get_building_id() const;//获取所在宿舍楼号
-	int get_floor() const;//获取所在楼层
+	int get_floor() const;//获取所在楼层(派生自 id/100, 不独立存储)
 	int get_for_gender() const;//获取房间性别锁定(0=未锁定/1=男舍/2=女舍)
 	bool accepts_gender(int gender) const;//判断本房间性别锁定是否接纳学生性别: 未锁定(0)接纳任意, 否则要求相等
 	//返回值: >0=该床位学生学号  -1=bed_id非法或该床位为空
@@ -33,7 +33,6 @@ public:
 	bool set_id(int id);//设置宿舍号
 	bool set_max_num(int max_num);//设置最大人数(会同步 resize beds; 缩容时若被丢弃床位有人则拒绝并返回 false)
 	bool set_building_id(int building_id);//设置所在宿舍楼号
-	bool set_floor(int floor);//设置所在楼层
 
 	//管理学生: beds 是床位占用的权威, 同时经 studentmanager 正向/反向同步 student 本体的位置四字段。
 	//add_student 成功时调 studentmanager::assign_dorm_info 写入 dorm_id/bed_id/building_id/floor;
@@ -50,7 +49,7 @@ public:
 	int remove_student(int student_id);//移除学生(按学号)
 
 	//swap 后 beds 内两床位的值互换; from 空则不操作。
-	//交换后经 studentmanager::assign_dorm_info 同步两侧(非空)学生本体的 bed_id; dorm_id/building_id/floor 未变沿用 dorm 字段。
+	//交换后经 studentmanager::assign_dorm_info 同步两侧(非空)学生本体的 bed_id; dorm_id/building_id 未变、floor 派生自 id/100 亦未变, 沿用 dorm 字段。
 	//返回值: 1=成功(to空则移入, to有人则互换)  0=from床位为空  -1=bed_id非法  -2=from==to
 	int swap_student(int from, int to);//调换/移动床位(from→to)
 
@@ -74,7 +73,7 @@ private:
 	int id;//宿舍号
 	int max_num;//最大人数
 	int building_id;//所在宿舍楼号(1~99)
-	int floor;//所在楼层(1~max_floor)
+	//所在楼层使用get_floor()方法解析宿舍号获取
 	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可经 dormmanager::set_dorm_gender 后门钦定
 	QVector<int> beds;//床位->学号映射作为伪指针(下标=床位号-1, 值=学号, 0=空床, size==max_num)
 };

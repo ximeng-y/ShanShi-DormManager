@@ -9,7 +9,7 @@ dorm::dorm()//构造函数
 	id = 0;
 	max_num = 0;
 	building_id = 0;
-	floor = 0;
+	//所在楼层使用get_floor()方法解析宿舍号获取
 	for_gender = 0;//默认未锁定, 表达"未设置"
 	beds.clear();
 }
@@ -37,9 +37,9 @@ int dorm::get_building_id() const//获取所在宿舍楼号
 {
 	return building_id;
 }
-int dorm::get_floor() const//获取所在楼层
+int dorm::get_floor() const//获取所在楼层(派生自 id/100, 不独立存储)
 {
-	return floor;
+	return id / 100;
 }
 int dorm::get_for_gender() const//获取房间性别锁定(0=未锁定/1=男舍/2=女舍)
 {
@@ -123,14 +123,6 @@ bool dorm::set_building_id(int building_id)//设置所在宿舍楼号
 	this->building_id = building_id;
 	return true;
 }
-bool dorm::set_floor(int floor)//设置所在楼层
-{
-	int max_floor = 99;//此处为暂时的设置，后续会设计不同宿舍楼的最大楼层数不同，初步打算用顶层类定义vector管理，在此处定义常量获取顶层类vector中的对应宿舍楼最大楼层数
-	if (!check::is_valid_floor(floor, max_floor))
-		return false;
-	this->floor = floor;
-	return true;
-}
 bool dorm::set_for_gender(int gender)//钦定房间性别(0=未锁定/1=男舍/2=女舍)
 {
 	if (!check::is_valid_gender(gender))//复用学生性别校验(0/1/2)
@@ -170,7 +162,7 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 			beds[i] = student_id;
 			if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
 				for_gender = s->get_gender();
-			studentmanager::instance().assign_dorm_info(student_id, i + 1, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
+			studentmanager::instance().assign_dorm_info(student_id, i + 1, this->id, this->building_id, get_floor());//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 			return i + 1;//返回床位号(自然数)
 		}
 	}
@@ -197,7 +189,7 @@ int dorm::add_student(int student_id, int bed_id)//添加学生-指定床位
 	beds[bed_id - 1] = student_id;//指定床位
 	if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
 		for_gender = s->get_gender();
-	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, this->floor);//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
+	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, get_floor());//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
 	return bed_id;
 }
 
@@ -234,11 +226,11 @@ int dorm::swap_student(int from, int to)
 	beds[to - 1] = tmp;
 
 	//交换后, 两侧床位上非 0 的学号都需把 student 本体的 bed_id 同步为新床位号。
-	//dorm_id/building_id/floor 未变(仍在同一宿舍), 沿用 this 的字段。
+	//dorm_id/building_id 未变(仍在同一宿舍)、floor 派生自 id/100 亦未变, 沿用 this 的字段。
 	if (beds[from - 1] != 0)
-		studentmanager::instance().assign_dorm_info(beds[from - 1], from, this->id, this->building_id, this->floor);
+		studentmanager::instance().assign_dorm_info(beds[from - 1], from, this->id, this->building_id, get_floor());
 	if (beds[to - 1] != 0)
-		studentmanager::instance().assign_dorm_info(beds[to - 1], to, this->id, this->building_id, this->floor);
+		studentmanager::instance().assign_dorm_info(beds[to - 1], to, this->id, this->building_id, get_floor());
 	return 1;
 }
 
