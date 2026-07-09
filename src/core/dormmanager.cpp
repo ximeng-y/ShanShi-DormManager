@@ -1,5 +1,6 @@
 #include "dormmanager.h"
 #include "buildingmanager.h"
+#include "studentmanager.h"
 #include "system/check.h"
 #include <QRandomGenerator>
 
@@ -35,13 +36,13 @@ int dormmanager::is_dorm_exist(int building_id, int dorm_id)
 //获取指定性别可用的宿舍(默认最小可用楼号中的最小可用宿舍号)
 //QMap 遍历天然按 building_id 升序、内层按 dorm_id 升序, 故首个命中的即最小顺位。
 //匹配条件: 楼已在 buildingmanager 注册且性别接纳该 gender, 且宿舍未满。无可用返回 nullptr。
-dorm* dormmanager::get_available_dorm(int gender)
+const dorm* dormmanager::get_available_dorm(int gender)
 {
 	//学生性别只应为 1=男 / 2=女; 0=未设置或其它非法值直接拒绝
 	if (gender != 1 && gender != 2)
 		return nullptr;
 
-	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
+	for (auto b_it = dorms.constBegin(); b_it != dorms.constEnd(); ++b_it)
 	{
 		//横向问 buildingmanager: 这栋楼的适用性别
 		const building* b = buildingmanager::instance().get(b_it.key());//获取楼信息指针
@@ -50,7 +51,7 @@ dorm* dormmanager::get_available_dorm(int gender)
 		if (!b->accepts_gender(gender))//性别不接纳, 整栋跳过
 			continue;
 
-		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
+		for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
 		{
 			const dorm& d = d_it.value();
 			if (d.accepts_gender(gender) && !d.is_full())//房间性别接纳且未满, 首个命中即最小顺位
@@ -62,13 +63,13 @@ dorm* dormmanager::get_available_dorm(int gender)
 
 //获取指定性别可用的宿舍(在所有可用宿舍中随机选一间)
 //先收集全部满足条件(性别接纳且未满)的候选, 再用 QRandomGenerator 等概率抽取。无可用返回 nullptr。
-dorm* dormmanager::get_available_dorm_random(int gender)
+const dorm* dormmanager::get_available_dorm_random(int gender)
 {
-	if (!check::is_valid_gender(gender))// 学生性别只应为 1=男 / 2=女; 0=未设置或其它非法值直接拒绝
+	if (gender != 1 && gender != 2)// 学生性别只应为 1=男 / 2=女; 0=未设置或其它非法值直接拒绝
 		return nullptr;
 
-	QVector<dorm*> candidates;//收集所有可用宿舍的指针(就地使用, 收集期间不发生增删, 指针有效)
-	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
+	QVector<const dorm*> candidates;//收集所有可用宿舍的指针(就地使用, 收集期间不发生增删, 指针有效)
+	for (auto b_it = dorms.constBegin(); b_it != dorms.constEnd(); ++b_it)
 	{
 		const building* b = buildingmanager::instance().get(b_it.key());//获取楼信息指针
 		if (b == nullptr)//楼未注册, 该楼所有宿舍视为不可用, 跳过	
@@ -76,7 +77,7 @@ dorm* dormmanager::get_available_dorm_random(int gender)
 		if (!b->accepts_gender(gender))//性别不接纳, 整栋跳过
 			continue;
 
-		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
+		for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
 		{
 			const dorm& d = d_it.value();
 			if (d.accepts_gender(gender) && !d.is_full())//房间性别接纳且未满
@@ -167,6 +168,85 @@ int dormmanager::set_dorm_gender(int building_id, int dorm_id, int gender)
 	if (!dorm_it.value().set_for_gender(gender))
 		return -3;//房间已有住客且性别与钦定值冲突
 	return 1;//成功
+}
+
+int dormmanager::set_dorm_max_num(int building_id, int dorm_id, int max_num)//修改宿舍最大人数
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || max_num < 1)
+		return -1;//参数非法
+	auto building_it = dorms.find(building_id);
+	if (building_it == dorms.end())
+		return 0;//宿舍不存在
+	auto dorm_it = building_it->find(dorm_id);
+	if (dorm_it == building_it->end())
+		return 0;//宿舍不存在
+	return dorm_it.value().set_max_num(max_num) ? 1 : -2;//false 只应来自缩容丢人
+}
+
+int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id)//入住指定宿舍
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+		return -1;//参数非法
+	auto building_it = dorms.find(building_id);
+	if (building_it == dorms.end())
+		return -8;//宿舍不存在
+	auto dorm_it = building_it->find(dorm_id);
+	if (dorm_it == building_it->end())
+		return -8;//宿舍不存在
+	return dorm_it.value().add_student(student_id);
+}
+
+int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id)//入住指定床位
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+		return -1;//参数非法
+	auto building_it = dorms.find(building_id);
+	if (building_it == dorms.end())
+		return -8;//宿舍不存在
+	auto dorm_it = building_it->find(dorm_id);
+	if (dorm_it == building_it->end())
+		return -8;//宿舍不存在
+	return dorm_it.value().add_student(student_id, bed_id);
+}
+
+int dormmanager::add_student_to_available_dorm(int student_id)//入住最小顺位可用宿舍
+{
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	const dorm* available = get_available_dorm(s->get_gender());
+	if (available == nullptr)
+		return -9;//无可用宿舍
+
+	auto building_it = dorms.find(available->get_building_id());
+	if (building_it == dorms.end())
+		return -9;//理论不可达: 候选来自 dorms
+	auto dorm_it = building_it->find(available->get_id());
+	if (dorm_it == building_it->end())
+		return -9;//理论不可达: 候选来自 dorms
+	return dorm_it.value().add_student(student_id);
+}
+
+int dormmanager::add_student_to_available_dorm_random(int student_id)//随机入住可用宿舍
+{
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	const dorm* available = get_available_dorm_random(s->get_gender());
+	if (available == nullptr)
+		return -9;//无可用宿舍
+
+	auto building_it = dorms.find(available->get_building_id());
+	if (building_it == dorms.end())
+		return -9;//理论不可达: 候选来自 dorms
+	auto dorm_it = building_it->find(available->get_id());
+	if (dorm_it == building_it->end())
+		return -9;//理论不可达: 候选来自 dorms
+	return dorm_it.value().add_student(student_id);
 }
 
 //高级信息查询
