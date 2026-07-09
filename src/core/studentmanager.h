@@ -21,6 +21,10 @@ public:
 	bool remove(int student_id);//移除学生, true=移除成功, false=学号不存在或该生仍住宿舍(须先退宿, 防止学号残留在dorm.beds成幽灵)
 	int clear_dorm_info(int student_id);//使指定学号的学生离宿：将bed_id、dorm_id、building_id、floor重置为0，供移除操作调用
 	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供dorm::add_student成功分支调用，与clear_dorm_info对称
+	int set_student_gender(int student_id, int gender);//修改学生性别, 1=成功/0=学号不存在/-1=gender非法
+	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学号不存在/-1=姓名非法
+	int set_student_class_num(int student_id, int class_num);//修改学生班级, 1=成功/0=学号不存在/-1=班级非法
+	int set_student_grade(int student_id, int grade);//修改学生年级, 1=成功/0=学号不存在/-1=年级非法
 
 	//按学号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。
