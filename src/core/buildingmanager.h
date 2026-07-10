@@ -22,9 +22,6 @@ public:
 	int add_building(int building_id, int gender, int max_floor);
 	//移除宿舍楼: 仅从表中删除, 不级联清理楼内宿舍(跨 manager 协调留待上层 school)
 	//返回值: true=成功  false=楼号不存在
-	bool remove_building(int building_id);
-	int set_building_gender(int building_id, int gender);//修改楼适用性别, 1=成功/0=楼不存在/-1=gender非法
-	int set_building_max_floor(int building_id, int floor);//修改楼最大楼层, 1=成功/0=楼不存在/-1=floor非法
 
 	//按楼号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
@@ -37,6 +34,10 @@ public:
 
 private:
 	buildingmanager() = default;//构造函数, 单例模式禁止外部实例化
+	bool remove_building(int building_id);//删除宿舍楼本体，仅供 school 完成级联后调用
+	int set_building_gender(int building_id, int gender);//修改楼适用性别，仅供 school 完成楼内一致性校验后调用
+	int set_building_max_floor(int building_id, int floor);//修改楼最大楼层，仅供 school 完成楼内一致性校验后调用
+	friend class school;
 	QMap<int, building> buildings;//宿舍楼本体有序表, key为宿舍楼号, value为宿舍楼本体
 };
 

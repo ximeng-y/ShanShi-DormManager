@@ -30,8 +30,12 @@ public:
 	int get_empty_bed_count(int gender) const;//获取指定性别全校可用空床数, -1=参数非法
 	int get_empty_bed_count_of_building(int building_id, int gender) const;//获取指定楼指定性别可用空床数, -1=参数非法
 	bool add_dorm(const dorm& dorm_to_add);//添加宿舍并校验所在楼存在及派生楼层不越界
+	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=楼不存在或不接纳该性别  -3=住客性别冲突
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁
+	bool remove_building(int building_id);//删除宿舍楼并级联删除楼内宿舍、清退住客
+	int set_building_gender(int building_id, int gender);//修改楼性别, -2=既有宿舍或住客冲突
+	int set_building_max_floor(int building_id, int max_floor);//修改最大楼层, -2=既有宿舍楼层越界
 
 	//住宿协调
 	//返回值: >0=成功(床位号)  -1=参数非法  -2=床位占用  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置  -6=学生不存在或性别未设置  -7=性别冲突  -8=宿舍不存在

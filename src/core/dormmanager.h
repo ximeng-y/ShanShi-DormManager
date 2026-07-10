@@ -16,7 +16,6 @@ public:
 	dormmanager& operator=(const dormmanager&) = delete;//禁止拷贝赋值，维护单例唯一性
 
     //操作宿舍
-    bool remove_dorm(int building_id, int dorm_id);//删除处于指定楼号的宿舍（单个楼内的宿舍号是唯一的）
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大人数, 1=成功/0=宿舍不存在/-1=参数非法/-2=缩容丢人
 
 	//===== 空床位总数统计(注意与已有 get_empty_count()=空宿舍数区分) =====
@@ -43,6 +42,7 @@ private:
 	dormmanager() = default;//构造函数, 单例模式禁止外部实例化
 	//仅供 school 完成两端同步闭环的床位写接口，不得由普通调用者直接使用。
 	bool add_dorm(const dorm& dorm_to_add);//添加宿舍本体，只校验宿舍自身字段与同楼唯一性
+	bool remove_dorm(int building_id, int dorm_id);//删除指定宿舍本体，不同步学生位置字段
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁，只校验参数与宿舍存在性
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender);//向指定宿舍写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender, int bed_id);//向指定床位写入学生学号, 不查询或同步学生本体, -8=宿舍不存在

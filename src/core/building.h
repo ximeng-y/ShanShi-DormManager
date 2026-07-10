@@ -18,7 +18,7 @@ public:
 private:
 	//set_for_gender/set_max_floor 守护楼内 dorm 的跨聚合不变量:
 	//改楼性别可能让既有宿舍性别锁定失配, 改最大楼层可能让既有 dorm_id 派生楼层越界。
-	//building 自身无法检查 dormmanager, 因此收 private, 由 buildingmanager 包装或未来 school 协调。
+	//building 自身无法检查 dormmanager，因此收 private；由 school 完成楼内一致性校验后调用 buildingmanager 写入。
 	bool set_max_floor(int floor);//设置最大楼层数
 	bool set_for_gender(int gender);//设置宿舍楼适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
 	friend class buildingmanager;

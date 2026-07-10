@@ -18,10 +18,6 @@ public:
 	//添加学生: 校验字段合法(name/class_num/grade/id)且学号唯一
 	//返回值: true=成功  false=字段非法或学号已存在
 	bool add(const student& s);
-	bool remove(int student_id);//移除学生, true=移除成功, false=学号不存在或该生仍住宿舍(须先退宿, 防止学号残留在dorm.beds成幽灵)
-	int clear_dorm_info(int student_id);//使指定学号的学生离宿：将bed_id、dorm_id、building_id、floor重置为0，供移除操作调用
-	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供dorm::add_student成功分支调用，与clear_dorm_info对称
-	int set_student_gender(int student_id, int gender);//修改学生性别, 1=成功/0=学号不存在/-1=gender非法
 	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学号不存在/-1=姓名非法
 	int set_student_class_num(int student_id, int class_num);//修改学生班级, 1=成功/0=学号不存在/-1=班级非法
 	int set_student_grade(int student_id, int grade);//修改学生年级, 1=成功/0=学号不存在/-1=年级非法
@@ -42,6 +38,11 @@ public:
 
 private:
 	studentmanager() = default;//构造函数, 单例模式禁止外部实例化
+	bool remove(int student_id);//移除学生本体，跨聚合退宿由 school 前置完成
+	int clear_dorm_info(int student_id);//清零住宿位置四字段，仅供 school 协调
+	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//写入住宿位置四字段，仅供 school 协调
+	int set_student_gender(int student_id, int gender);//修改学生性别，仅供 school 完成住宿一致性校验后调用
+	friend class school;
 	QHash<int, student> students;
 };
 

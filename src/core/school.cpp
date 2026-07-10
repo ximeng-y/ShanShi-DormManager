@@ -115,6 +115,69 @@ bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约�
 	return dormmanager::instance().add_dorm(dorm_to_add);
 }
 
+bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清退住客
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
+		return false;
+	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
+	if (d == nullptr)
+		return false;
+	QVector<int> student_ids = d->get_student_id_list();
+	if (!dormmanager::instance().remove_dorm(building_id, dorm_id))
+		return false;
+	for (int student_id : student_ids)
+		studentmanager::instance().clear_dorm_info(student_id);
+	return true;
+}
+
+bool school::remove_building(int building_id)//删除宿舍楼并级联处理楼内宿舍
+{
+	if (!check::is_valid_building_id(building_id) || buildingmanager::instance().get(building_id) == nullptr)
+		return false;
+	QVector<QPair<int, int>> keys = dormmanager::instance().all_dorm_keys();
+	for (const auto& key : keys)
+		if (key.first == building_id && !remove_dorm(key.first, key.second))
+			return false;
+	return buildingmanager::instance().remove_building(building_id);
+}
+
+int school::set_building_gender(int building_id, int gender)//修改楼适用性别
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_building_gender(gender))
+		return -1;
+	if (buildingmanager::instance().get(building_id) == nullptr)
+		return 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		if (key.first != building_id)
+			continue;
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d == nullptr)
+			continue;
+		if (d->get_for_gender() != 0 && gender != 3 && d->get_for_gender() != gender)
+			return -2;//房间性别锁与新楼性别冲突
+		for (int student_id : d->get_student_id_list())
+		{
+			const student* s = studentmanager::instance().get(student_id);
+			if (s == nullptr || (gender != 3 && s->get_gender() != gender))
+				return -2;//住客不存在或性别与新楼性别冲突
+		}
+	}
+	return buildingmanager::instance().set_building_gender(building_id, gender);
+}
+
+int school::set_building_max_floor(int building_id, int max_floor)//修改楼最大楼层
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_max_floor(max_floor))
+		return -1;
+	if (buildingmanager::instance().get(building_id) == nullptr)
+		return 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+		if (key.first == building_id && !check::is_valid_dorm_floor(key.second, max_floor))
+			return -2;//既有宿舍派生楼层超出新上限
+	return buildingmanager::instance().set_building_max_floor(building_id, max_floor);
+}
+
 int school::set_dorm_gender(int building_id, int dorm_id, int gender)//设置房间性别锁
 {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_gender(gender))

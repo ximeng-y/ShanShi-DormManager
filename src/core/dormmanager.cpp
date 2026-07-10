@@ -1,5 +1,4 @@
 #include "dormmanager.h"
-#include "studentmanager.h"
 #include "system/check.h"
 
 dormmanager& dormmanager::instance()
@@ -52,7 +51,7 @@ bool dormmanager::add_dorm(const dorm& dorm_to_add)
 	return true;
 }
 
-//删除宿舍（自动清空宿舍内学生）
+//删除宿舍本体，跨聚合学生位置同步由 school 负责
 bool dormmanager::remove_dorm(int building_id, int dorm_id)
 {
 	//前置校验: 参数合法性
@@ -62,11 +61,7 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	if (!dorms.contains(building_id) || !dorms[building_id].contains(dorm_id))
 		return false;
 
-	//删除前记录并清空住客，随后同步清理 student 本体位置字段
-	QVector<int> student_ids = dorms[building_id][dorm_id].get_student_id_list();
 	dorms[building_id][dorm_id].clear_students();
-	for (int student_id : student_ids)
-		studentmanager::instance().clear_dorm_info(student_id);
 
 	//从QMap<int, dorm>中移除宿舍对象，同步清理宿舍对象的内存空间
 	dorms[building_id].remove(dorm_id);//移除宿舍对象

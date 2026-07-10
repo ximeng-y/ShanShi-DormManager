@@ -28,7 +28,7 @@ bool studentmanager::add(const student& s)//添加学生: 校验字段合法且�
 bool studentmanager::remove(int student_id)//移除学生
 {
 	if (is_student_have_dorm(student_id) == 1)//防护: 学生仍住宿舍时拒绝删除, 否则学号会留在 dorm.beds 里成幽灵
-		return false;//还住着宿舍, 须先退宿再删人(完整的先退宿再删由未来协调层一步完成)
+		return false;//还住着宿舍，须通过school先退宿再删人
 	return students.remove(student_id) > 0;//remove 返回移除个数, >0=移除成功, 0=学号不存在
 }
 
@@ -59,7 +59,7 @@ int studentmanager::clear_dorm_info(int student_id)//使指定学号的学生离
 	return 1;
 }
 
-int studentmanager::assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor)//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供dorm::add_student成功分支调用，与clear_dorm_info对称，约定返回值-1为学号不存在，1为成功
+int studentmanager::assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor)//使指定学号的学生入住：经friend后门一次性写入位置四字段（绕过setter校验），供school完成住宿同步，与clear_dorm_info对称，约定返回值-1为学号不存在，1为成功
 {
 	if (!check::is_valid_student_id(student_id) || !is_exists(student_id))//如果学号非法/学生不存在
 		return -1;//学号不存在

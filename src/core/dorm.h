@@ -75,7 +75,7 @@ private:
 	int max_num;//最大人数
 	int building_id;//所在宿舍楼号(1~99)
 	//所在楼层使用get_floor()方法解析宿舍号获取
-	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可经 dormmanager::set_dorm_gender 后门钦定
+	int for_gender;//房间性别锁定(0=未锁定/1=男舍/2=女舍); 空房入住时自动锁定为首住客性别, 亦可由school校验后经dormmanager后门钦定
 	QVector<int> beds;//床位->学号映射作为伪指针(下标=床位号-1, 值=学号, 0=空床, size==max_num)
 };
 
