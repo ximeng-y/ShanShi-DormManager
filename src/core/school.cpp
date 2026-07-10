@@ -50,6 +50,9 @@ int school::assign_student_to_dorm(int building_id, int dorm_id, int student_id)
 		return -6;//学生不存在或性别未设置
 	if (sm.is_student_have_dorm(student_id) == 1)
 		return -3;//学生已有宿舍
+	const building* b = buildingmanager::instance().get(building_id);
+	if (b == nullptr || !b->accepts_gender(s->get_gender()))
+		return -7;//宿舍楼不存在或不接纳该学生性别
 
 	int bed_id = dormmanager::instance().add_student_to_dorm(building_id, dorm_id, student_id, s->get_gender());
 	if (bed_id > 0)
@@ -61,12 +64,22 @@ int school::assign_student_to_dorm(int building_id, int dorm_id, int student_id,
 {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
 		return -1;//参数非法
+	const dorm* target = dormmanager::instance().get(building_id, dorm_id);
+	if (target == nullptr)
+		return -8;//宿舍不存在
+	if (!check::is_valid_bed_id(bed_id, target->get_max_num()))
+		return -1;//bed_id非法
+	if (target->is_bed_occupied(bed_id) == 1)
+		return -2;//床位占用
 	studentmanager& sm = studentmanager::instance();
 	const student* s = sm.get(student_id);
 	if (s == nullptr || s->get_gender() == 0)
 		return -6;//学生不存在或性别未设置
 	if (sm.is_student_have_dorm(student_id) == 1)
 		return -3;//学生已有宿舍
+	const building* b = buildingmanager::instance().get(building_id);
+	if (b == nullptr || !b->accepts_gender(s->get_gender()))
+		return -7;//宿舍楼不存在或不接纳该学生性别
 
 	int result = dormmanager::instance().add_student_to_dorm(building_id, dorm_id, student_id, s->get_gender(), bed_id);
 	if (result > 0)
@@ -87,6 +100,10 @@ int school::remove_student_from_dorm(int student_id)//退宿但保留学籍
 
 	int building_id = s->get_building_id();
 	int dorm_id = s->get_dorm_id();
+	int recorded_bed_id = s->get_bed_id();
+	const dorm* target = dormmanager::instance().get(building_id, dorm_id);
+	if (target == nullptr || target->get_student_id(recorded_bed_id) != student_id)
+		return -8;//宿舍不存在或床位记录不一致
 	int bed_id = dormmanager::instance().remove_student_from_dorm(building_id, dorm_id, student_id);
 	if (bed_id <= 0)
 		return -8;//宿舍不存在或床位记录不一致
