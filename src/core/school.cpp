@@ -116,9 +116,14 @@ int school::remove_student(int student_id)//退学籍
 	if (!check::is_valid_student_id(student_id))
 		return -1;//参数非法
 	studentmanager& sm = studentmanager::instance();
-	if (!sm.is_exists(student_id))
+	const student* s = sm.get(student_id);
+	if (s == nullptr)
 		return 0;//学生不存在
-	if (sm.is_student_have_dorm(student_id) == 1)
+	bool all_empty = s->get_bed_id() == 0 && s->get_dorm_id() == 0 && s->get_building_id() == 0 && s->get_floor() == 0;
+	bool all_assigned = s->get_bed_id() > 0 && s->get_dorm_id() > 0 && s->get_building_id() > 0 && s->get_floor() > 0;
+	if (!all_empty && !all_assigned)
+		return -8;//住宿位置字段部分缺失，禁止删除学生本体
+	if (all_assigned)
 	{
 		int result = remove_student_from_dorm(student_id);
 		if (result <= 0)
@@ -149,8 +154,29 @@ int school::correct_student_gender(int student_id, int gender)//性别纠错
 		return -8;//住宿记录不一致
 	if (!b->accepts_gender(gender))
 		return -7;//所在楼不接纳新性别
-	if (d->accepts_gender(gender))
+	if (d->get_for_gender() == gender)
 		return sm.set_student_gender(student_id, gender);//房间未锁定或已匹配新性别
+	if (d->get_for_gender() == 0)
+	{
+		for (int occupant_id : d->get_student_id_list())
+		{
+			const student* occupant = sm.get(occupant_id);
+			if (occupant == nullptr)
+				return -8;//床位存在幽灵学号
+			if (occupant_id != student_id && occupant->get_gender() != gender)
+				return -7;//其他住客性别与纠错目标冲突
+		}
+		int old_gender = s->get_gender();
+		if (sm.set_student_gender(student_id, gender) != 1)
+			return -1;
+		int result = dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+		if (result != 1)
+		{
+			sm.set_student_gender(student_id, old_gender);
+			return result == 0 ? -8 : -7;
+		}
+		return 1;
+	}
 	if (d->get_current_num() != 1)
 		return -7;//多人宿舍不能只纠正一人的性别并改变房间锁
 
