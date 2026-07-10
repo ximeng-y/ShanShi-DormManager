@@ -379,22 +379,33 @@ dorm* dormmanager::find_dorm(int building_id, int dorm_id)
 	return &d_it.value();
 }
 
-//====== 任务1: 整体调换(性别锁相同 + 人数相同) ======
-int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
+//交换前公共校验: 参数合法性、非同一间、两间均存在、性别锁相同。
+//通过后 A/B 指向两间可写本体; 失败返回负值错误码(调用方直接 return 即可)。
+int dormmanager::validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B)
 {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
 		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
 		return -1;//参数非法
 	if (b1 == b2 && d1 == d2)
 		return -1;//指向同一间, 无意义
-
-	dorm* A = find_dorm(b1, d1);
-	dorm* B = find_dorm(b2, d2);
+	A = find_dorm(b1, d1);
+	B = find_dorm(b2, d2);
 	if (A == nullptr || B == nullptr)
 		return -2;//某间不存在
-
 	if (A->get_for_gender() != B->get_for_gender())
-		return -3;//性别锁不同, 无法整体调换
+		return -3;//性别锁不同
+	return 0;
+}
+
+//====== 任务1: 整体调换(性别锁相同 + 人数相同) ======
+int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
+{
+	dorm* A;
+	dorm* B;
+	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
+	if (err != 0)
+		return err;
+
 	if (A->get_current_num() != B->get_current_num())
 		return -4;//性别相同但人数不同(留给顶层选择善后策略)
 
@@ -415,18 +426,11 @@ int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
 //====== 任务1 善后B: 重叠床位互换, 多余留原地 ======
 int dormmanager::swap_dorms_overlap(int b1, int d1, int b2, int d2)
 {
-	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
-		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
-		return -1;
-	if (b1 == b2 && d1 == d2)
-		return -1;
-
-	dorm* A = find_dorm(b1, d1);
-	dorm* B = find_dorm(b2, d2);
-	if (A == nullptr || B == nullptr)
-		return -2;
-	if (A->get_for_gender() != B->get_for_gender())
-		return -3;//性别锁不同一定换不了
+	dorm* A;
+	dorm* B;
+	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
+	if (err != 0)
+		return err;
 
 	QVector<int> listA = A->get_student_id_list();
 	QVector<int> listB = B->get_student_id_list();
@@ -451,18 +455,11 @@ int dormmanager::swap_dorms_overlap(int b1, int d1, int b2, int d2)
 //====== 任务1 善后C: 重叠床位互换, 多余离宿 ======
 int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
 {
-	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
-		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
-		return -1;
-	if (b1 == b2 && d1 == d2)
-		return -1;
-
-	dorm* A = find_dorm(b1, d1);
-	dorm* B = find_dorm(b2, d2);
-	if (A == nullptr || B == nullptr)
-		return -2;
-	if (A->get_for_gender() != B->get_for_gender())
-		return -3;
+	dorm* A;
+	dorm* B;
+	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
+	if (err != 0)
+		return err;
 
 	QVector<int> listA = A->get_student_id_list();
 	QVector<int> listB = B->get_student_id_list();

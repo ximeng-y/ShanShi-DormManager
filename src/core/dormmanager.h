@@ -87,6 +87,10 @@ private:
 	//内部定位: 按楼号、宿舍号返回可写本体指针(供内部搬迁改写用), 不存在返回 nullptr。
 	//对外仍只暴露 const get(); 本 helper 不校验 id 格式(调用方负责)。
 	dorm* find_dorm(int building_id, int dorm_id);
+	//交换前公共校验: 参数合法性、非同一间、两间均存在、性别锁相同。
+	//通过后 A/B 指向两间可写本体; 失败返回负值错误码。
+	//返回值: 0=成功  -1=参数非法或指向同一间  -2=某间不存在  -3=性别锁不同
+	int validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B);
 	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 
