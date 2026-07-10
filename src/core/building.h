@@ -1,8 +1,6 @@
 #ifndef BUILDING_H
 #define BUILDING_H
 
-#include <QVector>
-
 class building
 {
 public:
@@ -11,10 +9,6 @@ public:
 	//获取信息
 	int get_id() const;//获取楼号
 	int get_max_floor() const;//获取最大楼层数
-	QVector<int> get_dorm_ids_list(int floor) const;//获取指定楼层号的宿舍号表
-	QVector<QVector<int>> get_dorm_ids() const;//获取宿舍号二维表
-	int get_dorms_count() const;//获取整栋楼的宿舍数
-	int get_dorms_count(int floor) const;//获取指定楼层的宿舍数
 	int get_for_gender() const;//获取宿舍楼适用性别
 	bool accepts_gender(int gender) const;//判断本楼适用性别是否接纳学生性别: 混宿(3)接纳任意, 否则要求相等
 
@@ -32,7 +26,6 @@ private:
 	int id;//宿舍楼号
 	int max_floor;//最大楼层数
 	int for_gender;//宿舍适用性别，1为男，2为女，0为无性别（非法），3为男女混宿
-	QVector<QVector<int>> dorm_ids;//每层的宿舍号列表(二维数组，第一维为楼层号下标(自然数-1)，第二维为该楼层的宿舍号列表)
 };
 
 #endif // BUILDING_H
