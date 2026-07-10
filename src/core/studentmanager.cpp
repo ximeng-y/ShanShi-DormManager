@@ -129,3 +129,11 @@ QVector<int> studentmanager::ids_of_class(int class_num) const//列出指定班�
 	}
 	return id_list;
 }
+
+QVector<int> studentmanager::all_ids() const//列出全校所有学生学号
+{
+	QVector<int> id_list;
+	for (auto it = students.constBegin(); it != students.constEnd(); ++it)
+		id_list.append(it.key());
+	return id_list;
+}

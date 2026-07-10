@@ -38,6 +38,7 @@ public:
 	
 	//高级查询: 手握全量, 一次遍历完成
 	QVector<int> ids_of_class(int class_num) const;//列出指定班级号的所有学生学号
+	QVector<int> all_ids() const;//列出全校所有学生学号(供全校随机分配等全量遍历使用)
 
 private:
 	studentmanager() = default;//构造函数, 单例模式禁止外部实例化
