@@ -37,6 +37,12 @@ public:
 	int get_empty_bed_count_of_building(int building_id) const;
 	int get_empty_bed_count_of_building(int building_id, int gender) const;
 
+	//===== 清空所有宿舍(同步重置学生位置字段) =====
+	//clear_all_dorms 保留各房间性别锁; clear_all_dorms_reset_gender 额外放开所有房间性别锁。
+	//返回值: 被清退的学生总数(>=0)
+	int clear_all_dorms();
+	int clear_all_dorms_reset_gender();
+
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
