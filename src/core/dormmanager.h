@@ -91,6 +91,8 @@ private:
 	//通过后 A/B 指向两间可写本体; 失败返回负值错误码。
 	//返回值: 0=成功  -1=参数非法或指向同一间  -2=某间不存在  -3=性别锁不同
 	int validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B);
+	//清空所有宿舍内部实现, reset_gender 控制是否同时放开房间性别锁
+	int clear_all_dorms_impl(bool reset_gender);
 	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 

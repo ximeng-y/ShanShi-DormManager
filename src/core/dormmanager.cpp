@@ -342,28 +342,29 @@ int dormmanager::get_empty_bed_count_of_building(int building_id, int gender) co
 }
 
 //====== 清空所有宿舍 ======
-int dormmanager::clear_all_dorms()//保留各房间性别锁
+int dormmanager::clear_all_dorms_impl(bool reset_gender)
 {
 	int cleared = 0;
 	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
 		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
 		{
 			cleared += d_it.value().get_current_num();//先累加本间人数
-			d_it.value().clear_students();//再清空(内部同步清零学生位置字段)
+			if (reset_gender)
+				d_it.value().clear_students_reset_gender();
+			else
+				d_it.value().clear_students();//再清空(内部同步清零学生位置字段)
 		}
 	return cleared;
 }
 
+int dormmanager::clear_all_dorms()//保留各房间性别锁
+{
+	return clear_all_dorms_impl(false);
+}
+
 int dormmanager::clear_all_dorms_reset_gender()//清空并放开所有房间性别锁
 {
-	int cleared = 0;
-	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
-		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
-		{
-			cleared += d_it.value().get_current_num();
-			d_it.value().clear_students_reset_gender();
-		}
-	return cleared;
+	return clear_all_dorms_impl(true);
 }
 
 //内部定位: 返回可写 dorm 指针(不存在返回 nullptr)。指针指向 QMap 内部,
