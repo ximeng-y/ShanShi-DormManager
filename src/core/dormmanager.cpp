@@ -478,3 +478,44 @@ int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
 	}
 	return 1;
 }
+
+//====== 任务4: 混合楼间男舍↔女舍互换 ======
+int dormmanager::swap_gender_dorms(int b1, int d1, int b2, int d2)
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
+		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
+		return -1;
+	if (b1 == b2 && d1 == d2)
+		return -1;
+
+	dorm* A = find_dorm(b1, d1);
+	dorm* B = find_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+
+	//前提1: 两间所在楼都必须是混宿楼(for_gender==3)
+	const building* bA = buildingmanager::instance().get(b1);
+	const building* bB = buildingmanager::instance().get(b2);
+	if (bA == nullptr || bB == nullptr || bA->get_for_gender() != 3 || bB->get_for_gender() != 3)
+		return -3;//有楼未注册或非混宿楼
+
+	//前提2: 两间恰为一男舍一女舍
+	int gA = A->get_for_gender();
+	int gB = B->get_for_gender();
+	if (!((gA == 1 && gB == 2) || (gA == 2 && gB == 1)))
+		return -4;//不是一男一女, 无从做男女互换
+
+	//清空并放开性别锁(否则异性无法入住), 前 k 对交叉入住, 人多一方多余的人离宿。
+	//add_student 先到先得会把 A 重新锁成异性、B 锁成异性。
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
+	A->clear_students_reset_gender();
+	B->clear_students_reset_gender();
+	for (int i = 0; i < k; ++i)
+	{
+		B->add_student(listA[i]);//原A住客搬进B
+		A->add_student(listB[i]);//原B住客搬进A
+	}
+	return 1;
+}
