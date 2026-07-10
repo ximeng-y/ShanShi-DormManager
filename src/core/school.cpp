@@ -406,18 +406,20 @@ QVector<int> school::snapshot_dorm(const dorm& d) const//按床位保存宿舍�
 	return beds;
 }
 
-void school::restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender)//按床位恢复宿舍原状态
+bool school::restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender)//按床位恢复宿舍原状态
 {
-	dormmanager::instance().clear_dorm_students(building_id, dorm_id, true);
+	if (dormmanager::instance().clear_dorm_students(building_id, dorm_id, true) < 0)
+		return false;
 	for (int i = 0; i < beds.size(); ++i)
 	{
 		if (beds[i] == 0)
 			continue;
 		const student* s = studentmanager::instance().get(beds[i]);
-		if (s != nullptr)
-			dormmanager::instance().add_student_to_dorm(building_id, dorm_id, beds[i], s->get_gender(), i + 1);
+		if (s == nullptr || s->get_gender() == 0 ||
+			dormmanager::instance().add_student_to_dorm(building_id, dorm_id, beds[i], s->get_gender(), i + 1) <= 0)
+			return false;
 	}
-	dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+	return dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender) == 1;
 }
 
 void school::reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2)//按交换后状态同步学生位置
@@ -475,12 +477,13 @@ int school::swap_dorms(int b1, int d1, int b2, int d2)//同锁同人数宿舍整
 	dormmanager::instance().clear_dorm_students(b2, d2, false);
 	if (!fill_dorm(b2, d2, listA) || !fill_dorm(b1, d1, listB))
 	{
-		restore_dorm(b1, d1, bedsA, genderA);
-		restore_dorm(b2, d2, bedsB, genderB);
+		bool restoredA = restore_dorm(b1, d1, bedsA, genderA);
+		bool restoredB = restore_dorm(b2, d2, bedsB, genderB);
+		bool restored = restoredA && restoredB;
 		QVector<int> original_ids = listA;
 		original_ids += listB;
 		reset_and_sync_students(original_ids, b1, d1, b2, d2);
-		return -5;
+		return restored ? -5 : -6;
 	}
 	QVector<int> original_ids = listA;
 	original_ids += listB;
@@ -507,6 +510,12 @@ int school::swap_dorms_overlap(int b1, int d1, int b2, int d2)//重叠人数互�
 	QVector<int> bedsB = snapshot_dorm(*B);
 	int genderA = A->get_for_gender();
 	int genderB = B->get_for_gender();
+	for (int id : listA + listB)
+	{
+		const student* s = get_student(id);
+		if (s == nullptr || s->get_gender() == 0)
+			return -5;//快照住客异常，无法保证失败恢复
+	}
 	for (int i = 0; i < k; ++i)
 	{
 		const student* sA = get_student(listA[i]);
@@ -533,13 +542,18 @@ int school::swap_dorms_overlap(int b1, int d1, int b2, int d2)//重叠人数互�
 	}
 	if (!success)
 	{
-		restore_dorm(b1, d1, bedsA, genderA);
-		restore_dorm(b2, d2, bedsB, genderB);
+		bool restoredA = restore_dorm(b1, d1, bedsA, genderA);
+		bool restoredB = restore_dorm(b2, d2, bedsB, genderB);
+		bool restored = restoredA && restoredB;
+		QVector<int> original_ids = listA;
+		original_ids += listB;
+		reset_and_sync_students(original_ids, b1, d1, b2, d2);
+		return restored ? -5 : -6;
 	}
 	QVector<int> original_ids = listA;
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
-	return success ? 1 : -5;
+	return 1;
 }
 
 int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人数互换，多余住客离宿
@@ -561,6 +575,23 @@ int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人�
 	QVector<int> bedsB = snapshot_dorm(*B);
 	int genderA = A->get_for_gender();
 	int genderB = B->get_for_gender();
+	for (int id : listA + listB)
+	{
+		const student* s = get_student(id);
+		if (s == nullptr || s->get_gender() == 0)
+			return -5;//快照住客异常，无法保证失败恢复
+	}
+	const building* buildingA = get_building(b1);
+	const building* buildingB = get_building(b2);
+	for (int i = 0; i < k; ++i)
+	{
+		const student* sA = get_student(listA[i]);
+		const student* sB = get_student(listB[i]);
+		if (buildingA == nullptr || buildingB == nullptr ||
+			!buildingB->accepts_gender(sA->get_gender()) || !B->accepts_gender(sA->get_gender()) ||
+			!buildingA->accepts_gender(sB->get_gender()) || !A->accepts_gender(sB->get_gender()))
+			return -5;
+	}
 	dormmanager::instance().clear_dorm_students(b1, d1, false);
 	dormmanager::instance().clear_dorm_students(b2, d2, false);
 	QVector<int> moveA = listA.mid(0, k);
@@ -568,13 +599,18 @@ int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人�
 	bool success = fill_dorm(b2, d2, moveA) && fill_dorm(b1, d1, moveB);
 	if (!success)
 	{
-		restore_dorm(b1, d1, bedsA, genderA);
-		restore_dorm(b2, d2, bedsB, genderB);
+		bool restoredA = restore_dorm(b1, d1, bedsA, genderA);
+		bool restoredB = restore_dorm(b2, d2, bedsB, genderB);
+		bool restored = restoredA && restoredB;
+		QVector<int> original_ids = listA;
+		original_ids += listB;
+		reset_and_sync_students(original_ids, b1, d1, b2, d2);
+		return restored ? -5 : -6;
 	}
 	QVector<int> original_ids = listA;
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
-	return success ? 1 : -5;
+	return 1;
 }
 
 int school::swap_gender_dorms(int b1, int d1, int b2, int d2)//混宿楼男舍与女舍互换
@@ -600,19 +636,27 @@ int school::swap_gender_dorms(int b1, int d1, int b2, int d2)//混宿楼男舍�
 		return 1;
 	QVector<int> bedsA = snapshot_dorm(*A);
 	QVector<int> bedsB = snapshot_dorm(*B);
-	for (int i = 0; i < k; ++i)
-		if (get_student(listA[i]) == nullptr || get_student(listB[i]) == nullptr)
+	for (int id : listA + listB)
+	{
+		const student* s = get_student(id);
+		if (s == nullptr || s->get_gender() == 0)
 			return -5;
+	}
 	dormmanager::instance().clear_dorm_students(b1, d1, true);
 	dormmanager::instance().clear_dorm_students(b2, d2, true);
 	bool success = fill_dorm(b2, d2, listA.mid(0, k)) && fill_dorm(b1, d1, listB.mid(0, k));
 	if (!success)
 	{
-		restore_dorm(b1, d1, bedsA, genderA);
-		restore_dorm(b2, d2, bedsB, genderB);
+		bool restoredA = restore_dorm(b1, d1, bedsA, genderA);
+		bool restoredB = restore_dorm(b2, d2, bedsB, genderB);
+		bool restored = restoredA && restoredB;
+		QVector<int> original_ids = listA;
+		original_ids += listB;
+		reset_and_sync_students(original_ids, b1, d1, b2, d2);
+		return restored ? -5 : -6;
 	}
 	QVector<int> original_ids = listA;
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
-	return success ? 1 : -5;
+	return 1;
 }
