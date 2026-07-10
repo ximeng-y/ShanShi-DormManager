@@ -10,3 +10,4 @@ CMakeUserPresets.json
 docs/rawdocx/
 out/
 .vscode/
+.XMAgent-Logs/
