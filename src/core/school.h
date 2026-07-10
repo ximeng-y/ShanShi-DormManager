@@ -34,8 +34,8 @@ public:
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=楼不存在或不接纳该性别  -3=住客性别冲突
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁
 	bool remove_building(int building_id);//删除宿舍楼并级联删除楼内宿舍、清退住客
-	int set_building_gender(int building_id, int gender);//修改楼性别, -2=既有宿舍或住客冲突
-	int set_building_max_floor(int building_id, int max_floor);//修改最大楼层, -2=既有宿舍楼层越界
+	int set_building_gender(int building_id, int gender);//修改楼性别, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍或住客冲突
+	int set_building_max_floor(int building_id, int max_floor);//修改最大楼层, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍楼层越界
 
 	//住宿协调
 	//返回值: >0=成功(床位号)  -1=参数非法  -2=床位占用  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置  -6=学生不存在或性别未设置  -7=性别冲突  -8=宿舍不存在
@@ -59,14 +59,16 @@ public:
 	//宿舍集合协调
 	int clear_all_dorms();//清空全部宿舍并保留房间性别锁，返回被清退学生数
 	int clear_all_dorms_reset_gender();//清空全部宿舍并放开房间性别锁，返回被清退学生数
+	//交换返回值通用: 1=成功/-1=参数非法或同一间/-2=宿舍不存在/-3=房间锁不符/-4=人数或男女舍前提不符/-5=住客或目标约束异常/-6=失败后快照恢复不完整。
 	int swap_dorms(int b1, int d1, int b2, int d2);//同锁同人数宿舍整体互换
-	int swap_dorms_overlap(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客留原处
-	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客离宿
-	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿
+	int swap_dorms_overlap(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客留原处；一方为空时无操作成功
+	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客离宿；一方为空时无操作成功
+	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿；一方为空时无操作成功
 
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
+	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置

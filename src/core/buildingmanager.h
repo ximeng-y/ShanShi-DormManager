@@ -20,7 +20,7 @@ public:
 	//构造并添加宿舍楼: 作为 set_for_gender/set_max_floor 收 private 后的外部建楼入口
 	//返回值: 1=成功  0=楼号已存在  -1=字段非法
 	int add_building(int building_id, int gender, int max_floor);
-	//移除宿舍楼: 仅从表中删除, 不级联清理楼内宿舍(跨 manager 协调留待上层 school)
+	//底层删除仅从表中移除本体；公开业务由school完成楼内宿舍级联后调用。
 	//返回值: true=成功  false=楼号不存在
 
 	//按楼号取本体(只读)。不存在返回 nullptr。

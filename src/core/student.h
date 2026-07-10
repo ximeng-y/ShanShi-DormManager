@@ -36,9 +36,7 @@ private:
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 	//set_floor 已删除: floor 不再独立校验写入, 改由 assign_dorm_info 后门接收 dorm 派生的 floor(id/100) 快照（与floor等价）
 
-	//后门同步位置四字段, 绕过 setter 校验直接赋值。为未来的住宿协调层预留:
-	//协调层在校验合法后调用它一次性写入 bed_id/dorm_id/building_id/floor。
-	//本轮住宿协调未实现, 暂无调用者; 届时由协调类通过 friend 获得访问权(现已摘除 friend class dorm)。
+	//后门同步位置四字段，绕过setter校验直接赋值；由school完成住宿校验后经studentmanager调用。
 	void assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor);
 	friend class studentmanager;
 

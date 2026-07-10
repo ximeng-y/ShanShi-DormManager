@@ -58,7 +58,7 @@ bool check::is_valid_floor(int floor, int max_floor)//检查楼层是否合法(1
 bool check::is_valid_dorm_floor(int dorm_id, int max_floor)//检查宿舍号派生楼层是否在楼最大楼层内
 {
 	//floor 从 dorm_id 派生(dorm_id/100), 复用 is_valid_floor 校验 ∈[1,max_floor].
-	//纯数值边界, 不依赖聚合, 与 is_valid_bed_id(bed_id,max_num) 同构. 楼级校验由 dormmanager::add_dorm 调用.
+	//纯数值边界，不依赖聚合，与is_valid_bed_id(bed_id,max_num)同构；楼级校验由school::add_dorm调用。
 	int floor = dorm_id / 100;
 	return is_valid_floor(floor, max_floor);
 }

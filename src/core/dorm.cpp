@@ -103,7 +103,7 @@ bool dorm::set_max_num(int max_num)//设置最大人数(同步 resize beds)
 	if (max_num < 1)//基本合法性
 		return false;
 	
-	if (max_num < this->max_num)//缩容时: 检查将被丢弃的床位(新长度之后的部分)是否有人, 有人则拒绝, 防静默丢人（高层次的自动分配学生至其它宿舍或暂时令学生离宿需在dormmanager中实现）
+	if (max_num < this->max_num)//缩容时: 检查将被丢弃的床位(新长度之后的部分)是否有人, 有人则拒绝, 防静默丢人（自动迁宿或离宿需由school协调）
 	{
 		for (int i = max_num; i < beds.size(); ++i)//此处不使用(max_num - 1)并非bug，而是max_num是新长度，i从新长度开始，正好是开始被丢弃的床位的下标
 		{

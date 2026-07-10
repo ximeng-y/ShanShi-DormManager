@@ -18,6 +18,8 @@ bool studentmanager::add(const student& s)//添加学生: 校验字段合法且�
 		!check::is_valid_gender(s.get_gender()) ||
 		!check::is_valid_student_id(s.get_id()))
 		return false;//字段非法
+	if (s.get_bed_id() != 0 || s.get_dorm_id() != 0 || s.get_building_id() != 0 || s.get_floor() != 0)
+		return false;//禁止携带住宿位置快照入库，所有入住必须经过school
 	if (students.contains(s.get_id()))
 		return false;//学号已存在(唯一性约束)
 

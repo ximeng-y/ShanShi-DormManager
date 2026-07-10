@@ -114,7 +114,32 @@ bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约�
 	const building* b = buildingmanager::instance().get(dorm_to_add.get_building_id());
 	if (b == nullptr || !check::is_valid_dorm_floor(dorm_to_add.get_id(), b->get_max_floor()))
 		return false;
+	if (dorm_to_add.get_for_gender() != 0 && !b->accepts_gender(dorm_to_add.get_for_gender()))
+		return false;//空宿舍预设性别锁必须被所在楼接纳
 	return dormmanager::instance().add_dorm(dorm_to_add);
+}
+
+bool school::is_dorm_consistent(int building_id, int dorm_id) const//双向核对床位与学生位置字段
+{
+	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
+	if (d == nullptr)
+		return false;
+	for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+	{
+		int student_id = d->get_student_id(bed_id);
+		if (student_id < 1)
+			continue;
+		const student* s = studentmanager::instance().get(student_id);
+		if (s == nullptr || s->get_building_id() != building_id || s->get_dorm_id() != dorm_id || s->get_bed_id() != bed_id || s->get_floor() != d->get_floor())
+			return false;
+	}
+	for (int student_id : studentmanager::instance().all_ids())
+	{
+		const student* s = studentmanager::instance().get(student_id);
+		if (s->get_building_id() == building_id && s->get_dorm_id() == dorm_id && d->get_student_id(s->get_bed_id()) != student_id)
+			return false;
+	}
+	return true;
 }
 
 bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清退住客
@@ -124,15 +149,14 @@ bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清
 	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
 	if (d == nullptr)
 		return false;
+	if (!is_dorm_consistent(building_id, dorm_id))
+		return false;
 	QVector<int> student_ids;
 	for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
 	{
 		int student_id = d->get_student_id(bed_id);
 		if (student_id < 1)
 			continue;
-		const student* s = studentmanager::instance().get(student_id);
-		if (s == nullptr || s->get_building_id() != building_id || s->get_dorm_id() != dorm_id || s->get_bed_id() != bed_id || s->get_floor() != d->get_floor())
-			return false;//床位与学生位置记录不一致，禁止删除
 		student_ids.append(student_id);
 	}
 	if (!dormmanager::instance().remove_dorm(building_id, dorm_id))
@@ -147,6 +171,9 @@ bool school::remove_building(int building_id)//删除宿舍楼并级联处理楼
 	if (!check::is_valid_building_id(building_id) || buildingmanager::instance().get(building_id) == nullptr)
 		return false;
 	QVector<QPair<int, int>> keys = dormmanager::instance().all_dorm_keys();
+	for (const auto& key : keys)
+		if (key.first == building_id && !is_dorm_consistent(key.first, key.second))
+			return false;//先全量预检，避免级联删除部分提交
 	for (const auto& key : keys)
 		if (key.first == building_id && !remove_dorm(key.first, key.second))
 			return false;
@@ -197,6 +224,8 @@ int school::set_dorm_gender(int building_id, int dorm_id, int gender)//设置房
 	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
 	if (d == nullptr)
 		return 0;
+	if (gender == 0 && !d->is_empty())
+		return -3;//有住客时禁止解锁，防止后续异性入住形成混住
 	if (gender != 0)
 	{
 		const building* b = buildingmanager::instance().get(building_id);
@@ -435,9 +464,9 @@ int school::clear_all_dorms()//清空全部宿舍并保留房间性别锁
 		QVector<int> ids = d->get_student_id_list();
 		cleared += ids.size();
 		dormmanager::instance().clear_dorm_students(key.first, key.second, false);
-		for (int student_id : ids)
-			studentmanager::instance().clear_dorm_info(student_id);
 	}
+	for (int student_id : studentmanager::instance().all_ids())
+		studentmanager::instance().clear_dorm_info(student_id);//同时修复student指向空床的反向不一致
 	return cleared;
 }
 
@@ -452,9 +481,9 @@ int school::clear_all_dorms_reset_gender()//清空全部宿舍并放开房间性
 		QVector<int> ids = d->get_student_id_list();
 		cleared += ids.size();
 		dormmanager::instance().clear_dorm_students(key.first, key.second, true);
-		for (int student_id : ids)
-			studentmanager::instance().clear_dorm_info(student_id);
 	}
+	for (int student_id : studentmanager::instance().all_ids())
+		studentmanager::instance().clear_dorm_info(student_id);//同时修复student指向空床的反向不一致
 	return cleared;
 }
 

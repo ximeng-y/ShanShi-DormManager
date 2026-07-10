@@ -7,7 +7,7 @@
 #include <QPair>
 
 // 全校宿舍本体的唯一归属。两层 QMap 以 (宿舍楼号, 宿舍号) 复合键定位 dorm 本体, 按楼号、宿舍号升序有序存储。
-// building 等空间结构一律只存宿舍编号, 通过本类换取本体, 保证单一数据源、无副本一致性问题。
+//宿舍目录统一由本类维护，其它层保存或传递复合键，用时通过本类换取本体。
 class dormmanager
 {
 public:
@@ -31,7 +31,7 @@ public:
 	QVector<QPair<int, int>> all_dorm_keys() const;//按楼号、宿舍号升序列出全部宿舍复合键
 
     //逻辑判断
-    int is_dorm_exist(int building_id, int dorm_id);//检查指定楼号、宿舍号是否存在，约定返回值-1为楼号不存在，0为宿舍号不存在，1为存在
+    int is_dorm_exist(int building_id, int dorm_id);//检查宿舍是否存在，1=存在/0=楼或宿舍不存在/-1=参数格式非法
 
     //高级信息查询
     int count() const;//获取当前宿舍总数。获取指定楼号的宿舍数等功能可调用get()通过building类的方法实现
