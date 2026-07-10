@@ -130,8 +130,11 @@ bool dormmanager::remove_dorm(int building_id, int dorm_id)
 	if (!dorms.contains(building_id) || !dorms[building_id].contains(dorm_id))
 		return false;
 
-	//调用宿舍对象的clear_students()方法，自动清空宿舍内学生（同步清理 student 本体位置字段）
+	//删除前记录并清空住客，随后同步清理 student 本体位置字段
+	QVector<int> student_ids = dorms[building_id][dorm_id].get_student_id_list();
 	dorms[building_id][dorm_id].clear_students();
+	for (int student_id : student_ids)
+		studentmanager::instance().clear_dorm_info(student_id);
 
 	//从QMap<int, dorm>中移除宿舍对象，同步清理宿舍对象的内存空间
 	dorms[building_id].remove(dorm_id);//移除宿舍对象
@@ -164,9 +167,18 @@ int dormmanager::set_dorm_gender(int building_id, int dorm_id, int gender)
 			return -2;//楼未注册或楼适用性别不接纳该 gender(会在男生楼里造女舍死间)
 	}
 
-	//经 friend 后门调 dorm::set_for_gender; 其内部再校验住客性别一致性(gender 合法已保证, 此处失败只可能是住客不符)
+	//钦定非0性别时逐一校验住客；dorm 只维护自身字段，不再查询 studentmanager。
+	if (gender != 0)
+	{
+		for (int student_id : dorm_it.value().get_student_id_list())
+		{
+			const student* s = studentmanager::instance().get(student_id);
+			if (s == nullptr || s->get_gender() != gender)
+				return -3;//住客不存在或性别与钦定值冲突
+		}
+	}
 	if (!dorm_it.value().set_for_gender(gender))
-		return -3;//房间已有住客且性别与钦定值冲突
+		return -1;//理论仅可能来自 gender 非法，前置已阻挡
 	return 1;//成功
 }
 
@@ -193,7 +205,15 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 	auto dorm_it = building_it->find(dorm_id);
 	if (dorm_it == building_it->end())
 		return -8;//宿舍不存在
-	return dorm_it.value().add_student(student_id);
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+		return -3;//学生已有宿舍
+	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
+	if (bed_id > 0)
+		studentmanager::instance().assign_dorm_info(student_id, bed_id, dorm_id, building_id, dorm_it.value().get_floor());
+	return bed_id;
 }
 
 int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id)//入住指定床位
@@ -206,7 +226,15 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 	auto dorm_it = building_it->find(dorm_id);
 	if (dorm_it == building_it->end())
 		return -8;//宿舍不存在
-	return dorm_it.value().add_student(student_id, bed_id);
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学号未注册或学生性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+		return -3;//学生已有宿舍
+	int result = dorm_it.value().add_student(student_id, s->get_gender(), bed_id);
+	if (result > 0)
+		studentmanager::instance().assign_dorm_info(student_id, bed_id, dorm_id, building_id, dorm_it.value().get_floor());
+	return result;
 }
 
 int dormmanager::add_student_to_available_dorm(int student_id)//入住最小顺位可用宿舍
@@ -226,7 +254,10 @@ int dormmanager::add_student_to_available_dorm(int student_id)//入住最小顺�
 	auto dorm_it = building_it->find(available->get_id());
 	if (dorm_it == building_it->end())
 		return -9;//理论不可达: 候选来自 dorms
-	return dorm_it.value().add_student(student_id);
+	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
+	if (bed_id > 0)
+		studentmanager::instance().assign_dorm_info(student_id, bed_id, available->get_id(), available->get_building_id(), available->get_floor());
+	return bed_id;
 }
 
 int dormmanager::add_student_to_available_dorm_random(int student_id)//随机入住可用宿舍
@@ -246,7 +277,10 @@ int dormmanager::add_student_to_available_dorm_random(int student_id)//随机入
 	auto dorm_it = building_it->find(available->get_id());
 	if (dorm_it == building_it->end())
 		return -9;//理论不可达: 候选来自 dorms
-	return dorm_it.value().add_student(student_id);
+	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
+	if (bed_id > 0)
+		studentmanager::instance().assign_dorm_info(student_id, bed_id, available->get_id(), available->get_building_id(), available->get_floor());
+	return bed_id;
 }
 
 //高级信息查询
@@ -348,11 +382,14 @@ int dormmanager::clear_all_dorms_impl(bool reset_gender)
 	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
 		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
 		{
-			cleared += d_it.value().get_current_num();//先累加本间人数
+			QVector<int> student_ids = d_it.value().get_student_id_list();
+			cleared += student_ids.size();//先累加本间人数
 			if (reset_gender)
 				d_it.value().clear_students_reset_gender();
 			else
-				d_it.value().clear_students();//再清空(内部同步清零学生位置字段)
+				d_it.value().clear_students();
+			for (int student_id : student_ids)
+				studentmanager::instance().clear_dorm_info(student_id);//同步清零学生位置字段
 		}
 	return cleared;
 }
@@ -418,9 +455,20 @@ int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
 	A->clear_students();
 	B->clear_students();
 	for (int id : listA)
-		B->add_student(id);//A 的人搬进 B
+	{
+		const student* s = studentmanager::instance().get(id);
+		if (s != nullptr)
+			B->add_student(id, s->get_gender());//A 的人搬进 B
+	}
 	for (int id : listB)
-		A->add_student(id);//B 的人搬进 A
+	{
+		const student* s = studentmanager::instance().get(id);
+		if (s != nullptr)
+			A->add_student(id, s->get_gender());//B 的人搬进 A
+	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, *A, *B);
 	return 1;
 }
 
@@ -447,9 +495,16 @@ int dormmanager::swap_dorms_overlap(int b1, int d1, int b2, int d2)
 	}
 	for (int i = 0; i < k; ++i)
 	{
-		B->add_student(listA[i]);
-		A->add_student(listB[i]);
+		const student* sA = studentmanager::instance().get(listA[i]);
+		const student* sB = studentmanager::instance().get(listB[i]);
+		if (sA != nullptr)
+			B->add_student(listA[i], sA->get_gender());
+		if (sB != nullptr)
+			A->add_student(listB[i], sB->get_gender());
 	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, *A, *B);
 	return 1;
 }
 
@@ -473,9 +528,16 @@ int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
 	B->clear_students();
 	for (int i = 0; i < k; ++i)
 	{
-		B->add_student(listA[i]);
-		A->add_student(listB[i]);
+		const student* sA = studentmanager::instance().get(listA[i]);
+		const student* sB = studentmanager::instance().get(listB[i]);
+		if (sA != nullptr)
+			B->add_student(listA[i], sA->get_gender());
+		if (sB != nullptr)
+			A->add_student(listB[i], sB->get_gender());
 	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, *A, *B);
 	return 1;
 }
 
@@ -516,10 +578,35 @@ int dormmanager::swap_gender_dorms(int b1, int d1, int b2, int d2)
 	B->clear_students_reset_gender();
 	for (int i = 0; i < k; ++i)
 	{
-		B->add_student(listA[i]);//原A住客搬进B
-		A->add_student(listB[i]);//原B住客搬进A
+		const student* sA = studentmanager::instance().get(listA[i]);
+		const student* sB = studentmanager::instance().get(listB[i]);
+		if (sA != nullptr)
+			B->add_student(listA[i], sA->get_gender());//原A住客搬进B
+		if (sB != nullptr)
+			A->add_student(listB[i], sB->get_gender());//原B住客搬进A
 	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, *A, *B);
 	return 1;
+}
+
+void dormmanager::sync_dorm_students(const dorm& d)//按当前床位表同步学生位置字段
+{
+	for (int bed_id = 1; bed_id <= d.get_max_num(); ++bed_id)
+	{
+		int student_id = d.get_student_id(bed_id);
+		if (student_id > 0)
+			studentmanager::instance().assign_dorm_info(student_id, bed_id, d.get_id(), d.get_building_id(), d.get_floor());
+	}
+}
+
+void dormmanager::reset_and_sync_students(const QVector<int>& original_ids, const dorm& A, const dorm& B)//清理原位置后按两间宿舍现状重新同步
+{
+	for (int student_id : original_ids)
+		studentmanager::instance().clear_dorm_info(student_id);
+	sync_dorm_students(A);
+	sync_dorm_students(B);
 }
 
 //====== 任务6: 为全校学生随机分配宿舍 ======

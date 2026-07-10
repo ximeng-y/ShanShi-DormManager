@@ -93,6 +93,9 @@ private:
 	int validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B);
 	//清空所有宿舍内部实现, reset_gender 控制是否同时放开房间性别锁
 	int clear_all_dorms_impl(bool reset_gender);
+	//临时同步 helper：dorm 已不再依赖 studentmanager，在 school 接管协调前由本类维持学生位置字段一致性。
+	void sync_dorm_students(const dorm& d);
+	void reset_and_sync_students(const QVector<int>& original_ids, const dorm& A, const dorm& B);
 	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 

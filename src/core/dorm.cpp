@@ -2,8 +2,6 @@
 #include <QVector>
 #include <QRandomGenerator>
 #include "system/check.h"
-#include "studentmanager.h"
-#include "student.h"
 
 dorm::dorm()//构造函数
 {
@@ -128,32 +126,20 @@ bool dorm::set_for_gender(int gender)//钦定房间性别(0=未锁定/1=男舍/2
 {
 	if (!check::is_valid_gender(gender))//复用学生性别校验(0/1/2)
 		return false;
-	//若房内已有住客, 钦定值必须与住客性别一致, 或设为 0(解锁); 否则会与实际住客矛盾, 拒绝
-	if (gender != 0 && !is_empty())
-	{
-		const student* occupant = studentmanager::instance().get(get_student_id_list().first());
-		if (occupant != nullptr && gender != occupant->get_gender())//住客存在且性别不符则拒绝(幽灵住客判空跳过)
-			return false;
-	}
 	this->for_gender = gender;
 	return true;
 }
 
-//添加学生: 写入 beds 并经 studentmanager::assign_dorm_info 正向同步 student 本体位置四字段
-int dorm::add_student(int student_id)//自动分配最小空床位
+//添加学生: 只写入 beds，不查询或同步 student 本体
+int dorm::add_student(int student_id, int gender)//自动分配最小空床位
 {
-	const student* s = studentmanager::instance().get(student_id);//获取学生信息指针
 	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置(id 合法且 max_num 已设置), 否则 beds 为空无处安放
 		return -5;//宿舍未配置
-	if (!check::is_valid_student_id(student_id))//前置校验2: 传入学号必须合法
-		return -1;//student_id非法
-	if (s == nullptr || s->get_gender() == 0)//前置校验3: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验4: 学生在有宿舍和床位的情况下不得入住
-		return -3;//学生已有宿舍
-	if (is_full())//前置校验5: 宿舍不能满员
+	if (!check::is_valid_student_id(student_id) || gender < 1 || gender > 2)//前置校验2: 学号与学生性别格式
+		return -1;//student_id或gender非法
+	if (is_full())//前置校验3: 宿舍不能满员
 		return -4;//宿舍已满
-	if (!accepts_gender(s->get_gender()))//前置校验6: 房间已锁定性别时要求匹配
+	if (!accepts_gender(gender))//前置校验4: 房间已锁定性别时要求匹配
 		return -7;//性别与房间锁定不符
 
 	for (int i = 0; i < beds.size(); ++i)//找最小空床位
@@ -162,35 +148,28 @@ int dorm::add_student(int student_id)//自动分配最小空床位
 		{
 			beds[i] = student_id;
 			if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
-				for_gender = s->get_gender();
-			studentmanager::instance().assign_dorm_info(student_id, i + 1, this->id, this->building_id, get_floor());//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
+				for_gender = gender;
 			return i + 1;//返回床位号(自然数)
 		}
 	}
 	return -4;//理论不可达(is_full 已挡), 兜底返回已满
 }
-int dorm::add_student(int student_id, int bed_id)//添加学生-指定床位
+int dorm::add_student(int student_id, int gender, int bed_id)//添加学生-指定床位
 {
-	const student* s = studentmanager::instance().get(student_id);//获取学生信息指针
 	if (!check::is_valid_dorm_id(this->id) || max_num < 1)//前置校验1: dorm 自身必须已配置
 		return -5;//宿舍未配置
-	if (!check::is_valid_student_id(student_id))//前置校验2: 学号与床位号均须合法
-		return -1;//student_id非法
+	if (!check::is_valid_student_id(student_id) || gender < 1 || gender > 2)//前置校验2: 学号与学生性别格式
+		return -1;//student_id或gender非法
 	if (!check::is_valid_bed_id(bed_id, max_num))//前置校验3: 床位号合法性
 		return -1;//bed_id非法
-	if (s == nullptr || s->get_gender() == 0)//前置校验4: 学号必须已注册, 且性别不能为0, 否则杜绝幽灵占用
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)//前置校验5: 学生在有宿舍和床位的情况下不得入住
-		return -3;//学生已有宿舍
 	if (beds[bed_id - 1] != 0)
 		return -2;//床位已被占用
-	if (!accepts_gender(s->get_gender()))//前置校验6: 房间已锁定性别时要求匹配
+	if (!accepts_gender(gender))//前置校验4: 房间已锁定性别时要求匹配
 		return -7;//性别与房间锁定不符
 
 	beds[bed_id - 1] = student_id;//指定床位
 	if (for_gender == 0)//空房先到先得: 把房间性别锁定为首住客性别
-		for_gender = s->get_gender();
-	studentmanager::instance().assign_dorm_info(student_id, bed_id, this->id, this->building_id, get_floor());//正向同步student本体的位置四字段, 使is_student_have_dorm判重可靠
+		for_gender = gender;
 	return bed_id;
 }
 
@@ -204,7 +183,6 @@ int dorm::remove_student(int student_id)
 		if (beds[i] == student_id)
 		{
 			beds[i] = 0;//释放床位
-			studentmanager::instance().clear_dorm_info(student_id);//同步 student 本体的 dorm_id/bed_id为0
 			return i + 1;//返回被释放的床位号
 		}
 	}
@@ -226,12 +204,6 @@ int dorm::swap_student(int from, int to)
 	beds[from - 1] = beds[to - 1];
 	beds[to - 1] = tmp;
 
-	//交换后, 两侧床位上非 0 的学号都需把 student 本体的 bed_id 同步为新床位号。
-	//dorm_id/building_id 未变(仍在同一宿舍)、floor 派生自 id/100 亦未变, 沿用 this 的字段。
-	if (beds[from - 1] != 0)
-		studentmanager::instance().assign_dorm_info(beds[from - 1], from, this->id, this->building_id, get_floor());
-	if (beds[to - 1] != 0)
-		studentmanager::instance().assign_dorm_info(beds[to - 1], to, this->id, this->building_id, get_floor());
 	return 1;
 }
 
@@ -257,10 +229,6 @@ int dorm::get_occupied_count() const//获取当前已占用床位数
 
 void dorm::clear_students()//清空所有床位(保留房间性别锁定)
 {
-	for(auto student_id : get_student_id_list())
-	{
-		studentmanager::instance().clear_dorm_info(student_id);//同步 student 本体的 dorm_id/bed_id为0
-	}
 	beds.fill(0);//长度不变, 全部置 0
 }
 
@@ -278,18 +246,12 @@ int dorm::shuffle_beds()
 		return 0;//空房无需打乱
 
 	//Fisher-Yates: 从末尾往前, 每步与 [0, i] 内随机位置交换。
-	//位置 i 在交换后不再被触碰, 可立即同步 bed_id, 省去第二遍遍历。
 	for (int i = beds.size() - 1; i > 0; --i)
 	{
 		int j = QRandomGenerator::global()->bounded(i + 1);//[0, i] 等概率
 		int tmp = beds[i];
 		beds[i] = beds[j];
 		beds[j] = tmp;
-		if (beds[i] != 0)
-			studentmanager::instance().assign_dorm_info(beds[i], i + 1, this->id, this->building_id, get_floor());
 	}
-	//beds[0] 从未作为 i 被处理, 单独同步
-	if (beds[0] != 0)
-		studentmanager::instance().assign_dorm_info(beds[0], 1, this->id, this->building_id, get_floor());
 	return current;
 }

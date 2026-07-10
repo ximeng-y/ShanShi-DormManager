@@ -5,7 +5,7 @@
 
 //存储模型: 宿舍仅持有床位到学号的映射。
 //beds 为定长数组, 下标 = 床位号 - 1, 值 = 学号, 0 表示空床, 长度恒等于 max_num。
-//学生本体的唯一归属是 studentmanager(QHash<int,student>), dorm 只认学号。
+//学生本体由更高层统一管理，dorm 只认学号与调用方传入的学生性别，不查询学生本体。
 class dorm
 {
 public:
@@ -34,27 +34,23 @@ public:
 	bool set_max_num(int max_num);//设置最大人数(会同步 resize beds; 缩容时若被丢弃床位有人则拒绝并返回 false)
 	bool set_building_id(int building_id);//设置所在宿舍楼号
 
-	//管理学生: beds 是床位占用的权威, 同时经 studentmanager 正向/反向同步 student 本体的位置四字段。
-	//add_student 成功时调 studentmanager::assign_dorm_info 写入 dorm_id/bed_id/building_id/floor;
-	//remove_student/clear_students 调 studentmanager::clear_dorm_info 清零四字段。
-	//注意: 学号必须已注册于 studentmanager 且学生性别不能为 0(否则返回 -6), 以杜绝幽灵占用并支持先到先得性别锁定。
+	//管理学生: beds 是床位占用的权威。dorm 只修改自身床位状态，不查询或同步 student 本体；
+	//学生存在性、跨宿舍判重及 student 位置字段同步由更高层协调类负责。
 	//性别: 空房入住时把房间 for_gender 自动锁定为该生性别; 已锁定则要求匹配, 不符返回 -7。
-	//返回值: >0=成功(即分配的床位号)  -1=student_id非法  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)  -6=学号未注册或学生性别未设置  -7=性别与房间锁定不符
-	int add_student(int student_id);//添加学生(自动分配最小空床位)
+	//返回值: >0=成功(即分配的床位号)  -1=student_id或gender非法  -4=宿舍已满  -5=宿舍未配置(id非法或max_num<1)  -7=性别与房间锁定不符
+	int add_student(int student_id, int gender);//添加学生(自动分配最小空床位)
 
-	//返回值: >0=成功(即指定床位号)  -1=student_id非法或bed_id非法  -2=床位已被占用  -3=学生已有宿舍  -5=宿舍未配置  -6=学号未注册或学生性别未设置  -7=性别与房间锁定不符
-	int add_student(int student_id, int bed_id);//添加学生(指定床位)
+	//返回值: >0=成功(即指定床位号)  -1=student_id/gender/bed_id非法  -2=床位已被占用  -5=宿舍未配置  -7=性别与房间锁定不符
+	int add_student(int student_id, int gender, int bed_id);//添加学生(指定床位)
 
 	//返回值: >0=成功(即被释放的床位号)  0=该学生不在本宿舍  -1=student_id非法
 	int remove_student(int student_id);//移除学生(按学号)
 
 	//swap 后 beds 内两床位的值互换; from 空则不操作。
-	//交换后经 studentmanager::assign_dorm_info 同步两侧(非空)学生本体的 bed_id; dorm_id/building_id 未变、floor 派生自 id/100 亦未变, 沿用 dorm 字段。
 	//返回值: 1=成功(to空则移入, to有人则互换)  0=from床位为空  -1=bed_id非法  -2=from==to
 	int swap_student(int from, int to);//调换/移动床位(from→to)
 
 	//随机打乱本宿舍内学生与床位的对应关系(仅在本间内重排, 不跨宿舍、不改房间性别锁)。
-	//打乱后经 studentmanager::assign_dorm_info 同步每个学生本体的 bed_id(dorm_id/building_id/floor 不变)。
 	//返回值: >=0=参与打乱的学生人数(0=空房, 无操作)
 	int shuffle_beds();
 
@@ -62,7 +58,7 @@ public:
 	bool is_empty() const;//判断宿舍是否为空
 	int get_empty_count() const;//获取当前空床位数
 	int get_occupied_count() const;//获取当前已占用床位数
-	//清空所有床位(beds 全部置 0, 长度不变), 同步清零各 student 本体位置字段。
+	//清空所有床位(beds 全部置 0, 长度不变)，不处理 student 本体位置字段。
 	//clear_students 保留房间性别锁定(空男舍仍是男舍); clear_students_reset_gender 额外把 for_gender 归 0(彻底放开)。
 	void clear_students();//清空住客, 保留性别锁定
 	void clear_students_reset_gender();//清空住客并重置房间性别为未锁定
@@ -71,7 +67,7 @@ private:
 	//set_for_gender 收 private: 钦定房间性别须校验所在 building 的 for_gender(楼-房一致性 G2),
 	//而 dorm 不依赖 buildingmanager, 故由 dormmanager::set_dorm_gender 经 friend 后门调用, 在 dormmanager 层完成楼级校验。
 	//公开会允许在男生楼里钦定女舍, 产出 get_available_dorm 永远选不中的「死间」。
-	//校验: gender 合法(0/1/2); 若房内已有住客, 只允许设为与住客性别一致或 0(解锁), 否则返回 false。
+	//这里只校验 gender 格式；楼级与住客性别一致性由更高层在调用前完成。
 	bool set_for_gender(int gender);//钦定房间性别
 	friend class dormmanager;
 
