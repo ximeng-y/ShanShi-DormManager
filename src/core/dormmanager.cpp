@@ -195,9 +195,9 @@ int dormmanager::set_dorm_max_num(int building_id, int dorm_id, int max_num)//�
 	return dorm_it.value().set_max_num(max_num) ? 1 : -2;//false 只应来自缩容丢人
 }
 
-int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id)//入住指定宿舍
+int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender)//向指定宿舍写入学生学号
 {
-	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id) || (gender != 1 && gender != 2))
 		return -1;//参数非法
 	auto building_it = dorms.find(building_id);
 	if (building_it == dorms.end())
@@ -207,20 +207,12 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 		return -8;//宿舍不存在
 	if (!check::is_valid_bed_id(bed_id, dorm_it.value().get_max_num()))
 		return -1;//bed_id非法，保持原接口参数校验优先级
-	const student* s = studentmanager::instance().get(student_id);
-	if (s == nullptr || s->get_gender() == 0)
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
-		return -3;//学生已有宿舍
-	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
-	if (bed_id > 0)
-		studentmanager::instance().assign_dorm_info(student_id, bed_id, dorm_id, building_id, dorm_it.value().get_floor());
-	return bed_id;
+	return dorm_it.value().add_student(student_id, gender);
 }
 
-int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id)//入住指定床位
+int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender, int bed_id)//向指定床位写入学生学号
 {
-	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id) || (gender != 1 && gender != 2))
 		return -1;//参数非法
 	auto building_it = dorms.find(building_id);
 	if (building_it == dorms.end())
@@ -228,15 +220,17 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 	auto dorm_it = building_it->find(dorm_id);
 	if (dorm_it == building_it->end())
 		return -8;//宿舍不存在
-	const student* s = studentmanager::instance().get(student_id);
-	if (s == nullptr || s->get_gender() == 0)
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
-		return -3;//学生已有宿舍
-	int result = dorm_it.value().add_student(student_id, s->get_gender(), bed_id);
-	if (result > 0)
-		studentmanager::instance().assign_dorm_info(student_id, bed_id, dorm_id, building_id, dorm_it.value().get_floor());
-	return result;
+	return dorm_it.value().add_student(student_id, gender, bed_id);
+}
+
+int dormmanager::remove_student_from_dorm(int building_id, int dorm_id, int student_id)//从指定宿舍移除学生学号
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+		return -1;//参数非法
+	dorm* target = find_dorm(building_id, dorm_id);
+	if (target == nullptr)
+		return -8;//宿舍不存在
+	return target->remove_student(student_id);
 }
 
 int dormmanager::add_student_to_available_dorm(int student_id)//入住最小顺位可用宿舍

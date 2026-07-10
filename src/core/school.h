@@ -24,6 +24,13 @@ public:
 	int get_dorm_count() const;//获取全校宿舍总数
 	int get_building_count() const;//获取全校宿舍楼总数
 
+	//住宿协调
+	//返回值: >0=成功(床位号)  -1=参数非法  -2=床位占用  -3=学生已有宿舍  -4=宿舍已满  -5=宿舍未配置  -6=学生不存在或性别未设置  -7=性别冲突  -8=宿舍不存在
+	int assign_student_to_dorm(int building_id, int dorm_id, int student_id);//入住指定宿舍并自动分配最小空床位
+	int assign_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id);//入住指定宿舍的指定床位
+	//返回值: >0=成功(释放的床位号)  0=学生未入住  -1=参数非法  -6=学生不存在  -8=学生记录指向的宿舍不存在或床位记录不一致
+	int remove_student_from_dorm(int student_id);//退宿但保留学籍
+
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
 };

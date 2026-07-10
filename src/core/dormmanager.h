@@ -23,8 +23,9 @@ public:
     //返回值: 1=成功  0=宿舍不存在  -1=参数非法(building_id/dorm_id/gender 格式)  -2=楼未注册或不接纳该性别  -3=房间住客性别与钦定值冲突
     int set_dorm_gender(int building_id, int dorm_id, int gender);
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大人数, 1=成功/0=宿舍不存在/-1=参数非法/-2=缩容丢人
-	int add_student_to_dorm(int building_id, int dorm_id, int student_id);//入住指定宿舍, -8=宿舍不存在, 其它透传 dorm::add_student
-	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id);//入住指定床位, -8=宿舍不存在, 其它透传 dorm::add_student
+	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender);//向指定宿舍写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
+	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender, int bed_id);//向指定床位写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
+	int remove_student_from_dorm(int building_id, int dorm_id, int student_id);//从指定宿舍移除学生学号, 不同步学生本体, -8=宿舍不存在
 	int add_student_to_available_dorm(int student_id);//入住最小顺位可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
 	int add_student_to_available_dorm_random(int student_id);//随机入住可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
 
