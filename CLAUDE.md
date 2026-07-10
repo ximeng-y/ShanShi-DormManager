@@ -6,23 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 山东石油化工学院宿舍管理系统（ShanShiDormManager）—— C++/Qt6 Widgets 桌面应用，为 2025 级程序设计实习课程作业。当前处于领域模型搭建阶段，UI 层仅占位，尚无业务逻辑接入。
 
-## 构建与运行
-
-工具链：CMake ≥ 3.16、Qt 6.10.x（MSVC2022 x64）、Ninja。Qt 安装路径通过 `QTDIR` 环境变量传入 `CMAKE_PREFIX_PATH`，在 `CMakeUserPresets.json` 中配置（此文件已被 `.gitignore` 忽略，机器本地路径不会进版本库）。
-
-```bash
-# 配置（二选一）
-cmake --preset Qt-Debug
-cmake --preset Qt-Release
-
-# 编译
-cmake --build out/build/debug
-
-# 运行
-out/build/debug/ShanShiDormManager.exe
-```
-
-> **重要**：修改代码后**不要**自动执行构建验证，应提示用户自行运行以上构建命令进行验证。
+> **重要**：修改代码后**不要**自动执行构建验证，应提示用户自行进行验证
 
 无测试框架、无 lint 配置。`AUTOMOC`/`AUTOUIC`/`AUTORCC` 均开启，新增 `Q_OBJECT` 类、`.ui`、`.qrc` 时无需手动跑 moc/uic/rcc。新增源文件**必须**同时加入 `CMakeLists.txt` 的 `PROJECT_SOURCES`，否则不会参与编译。
 
