@@ -53,6 +53,11 @@ public:
 	//返回值: 1=成功(to空则移入, to有人则互换)  0=from床位为空  -1=bed_id非法  -2=from==to
 	int swap_student(int from, int to);//调换/移动床位(from→to)
 
+	//随机打乱本宿舍内学生与床位的对应关系(仅在本间内重排, 不跨宿舍、不改房间性别锁)。
+	//打乱后经 studentmanager::assign_dorm_info 同步每个学生本体的 bed_id(dorm_id/building_id/floor 不变)。
+	//返回值: >=0=参与打乱的学生人数(0=空房, 无操作)
+	int shuffle_beds();
+
 	bool is_full() const;//判断宿舍是否已满
 	bool is_empty() const;//判断宿舍是否为空
 	int get_empty_count() const;//获取当前空床位数

@@ -1,5 +1,6 @@
 #include "dorm.h"
 #include <QVector>
+#include <QRandomGenerator>
 #include "system/check.h"
 #include "studentmanager.h"
 #include "student.h"
@@ -267,4 +268,30 @@ void dorm::clear_students_reset_gender()//清空住客并重置房间性别为�
 {
 	clear_students();//先按常规清空住客(保留性别)
 	for_gender = 0;//再彻底放开房间性别锁定
+}
+
+//随机打乱本宿舍内学生与床位的对应关系(Fisher-Yates 洗牌整个 beds 数组, 含空床)
+int dorm::shuffle_beds()
+{
+	int current = get_current_num();
+	if (current == 0)
+		return 0;//空房无需打乱
+
+	//Fisher-Yates: 从末尾往前, 每步与 [0, i] 内随机位置交换
+	for (int i = beds.size() - 1; i > 0; --i)
+	{
+		int j = QRandomGenerator::global()->bounded(i + 1);//[0, i] 等概率
+		int tmp = beds[i];
+		beds[i] = beds[j];
+		beds[j] = tmp;
+	}
+
+	//洗牌后, 对每个非空床位把对应学生本体的 bed_id 同步为新床位号
+	//dorm_id/building_id 不变、floor 派生自 id/100 亦不变, 沿用 this 字段
+	for (int i = 0; i < beds.size(); ++i)
+	{
+		if (beds[i] != 0)
+			studentmanager::instance().assign_dorm_info(beds[i], i + 1, this->id, this->building_id, get_floor());
+	}
+	return current;
 }
