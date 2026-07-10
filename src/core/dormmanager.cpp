@@ -519,3 +519,31 @@ int dormmanager::swap_gender_dorms(int b1, int d1, int b2, int d2)
 	}
 	return 1;
 }
+
+//====== 任务6: 为全校学生随机分配宿舍 ======
+int dormmanager::assign_all_students_random()//补分: 只给无宿舍者分配
+{
+	QVector<int> ids = studentmanager::instance().all_ids();
+	int failed = 0;
+	for (int id : ids)
+	{
+		if (studentmanager::instance().is_student_have_dorm(id) == 1)
+			continue;//已有宿舍者跳过, 不计入失败
+		if (add_student_to_available_dorm_random(id) <= 0)
+			failed++;//性别为0(-6)或无可用宿舍(-9)等均计为未安置
+	}
+	return failed;
+}
+
+int dormmanager::reassign_all_students_random()//重排: 先全清再全体随机分配
+{
+	clear_all_dorms_reset_gender();//清空所有宿舍并放开性别锁, 让房间性别由新住客先到先得决定
+	QVector<int> ids = studentmanager::instance().all_ids();
+	int failed = 0;
+	for (int id : ids)
+	{
+		if (add_student_to_available_dorm_random(id) <= 0)
+			failed++;
+	}
+	return failed;
+}

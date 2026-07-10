@@ -60,6 +60,13 @@ public:
 	//返回值: 1=成功  -1=参数非法  -2=某间不存在  -3=有楼未注册或非混宿楼  -4=两间不是一男一女
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);
 
+	//===== 为全校学生随机分配宿舍 =====
+	//assign_all_students_random: 补分, 只给当前无宿舍的学生随机分配, 已入住者不动。
+	//reassign_all_students_random: 重排, 先清空全部宿舍并放开性别锁, 再对全体学生随机分配。
+	//返回值: 未能成功分配的人数(>=0, 0=全部安置; 性别为0或无可用宿舍的学生计入未分配)
+	int assign_all_students_random();
+	int reassign_all_students_random();
+
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
