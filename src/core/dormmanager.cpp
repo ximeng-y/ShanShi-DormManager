@@ -467,6 +467,8 @@ int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
 	QVector<int> listA = A->get_student_id_list();
 	QVector<int> listB = B->get_student_id_list();
 	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
+	if (k == 0)
+		return 1;//一方为空, 无可互换(避免清空后无人回填)
 
 	//清空两边(保留性别锁), 只把前 k 对交叉入住; 人多一方 k 之后的人不再入住 → 保持离宿态。
 	A->clear_students();
@@ -510,6 +512,8 @@ int dormmanager::swap_gender_dorms(int b1, int d1, int b2, int d2)
 	QVector<int> listA = A->get_student_id_list();
 	QVector<int> listB = B->get_student_id_list();
 	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
+	if (k == 0)
+		return 1;//一方为空, 无可互换(避免清空后无人回填)
 	A->clear_students_reset_gender();
 	B->clear_students_reset_gender();
 	for (int i = 0; i < k; ++i)
