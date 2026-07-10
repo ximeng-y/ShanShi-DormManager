@@ -31,6 +31,12 @@ public:
 	//返回值: >0=成功(释放的床位号)  0=学生未入住  -1=参数非法  -6=学生不存在  -8=学生记录指向的宿舍不存在或床位记录不一致
 	int remove_student_from_dorm(int student_id);//退宿但保留学籍
 
+	//学籍协调
+	//返回值: 1=成功  0=学生不存在  -1=参数非法  -8=住宿记录不一致导致退宿失败
+	int remove_student(int student_id);//退学籍，已入住时先退宿再删除学生本体
+	//返回值: 1=成功  0=学生不存在  -1=参数非法  -7=所在楼/宿舍不接纳新性别或多人宿舍性别冲突  -8=住宿记录不一致
+	int correct_student_gender(int student_id, int gender);//性别纠错，不自动迁宿
+
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
 };
