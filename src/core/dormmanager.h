@@ -43,6 +43,17 @@ public:
 	int clear_all_dorms();
 	int clear_all_dorms_reset_gender();
 
+	//===== 两间宿舍整体调换及其两种善后策略 =====
+	//整体调换: 要求两间性别锁(for_gender)相同且实际人数相同, 满足则整体互换住客(自动分床)。
+	//返回值: 1=成功  -1=参数非法(id格式错或两参指向同一间)  -2=某间不存在  -3=两间性别锁不同(无法调换)  -4=性别相同但人数不同(顶层可据此让用户在下面两个善后策略中选择)
+	int swap_dorms(int b1, int d1, int b2, int d2);
+	//重叠床位互换(善后策略B): 性别锁须相同; 取 k=两间人数较小值, 各交换前 k 人, 人多一方多余的人留在原宿舍原位。
+	//返回值: 1=成功(含一方为空的无操作)  -1=参数非法  -2=某间不存在  -3=两间性别锁不同
+	int swap_dorms_overlap(int b1, int d1, int b2, int d2);
+	//重叠床位互换 + 多余离宿(善后策略C): 同上取 k, 前 k 人交叉入住, 人多一方多余的人进入无宿舍状态。
+	//返回值: 1=成功  -1=参数非法  -2=某间不存在  -3=两间性别锁不同
+	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);
+
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
@@ -60,6 +71,9 @@ public:
 
 private:
 	dormmanager() = default;//构造函数, 单例模式禁止外部实例化
+	//内部定位: 按楼号、宿舍号返回可写本体指针(供内部搬迁改写用), 不存在返回 nullptr。
+	//对外仍只暴露 const get(); 本 helper 不校验 id 格式(调用方负责)。
+	dorm* find_dorm(int building_id, int dorm_id);
 	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 

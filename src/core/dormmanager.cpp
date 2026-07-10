@@ -365,3 +365,116 @@ int dormmanager::clear_all_dorms_reset_gender()//清空并放开所有房间性�
 		}
 	return cleared;
 }
+
+//内部定位: 返回可写 dorm 指针(不存在返回 nullptr)。指针指向 QMap 内部,
+//只要在使用期间不对 dorms 做 insert/remove, 指针始终有效(QMap 红黑树, 就地改值不失效)。
+dorm* dormmanager::find_dorm(int building_id, int dorm_id)
+{
+	auto b_it = dorms.find(building_id);
+	if (b_it == dorms.end())
+		return nullptr;
+	auto d_it = b_it.value().find(dorm_id);
+	if (d_it == b_it.value().end())
+		return nullptr;
+	return &d_it.value();
+}
+
+//====== 任务1: 整体调换(性别锁相同 + 人数相同) ======
+int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
+		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
+		return -1;//参数非法
+	if (b1 == b2 && d1 == d2)
+		return -1;//指向同一间, 无意义
+
+	dorm* A = find_dorm(b1, d1);
+	dorm* B = find_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;//某间不存在
+
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;//性别锁不同, 无法整体调换
+	if (A->get_current_num() != B->get_current_num())
+		return -4;//性别相同但人数不同(留给顶层选择善后策略)
+
+	//先抓两边住客名单, 再清空两边(保留性别锁), 最后交叉入住。
+	//人数相同 → 对方容量天然够(A本就装着与B等量的人), add_student 不会满员。
+	//性别锁相同 → 保留锁定不影响异侧入住(都是同性别)。
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	A->clear_students();
+	B->clear_students();
+	for (int id : listA)
+		B->add_student(id);//A 的人搬进 B
+	for (int id : listB)
+		A->add_student(id);//B 的人搬进 A
+	return 1;
+}
+
+//====== 任务1 善后B: 重叠床位互换, 多余留原地 ======
+int dormmanager::swap_dorms_overlap(int b1, int d1, int b2, int d2)
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
+		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
+		return -1;
+	if (b1 == b2 && d1 == d2)
+		return -1;
+
+	dorm* A = find_dorm(b1, d1);
+	dorm* B = find_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;//性别锁不同一定换不了
+
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();//重叠人数
+	if (k == 0)
+		return 1;//一方为空, 无可互换
+
+	//先把两边前 k 人搬出(离宿态), 再交叉入住; 人多一方 k 之后的人从未被动, 留原地。
+	for (int i = 0; i < k; ++i)
+	{
+		A->remove_student(listA[i]);
+		B->remove_student(listB[i]);
+	}
+	for (int i = 0; i < k; ++i)
+	{
+		B->add_student(listA[i]);
+		A->add_student(listB[i]);
+	}
+	return 1;
+}
+
+//====== 任务1 善后C: 重叠床位互换, 多余离宿 ======
+int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
+		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
+		return -1;
+	if (b1 == b2 && d1 == d2)
+		return -1;
+
+	dorm* A = find_dorm(b1, d1);
+	dorm* B = find_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;
+
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
+
+	//清空两边(保留性别锁), 只把前 k 对交叉入住; 人多一方 k 之后的人不再入住 → 保持离宿态。
+	A->clear_students();
+	B->clear_students();
+	for (int i = 0; i < k; ++i)
+	{
+		B->add_student(listA[i]);
+		A->add_student(listB[i]);
+	}
+	return 1;
+}
