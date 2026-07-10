@@ -31,6 +31,8 @@ set(PROJECT_SOURCES
         src/core/building.h
         src/core/buildingmanager.cpp
         src/core/buildingmanager.h
+        src/core/school.cpp
+        src/core/school.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
