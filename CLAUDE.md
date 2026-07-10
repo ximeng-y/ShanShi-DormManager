@@ -1,4 +1,4 @@
-# CLAUDE.md
+> 声明：本项目的所有工作都不需要留档
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
