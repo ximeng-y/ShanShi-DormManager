@@ -233,56 +233,6 @@ int dormmanager::remove_student_from_dorm(int building_id, int dorm_id, int stud
 	return target->remove_student(student_id);
 }
 
-int dormmanager::add_student_to_available_dorm(int student_id)//入住最小顺位可用宿舍
-{
-	if (!check::is_valid_student_id(student_id))
-		return -1;//student_id非法
-	const student* s = studentmanager::instance().get(student_id);
-	if (s == nullptr || s->get_gender() == 0)
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
-		return -3;//学生已有宿舍
-	const dorm* available = get_available_dorm(s->get_gender());
-	if (available == nullptr)
-		return -9;//无可用宿舍
-
-	auto building_it = dorms.find(available->get_building_id());
-	if (building_it == dorms.end())
-		return -9;//理论不可达: 候选来自 dorms
-	auto dorm_it = building_it->find(available->get_id());
-	if (dorm_it == building_it->end())
-		return -9;//理论不可达: 候选来自 dorms
-	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
-	if (bed_id > 0)
-		studentmanager::instance().assign_dorm_info(student_id, bed_id, available->get_id(), available->get_building_id(), available->get_floor());
-	return bed_id;
-}
-
-int dormmanager::add_student_to_available_dorm_random(int student_id)//随机入住可用宿舍
-{
-	if (!check::is_valid_student_id(student_id))
-		return -1;//student_id非法
-	const student* s = studentmanager::instance().get(student_id);
-	if (s == nullptr || s->get_gender() == 0)
-		return -6;//学号未注册或学生性别未设置
-	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
-		return -3;//学生已有宿舍
-	const dorm* available = get_available_dorm_random(s->get_gender());
-	if (available == nullptr)
-		return -9;//无可用宿舍
-
-	auto building_it = dorms.find(available->get_building_id());
-	if (building_it == dorms.end())
-		return -9;//理论不可达: 候选来自 dorms
-	auto dorm_it = building_it->find(available->get_id());
-	if (dorm_it == building_it->end())
-		return -9;//理论不可达: 候选来自 dorms
-	int bed_id = dorm_it.value().add_student(student_id, s->get_gender());
-	if (bed_id > 0)
-		studentmanager::instance().assign_dorm_info(student_id, bed_id, available->get_id(), available->get_building_id(), available->get_floor());
-	return bed_id;
-}
-
 //高级信息查询
 int dormmanager::count() const//获取当前宿舍总数
 {
@@ -609,48 +559,3 @@ void dormmanager::reset_and_sync_students(const QVector<int>& original_ids, cons
 	sync_dorm_students(B);
 }
 
-//====== 任务6: 为全校学生随机分配宿舍 ======
-int dormmanager::assign_all_students_random()//补分: 只给无宿舍者分配
-{
-	QVector<int> ids = studentmanager::instance().all_ids();
-	//Fisher-Yates 洗牌学号列表, 使分配顺序随机(避免 QHash 迭代顺序决定优先级)
-	for (int i = ids.size() - 1; i > 0; --i)
-	{
-		int j = QRandomGenerator::global()->bounded(i + 1);
-		int tmp = ids[i];
-		ids[i] = ids[j];
-		ids[j] = tmp;
-	}
-	studentmanager& sm = studentmanager::instance();
-	int failed = 0;
-	for (int id : ids)
-	{
-		if (sm.is_student_have_dorm(id) == 1)
-			continue;//已有宿舍者跳过, 不计入失败
-		if (add_student_to_available_dorm_random(id) <= 0)
-			failed++;//性别为0(-6)或无可用宿舍(-9)等均计为未安置
-	}
-	return failed;
-}
-
-int dormmanager::reassign_all_students_random()//重排: 先全清再全体随机分配
-{
-	clear_all_dorms_reset_gender();//清空所有宿舍并放开性别锁, 让房间性别由新住客先到先得决定
-	QVector<int> ids = studentmanager::instance().all_ids();
-	//Fisher-Yates 洗牌学号列表, 使分配顺序随机
-	for (int i = ids.size() - 1; i > 0; --i)
-	{
-		int j = QRandomGenerator::global()->bounded(i + 1);
-		int tmp = ids[i];
-		ids[i] = ids[j];
-		ids[j] = tmp;
-	}
-	studentmanager& sm = studentmanager::instance();
-	int failed = 0;
-	for (int id : ids)
-	{
-		if (add_student_to_available_dorm_random(id) <= 0)
-			failed++;
-	}
-	return failed;
-}

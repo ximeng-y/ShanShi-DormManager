@@ -23,8 +23,6 @@ public:
     //返回值: 1=成功  0=宿舍不存在  -1=参数非法(building_id/dorm_id/gender 格式)  -2=楼未注册或不接纳该性别  -3=房间住客性别与钦定值冲突
     int set_dorm_gender(int building_id, int dorm_id, int gender);
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大人数, 1=成功/0=宿舍不存在/-1=参数非法/-2=缩容丢人
-	int add_student_to_available_dorm(int student_id);//入住最小顺位可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
-	int add_student_to_available_dorm_random(int student_id);//随机入住可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
 
 	//===== 空床位总数统计(注意与已有 get_empty_count()=空宿舍数区分) =====
 	//无参: 全校空床位总数。带 gender(1/2): 该性别可用空床(纯性别楼对号入座, 混宿楼按房间锁, 未锁定房算入该性别)。
@@ -57,13 +55,6 @@ public:
 	//人数一致则整体互换; 不一致则前 k=较小人数 交叉互换、人多一方多余的人进入无宿舍状态。
 	//返回值: 1=成功  -1=参数非法  -2=某间不存在  -3=有楼未注册或非混宿楼  -4=两间不是一男一女
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);
-
-	//===== 为全校学生随机分配宿舍 =====
-	//assign_all_students_random: 补分, 只给当前无宿舍的学生随机分配, 已入住者不动。
-	//reassign_all_students_random: 重排, 先清空全部宿舍并放开性别锁, 再对全体学生随机分配。
-	//返回值: 未能成功分配的人数(>=0, 0=全部安置; 性别为0或无可用宿舍的学生计入未分配)
-	int assign_all_students_random();
-	int reassign_all_students_random();
 
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。

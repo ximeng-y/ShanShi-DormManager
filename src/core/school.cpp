@@ -3,6 +3,7 @@
 #include "dormmanager.h"
 #include "buildingmanager.h"
 #include "system/check.h"
+#include <QRandomGenerator>
 
 school& school::instance()
 {
@@ -85,6 +86,36 @@ int school::assign_student_to_dorm(int building_id, int dorm_id, int student_id,
 	if (result > 0)
 		sm.assign_dorm_info(student_id, bed_id, dorm_id, building_id, dorm_id / 100);
 	return result;
+}
+
+int school::assign_student_to_available_dorm(int student_id)//入住最小顺位可用宿舍
+{
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学生不存在或性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+		return -3;//学生已有宿舍
+	const dorm* available = dormmanager::instance().get_available_dorm(s->get_gender());
+	if (available == nullptr)
+		return -9;//无可用宿舍
+	return assign_student_to_dorm(available->get_building_id(), available->get_id(), student_id);
+}
+
+int school::assign_student_to_available_dorm_random(int student_id)//随机入住可用宿舍
+{
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
+	const student* s = studentmanager::instance().get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;//学生不存在或性别未设置
+	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+		return -3;//学生已有宿舍
+	const dorm* available = dormmanager::instance().get_available_dorm_random(s->get_gender());
+	if (available == nullptr)
+		return -9;//无可用宿舍
+	return assign_student_to_dorm(available->get_building_id(), available->get_id(), student_id);
 }
 
 int school::remove_student_from_dorm(int student_id)//退宿但保留学籍
@@ -190,4 +221,31 @@ int school::correct_student_gender(int student_id, int gender)//性别纠错
 		return result == 0 ? -8 : -7;
 	}
 	return 1;
+}
+
+int school::assign_all_students_random()//为当前未入住学生随机补分宿舍
+{
+	QVector<int> ids = studentmanager::instance().all_ids();
+	for (int i = ids.size() - 1; i > 0; --i)
+	{
+		int j = QRandomGenerator::global()->bounded(i + 1);
+		int tmp = ids[i];
+		ids[i] = ids[j];
+		ids[j] = tmp;
+	}
+	int failed = 0;
+	for (int student_id : ids)
+	{
+		if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+			continue;//已有宿舍者跳过
+		if (assign_student_to_available_dorm_random(student_id) <= 0)
+			++failed;
+	}
+	return failed;
+}
+
+int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
+{
+	dormmanager::instance().clear_all_dorms_reset_gender();
+	return assign_all_students_random();
 }
