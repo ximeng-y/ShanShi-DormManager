@@ -342,9 +342,277 @@ int school::assign_all_students_random()//为当前未入住学生随机补分�
 
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
-	dormmanager::instance().clear_all_dorms_reset_gender();
+	clear_all_dorms_reset_gender();
 	//再以学生本体表为准统一清零，修复可能存在的“位置字段有值但 beds 无记录”异常状态。
 	for (int student_id : studentmanager::instance().all_ids())
 		studentmanager::instance().clear_dorm_info(student_id);
 	return assign_all_students_random();
+}
+
+int school::clear_all_dorms()//清空全部宿舍并保留房间性别锁
+{
+	int cleared = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d == nullptr)
+			continue;
+		QVector<int> ids = d->get_student_id_list();
+		cleared += ids.size();
+		dormmanager::instance().clear_dorm_students(key.first, key.second, false);
+		for (int student_id : ids)
+			studentmanager::instance().clear_dorm_info(student_id);
+	}
+	return cleared;
+}
+
+int school::clear_all_dorms_reset_gender()//清空全部宿舍并放开房间性别锁
+{
+	int cleared = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d == nullptr)
+			continue;
+		QVector<int> ids = d->get_student_id_list();
+		cleared += ids.size();
+		dormmanager::instance().clear_dorm_students(key.first, key.second, true);
+		for (int student_id : ids)
+			studentmanager::instance().clear_dorm_info(student_id);
+	}
+	return cleared;
+}
+
+bool school::fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids)//按顺序向宿舍回填学生
+{
+	for (int student_id : student_ids)
+	{
+		const student* s = studentmanager::instance().get(student_id);
+		if (s == nullptr || s->get_gender() == 0 ||
+			dormmanager::instance().add_student_to_dorm(building_id, dorm_id, student_id, s->get_gender()) <= 0)
+			return false;
+	}
+	return true;
+}
+
+QVector<int> school::snapshot_dorm(const dorm& d) const//按床位保存宿舍快照
+{
+	QVector<int> beds;
+	for (int bed_id = 1; bed_id <= d.get_max_num(); ++bed_id)
+	{
+		int student_id = d.get_student_id(bed_id);
+		beds.append(student_id > 0 ? student_id : 0);
+	}
+	return beds;
+}
+
+void school::restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender)//按床位恢复宿舍原状态
+{
+	dormmanager::instance().clear_dorm_students(building_id, dorm_id, true);
+	for (int i = 0; i < beds.size(); ++i)
+	{
+		if (beds[i] == 0)
+			continue;
+		const student* s = studentmanager::instance().get(beds[i]);
+		if (s != nullptr)
+			dormmanager::instance().add_student_to_dorm(building_id, dorm_id, beds[i], s->get_gender(), i + 1);
+	}
+	dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+}
+
+void school::reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2)//按交换后状态同步学生位置
+{
+	studentmanager& sm = studentmanager::instance();
+	for (int student_id : original_ids)
+		sm.clear_dorm_info(student_id);
+	for (const auto& key : QVector<QPair<int, int>>{qMakePair(b1, d1), qMakePair(b2, d2)})
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d == nullptr)
+			continue;
+		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+		{
+			int student_id = d->get_student_id(bed_id);
+			if (student_id > 0)
+				sm.assign_dorm_info(student_id, bed_id, d->get_id(), d->get_building_id(), d->get_floor());
+		}
+	}
+}
+
+int school::swap_dorms(int b1, int d1, int b2, int d2)//同锁同人数宿舍整体互换
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
+		return -1;
+	const dorm* A = get_dorm(b1, d1);
+	const dorm* B = get_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;
+	if (A->get_current_num() != B->get_current_num())
+		return -4;
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	QVector<int> bedsA = snapshot_dorm(*A);
+	QVector<int> bedsB = snapshot_dorm(*B);
+	int genderA = A->get_for_gender();
+	int genderB = B->get_for_gender();
+	const building* buildingA = get_building(b1);
+	const building* buildingB = get_building(b2);
+	for (int id : listA)
+	{
+		const student* s = get_student(id);
+		if (s == nullptr || buildingB == nullptr || !buildingB->accepts_gender(s->get_gender()) || !B->accepts_gender(s->get_gender()))
+			return -5;
+	}
+	for (int id : listB)
+	{
+		const student* s = get_student(id);
+		if (s == nullptr || buildingA == nullptr || !buildingA->accepts_gender(s->get_gender()) || !A->accepts_gender(s->get_gender()))
+			return -5;
+	}
+	dormmanager::instance().clear_dorm_students(b1, d1, false);
+	dormmanager::instance().clear_dorm_students(b2, d2, false);
+	if (!fill_dorm(b2, d2, listA) || !fill_dorm(b1, d1, listB))
+	{
+		restore_dorm(b1, d1, bedsA, genderA);
+		restore_dorm(b2, d2, bedsB, genderB);
+		QVector<int> original_ids = listA;
+		original_ids += listB;
+		reset_and_sync_students(original_ids, b1, d1, b2, d2);
+		return -5;
+	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, b1, d1, b2, d2);
+	return 1;
+}
+
+int school::swap_dorms_overlap(int b1, int d1, int b2, int d2)//重叠人数互换，多余住客留原处
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
+		return -1;
+	const dorm* A = get_dorm(b1, d1);
+	const dorm* B = get_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = qMin(listA.size(), listB.size());
+	if (k == 0)
+		return 1;
+	QVector<int> bedsA = snapshot_dorm(*A);
+	QVector<int> bedsB = snapshot_dorm(*B);
+	int genderA = A->get_for_gender();
+	int genderB = B->get_for_gender();
+	for (int i = 0; i < k; ++i)
+	{
+		const student* sA = get_student(listA[i]);
+		const student* sB = get_student(listB[i]);
+		const building* buildingA = get_building(b1);
+		const building* buildingB = get_building(b2);
+		if (sA == nullptr || sB == nullptr || buildingA == nullptr || buildingB == nullptr ||
+			!buildingB->accepts_gender(sA->get_gender()) || !B->accepts_gender(sA->get_gender()) ||
+			!buildingA->accepts_gender(sB->get_gender()) || !A->accepts_gender(sB->get_gender()))
+			return -5;
+	}
+	for (int i = 0; i < k; ++i)
+	{
+		dormmanager::instance().remove_student_from_dorm(b1, d1, listA[i]);
+		dormmanager::instance().remove_student_from_dorm(b2, d2, listB[i]);
+	}
+	bool success = true;
+	for (int i = 0; i < k && success; ++i)
+	{
+		const student* sA = get_student(listA[i]);
+		const student* sB = get_student(listB[i]);
+		success = dormmanager::instance().add_student_to_dorm(b2, d2, listA[i], sA->get_gender()) > 0 &&
+			dormmanager::instance().add_student_to_dorm(b1, d1, listB[i], sB->get_gender()) > 0;
+	}
+	if (!success)
+	{
+		restore_dorm(b1, d1, bedsA, genderA);
+		restore_dorm(b2, d2, bedsB, genderB);
+	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, b1, d1, b2, d2);
+	return success ? 1 : -5;
+}
+
+int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人数互换，多余住客离宿
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
+		return -1;
+	const dorm* A = get_dorm(b1, d1);
+	const dorm* B = get_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	if (A->get_for_gender() != B->get_for_gender())
+		return -3;
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = qMin(listA.size(), listB.size());
+	if (k == 0)
+		return 1;
+	QVector<int> bedsA = snapshot_dorm(*A);
+	QVector<int> bedsB = snapshot_dorm(*B);
+	int genderA = A->get_for_gender();
+	int genderB = B->get_for_gender();
+	dormmanager::instance().clear_dorm_students(b1, d1, false);
+	dormmanager::instance().clear_dorm_students(b2, d2, false);
+	QVector<int> moveA = listA.mid(0, k);
+	QVector<int> moveB = listB.mid(0, k);
+	bool success = fill_dorm(b2, d2, moveA) && fill_dorm(b1, d1, moveB);
+	if (!success)
+	{
+		restore_dorm(b1, d1, bedsA, genderA);
+		restore_dorm(b2, d2, bedsB, genderB);
+	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, b1, d1, b2, d2);
+	return success ? 1 : -5;
+}
+
+int school::swap_gender_dorms(int b1, int d1, int b2, int d2)//混宿楼男舍与女舍互换
+{
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
+		return -1;
+	const dorm* A = get_dorm(b1, d1);
+	const dorm* B = get_dorm(b2, d2);
+	if (A == nullptr || B == nullptr)
+		return -2;
+	const building* buildingA = get_building(b1);
+	const building* buildingB = get_building(b2);
+	if (buildingA == nullptr || buildingB == nullptr || buildingA->get_for_gender() != 3 || buildingB->get_for_gender() != 3)
+		return -3;
+	int genderA = A->get_for_gender();
+	int genderB = B->get_for_gender();
+	if (!((genderA == 1 && genderB == 2) || (genderA == 2 && genderB == 1)))
+		return -4;
+	QVector<int> listA = A->get_student_id_list();
+	QVector<int> listB = B->get_student_id_list();
+	int k = qMin(listA.size(), listB.size());
+	if (k == 0)
+		return 1;
+	QVector<int> bedsA = snapshot_dorm(*A);
+	QVector<int> bedsB = snapshot_dorm(*B);
+	for (int i = 0; i < k; ++i)
+		if (get_student(listA[i]) == nullptr || get_student(listB[i]) == nullptr)
+			return -5;
+	dormmanager::instance().clear_dorm_students(b1, d1, true);
+	dormmanager::instance().clear_dorm_students(b2, d2, true);
+	bool success = fill_dorm(b2, d2, listA.mid(0, k)) && fill_dorm(b1, d1, listB.mid(0, k));
+	if (!success)
+	{
+		restore_dorm(b1, d1, bedsA, genderA);
+		restore_dorm(b2, d2, bedsB, genderB);
+	}
+	QVector<int> original_ids = listA;
+	original_ids += listB;
+	reset_and_sync_students(original_ids, b1, d1, b2, d2);
+	return success ? 1 : -5;
 }

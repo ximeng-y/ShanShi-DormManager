@@ -1,5 +1,4 @@
 #include "dormmanager.h"
-#include "buildingmanager.h"
 #include "studentmanager.h"
 #include "system/check.h"
 
@@ -208,35 +207,6 @@ QVector<QPair<int, int>> dormmanager::all_dorm_keys() const//按楼号、宿舍�
 	return keys;
 }
 
-//====== 清空所有宿舍 ======
-int dormmanager::clear_all_dorms_impl(bool reset_gender)
-{
-	int cleared = 0;
-	for (auto b_it = dorms.begin(); b_it != dorms.end(); ++b_it)
-		for (auto d_it = b_it.value().begin(); d_it != b_it.value().end(); ++d_it)
-		{
-			QVector<int> student_ids = d_it.value().get_student_id_list();
-			cleared += student_ids.size();//先累加本间人数
-			if (reset_gender)
-				d_it.value().clear_students_reset_gender();
-			else
-				d_it.value().clear_students();
-			for (int student_id : student_ids)
-				studentmanager::instance().clear_dorm_info(student_id);//同步清零学生位置字段
-		}
-	return cleared;
-}
-
-int dormmanager::clear_all_dorms()//保留各房间性别锁
-{
-	return clear_all_dorms_impl(false);
-}
-
-int dormmanager::clear_all_dorms_reset_gender()//清空并放开所有房间性别锁
-{
-	return clear_all_dorms_impl(true);
-}
-
 //内部定位: 返回可写 dorm 指针(不存在返回 nullptr)。指针指向 QMap 内部,
 //只要在使用期间不对 dorms 做 insert/remove, 指针始终有效(QMap 红黑树, 就地改值不失效)。
 dorm* dormmanager::find_dorm(int building_id, int dorm_id)
@@ -250,194 +220,15 @@ dorm* dormmanager::find_dorm(int building_id, int dorm_id)
 	return &d_it.value();
 }
 
-//交换前公共校验: 参数合法性、非同一间、两间均存在、性别锁相同。
-//通过后 A/B 指向两间可写本体; 失败返回负值错误码(调用方直接 return 即可)。
-int dormmanager::validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B)
+int dormmanager::clear_dorm_students(int building_id, int dorm_id, bool reset_gender)//清空指定宿舍住客
 {
-	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
-		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
-		return -1;//参数非法
-	if (b1 == b2 && d1 == d2)
-		return -1;//指向同一间, 无意义
-	A = find_dorm(b1, d1);
-	B = find_dorm(b2, d2);
-	if (A == nullptr || B == nullptr)
-		return -2;//某间不存在
-	if (A->get_for_gender() != B->get_for_gender())
-		return -3;//性别锁不同
-	return 0;
-}
-
-//====== 任务1: 整体调换(性别锁相同 + 人数相同) ======
-int dormmanager::swap_dorms(int b1, int d1, int b2, int d2)
-{
-	dorm* A;
-	dorm* B;
-	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
-	if (err != 0)
-		return err;
-
-	if (A->get_current_num() != B->get_current_num())
-		return -4;//性别相同但人数不同(留给顶层选择善后策略)
-
-	//先抓两边住客名单, 再清空两边(保留性别锁), 最后交叉入住。
-	//人数相同 → 对方容量天然够(A本就装着与B等量的人), add_student 不会满员。
-	//性别锁相同 → 保留锁定不影响异侧入住(都是同性别)。
-	QVector<int> listA = A->get_student_id_list();
-	QVector<int> listB = B->get_student_id_list();
-	A->clear_students();
-	B->clear_students();
-	for (int id : listA)
-	{
-		const student* s = studentmanager::instance().get(id);
-		if (s != nullptr)
-			B->add_student(id, s->get_gender());//A 的人搬进 B
-	}
-	for (int id : listB)
-	{
-		const student* s = studentmanager::instance().get(id);
-		if (s != nullptr)
-			A->add_student(id, s->get_gender());//B 的人搬进 A
-	}
-	QVector<int> original_ids = listA;
-	original_ids += listB;
-	reset_and_sync_students(original_ids, *A, *B);
-	return 1;
-}
-
-//====== 任务1 善后B: 重叠床位互换, 多余留原地 ======
-int dormmanager::swap_dorms_overlap(int b1, int d1, int b2, int d2)
-{
-	dorm* A;
-	dorm* B;
-	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
-	if (err != 0)
-		return err;
-
-	QVector<int> listA = A->get_student_id_list();
-	QVector<int> listB = B->get_student_id_list();
-	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();//重叠人数
-	if (k == 0)
-		return 1;//一方为空, 无可互换
-
-	//先把两边前 k 人搬出(离宿态), 再交叉入住; 人多一方 k 之后的人从未被动, 留原地。
-	for (int i = 0; i < k; ++i)
-	{
-		A->remove_student(listA[i]);
-		B->remove_student(listB[i]);
-	}
-	for (int i = 0; i < k; ++i)
-	{
-		const student* sA = studentmanager::instance().get(listA[i]);
-		const student* sB = studentmanager::instance().get(listB[i]);
-		if (sA != nullptr)
-			B->add_student(listA[i], sA->get_gender());
-		if (sB != nullptr)
-			A->add_student(listB[i], sB->get_gender());
-	}
-	QVector<int> original_ids = listA;
-	original_ids += listB;
-	reset_and_sync_students(original_ids, *A, *B);
-	return 1;
-}
-
-//====== 任务1 善后C: 重叠床位互换, 多余离宿 ======
-int dormmanager::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)
-{
-	dorm* A;
-	dorm* B;
-	int err = validate_swap_pair(b1, d1, b2, d2, A, B);
-	if (err != 0)
-		return err;
-
-	QVector<int> listA = A->get_student_id_list();
-	QVector<int> listB = B->get_student_id_list();
-	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
-	if (k == 0)
-		return 1;//一方为空, 无可互换(避免清空后无人回填)
-
-	//清空两边(保留性别锁), 只把前 k 对交叉入住; 人多一方 k 之后的人不再入住 → 保持离宿态。
-	A->clear_students();
-	B->clear_students();
-	for (int i = 0; i < k; ++i)
-	{
-		const student* sA = studentmanager::instance().get(listA[i]);
-		const student* sB = studentmanager::instance().get(listB[i]);
-		if (sA != nullptr)
-			B->add_student(listA[i], sA->get_gender());
-		if (sB != nullptr)
-			A->add_student(listB[i], sB->get_gender());
-	}
-	QVector<int> original_ids = listA;
-	original_ids += listB;
-	reset_and_sync_students(original_ids, *A, *B);
-	return 1;
-}
-
-//====== 任务4: 混合楼间男舍↔女舍互换 ======
-int dormmanager::swap_gender_dorms(int b1, int d1, int b2, int d2)
-{
-	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) ||
-		!check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2))
-		return -1;
-	if (b1 == b2 && d1 == d2)
-		return -1;
-
-	dorm* A = find_dorm(b1, d1);
-	dorm* B = find_dorm(b2, d2);
-	if (A == nullptr || B == nullptr)
-		return -2;
-
-	//前提1: 两间所在楼都必须是混宿楼(for_gender==3)
-	const building* bA = buildingmanager::instance().get(b1);
-	const building* bB = buildingmanager::instance().get(b2);
-	if (bA == nullptr || bB == nullptr || bA->get_for_gender() != 3 || bB->get_for_gender() != 3)
-		return -3;//有楼未注册或非混宿楼
-
-	//前提2: 两间恰为一男舍一女舍
-	int gA = A->get_for_gender();
-	int gB = B->get_for_gender();
-	if (!((gA == 1 && gB == 2) || (gA == 2 && gB == 1)))
-		return -4;//不是一男一女, 无从做男女互换
-
-	//清空并放开性别锁(否则异性无法入住), 前 k 对交叉入住, 人多一方多余的人离宿。
-	//add_student 先到先得会把 A 重新锁成异性、B 锁成异性。
-	QVector<int> listA = A->get_student_id_list();
-	QVector<int> listB = B->get_student_id_list();
-	int k = (listA.size() < listB.size()) ? listA.size() : listB.size();
-	if (k == 0)
-		return 1;//一方为空, 无可互换(避免清空后无人回填)
-	A->clear_students_reset_gender();
-	B->clear_students_reset_gender();
-	for (int i = 0; i < k; ++i)
-	{
-		const student* sA = studentmanager::instance().get(listA[i]);
-		const student* sB = studentmanager::instance().get(listB[i]);
-		if (sA != nullptr)
-			B->add_student(listA[i], sA->get_gender());//原A住客搬进B
-		if (sB != nullptr)
-			A->add_student(listB[i], sB->get_gender());//原B住客搬进A
-	}
-	QVector<int> original_ids = listA;
-	original_ids += listB;
-	reset_and_sync_students(original_ids, *A, *B);
-	return 1;
-}
-
-void dormmanager::sync_dorm_students(const dorm& d)//按当前床位表同步学生位置字段
-{
-	for (int bed_id = 1; bed_id <= d.get_max_num(); ++bed_id)
-	{
-		int student_id = d.get_student_id(bed_id);
-		if (student_id > 0)
-			studentmanager::instance().assign_dorm_info(student_id, bed_id, d.get_id(), d.get_building_id(), d.get_floor());
-	}
-}
-
-void dormmanager::reset_and_sync_students(const QVector<int>& original_ids, const dorm& A, const dorm& B)//清理原位置后按两间宿舍现状重新同步
-{
-	for (int student_id : original_ids)
-		studentmanager::instance().clear_dorm_info(student_id);
-	sync_dorm_students(A);
-	sync_dorm_students(B);
+	dorm* target = find_dorm(building_id, dorm_id);
+	if (target == nullptr)
+		return -8;
+	int cleared = target->get_current_num();
+	if (reset_gender)
+		target->clear_students_reset_gender();
+	else
+		target->clear_students();
+	return cleared;
 }

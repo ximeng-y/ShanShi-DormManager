@@ -1,6 +1,8 @@
 #ifndef SCHOOL_H
 #define SCHOOL_H
 
+#include <QVector>
+
 class student;
 class dorm;
 class building;
@@ -50,8 +52,20 @@ public:
 	int assign_all_students_random();//补分，只处理当前未入住学生
 	int reassign_all_students_random();//重排，先清空全部宿舍并放开性别锁
 
+	//宿舍集合协调
+	int clear_all_dorms();//清空全部宿舍并保留房间性别锁，返回被清退学生数
+	int clear_all_dorms_reset_gender();//清空全部宿舍并放开房间性别锁，返回被清退学生数
+	int swap_dorms(int b1, int d1, int b2, int d2);//同锁同人数宿舍整体互换
+	int swap_dorms_overlap(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客留原处
+	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客离宿
+	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿
+
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
+	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
+	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
+	void restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
+	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置
 };
 
 #endif // SCHOOL_H

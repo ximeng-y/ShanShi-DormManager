@@ -25,29 +25,6 @@ public:
 	int get_empty_bed_count() const;
 	int get_empty_bed_count_of_building(int building_id) const;
 
-	//===== 清空所有宿舍(同步重置学生位置字段) =====
-	//clear_all_dorms 保留各房间性别锁; clear_all_dorms_reset_gender 额外放开所有房间性别锁。
-	//返回值: 被清退的学生总数(>=0)
-	int clear_all_dorms();
-	int clear_all_dorms_reset_gender();
-
-	//===== 两间宿舍整体调换及其两种善后策略 =====
-	//整体调换: 要求两间性别锁(for_gender)相同且实际人数相同, 满足则整体互换住客(自动分床)。
-	//返回值: 1=成功  -1=参数非法(id格式错或两参指向同一间)  -2=某间不存在  -3=两间性别锁不同(无法调换)  -4=性别相同但人数不同(顶层可据此让用户在下面两个善后策略中选择)
-	int swap_dorms(int b1, int d1, int b2, int d2);
-	//重叠床位互换(善后策略B): 性别锁须相同; 取 k=两间人数较小值, 各交换前 k 人, 人多一方多余的人留在原宿舍原位。
-	//返回值: 1=成功(含一方为空的无操作)  -1=参数非法  -2=某间不存在  -3=两间性别锁不同
-	int swap_dorms_overlap(int b1, int d1, int b2, int d2);
-	//重叠床位互换 + 多余离宿(善后策略C): 同上取 k, 前 k 人交叉入住, 人多一方多余的人进入无宿舍状态。
-	//返回值: 1=成功  -1=参数非法  -2=某间不存在  -3=两间性别锁不同
-	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);
-
-	//===== 混合楼间一对男舍↔女舍整体互换 =====
-	//前提: 两间所在楼都必须是混宿楼(building.for_gender==3), 且两间恰为一男舍一女舍。
-	//人数一致则整体互换; 不一致则前 k=较小人数 交叉互换、人多一方多余的人进入无宿舍状态。
-	//返回值: 1=成功  -1=参数非法  -2=某间不存在  -3=有楼未注册或非混宿楼  -4=两间不是一男一女
-	int swap_gender_dorms(int b1, int d1, int b2, int d2);
-
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。
@@ -70,19 +47,11 @@ private:
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender);//向指定宿舍写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender, int bed_id);//向指定床位写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
 	int remove_student_from_dorm(int building_id, int dorm_id, int student_id);//从指定宿舍移除学生学号, 不同步学生本体, -8=宿舍不存在
+	int clear_dorm_students(int building_id, int dorm_id, bool reset_gender);//清空指定宿舍住客，可选放开性别锁，返回清空人数/-8不存在
 	friend class school;
 	//内部定位: 按楼号、宿舍号返回可写本体指针(供内部搬迁改写用), 不存在返回 nullptr。
 	//对外仍只暴露 const get(); 本 helper 不校验 id 格式(调用方负责)。
 	dorm* find_dorm(int building_id, int dorm_id);
-	//交换前公共校验: 参数合法性、非同一间、两间均存在、性别锁相同。
-	//通过后 A/B 指向两间可写本体; 失败返回负值错误码。
-	//返回值: 0=成功  -1=参数非法或指向同一间  -2=某间不存在  -3=性别锁不同
-	int validate_swap_pair(int b1, int d1, int b2, int d2, dorm*& A, dorm*& B);
-	//清空所有宿舍内部实现, reset_gender 控制是否同时放开房间性别锁
-	int clear_all_dorms_impl(bool reset_gender);
-	//临时同步 helper：dorm 已不再依赖 studentmanager，在 school 接管协调前由本类维持学生位置字段一致性。
-	void sync_dorm_students(const dorm& d);
-	void reset_and_sync_students(const QVector<int>& original_ids, const dorm& A, const dorm& B);
 	QMap<int, QMap<int, dorm>> dorms;//宿舍本体有序表, 外层key为宿舍楼号, value为该楼的宿舍本体有序表, 内层key为宿舍号, value为宿舍本体。QMap按key升序, 遍历天然按楼号、宿舍号顺序
 };
 
