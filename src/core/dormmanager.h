@@ -28,6 +28,15 @@ public:
 	int add_student_to_available_dorm(int student_id);//入住最小顺位可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
 	int add_student_to_available_dorm_random(int student_id);//随机入住可用宿舍, -9=无可用宿舍, 其它透传 dorm::add_student
 
+	//===== 空床位总数统计(注意与已有 get_empty_count()=空宿舍数区分) =====
+	//无参: 全校空床位总数。带 gender(1/2): 该性别可用空床(纯性别楼对号入座, 混宿楼按房间锁, 未锁定房算入该性别)。
+	//带 building_id: 限定某楼。楼未注册于 buildingmanager 时该楼跳过(与 get_available_dorm 一致)。
+	//返回值: >=0=床位数  -1=参数非法(gender不为1/2, 或 building_id 格式错)
+	int get_empty_bed_count() const;
+	int get_empty_bed_count(int gender) const;
+	int get_empty_bed_count_of_building(int building_id) const;
+	int get_empty_bed_count_of_building(int building_id, int gender) const;
+
     //按楼号、宿舍号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QMap 内部。QMap 为红黑树, 插入不会使已有项引用失效; 但删除被指向的项后指针失效。
 	//请就地使用, 不要长期持有; 需长期引用请存宿舍楼号, 用时再 get。

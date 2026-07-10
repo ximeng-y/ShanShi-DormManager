@@ -276,3 +276,67 @@ int dormmanager::get_occupied_count() const//获取当前已占用宿舍总数
 {
 	return count() - get_empty_count();//已占用宿舍数=总宿舍数-空宿舍数
 }
+
+//====== 空床位总数统计 ======
+int dormmanager::get_empty_bed_count() const//全校空床位总数
+{
+	int total = 0;
+	for (auto b_it = dorms.constBegin(); b_it != dorms.constEnd(); ++b_it)
+		for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
+			total += d_it.value().get_empty_count();
+	return total;
+}
+
+int dormmanager::get_empty_bed_count(int gender) const//指定性别可用空床
+{
+	if (gender != 1 && gender != 2)
+		return -1;//性别只接受 1/2
+
+	int total = 0;
+	for (auto b_it = dorms.constBegin(); b_it != dorms.constEnd(); ++b_it)
+	{
+		const building* b = buildingmanager::instance().get(b_it.key());
+		if (b == nullptr || !b->accepts_gender(gender))
+			continue;//楼未注册或整栋不接纳该性别(纯异性楼), 跳过
+		for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
+		{
+			const dorm& d = d_it.value();
+			if (d.accepts_gender(gender))//房间接纳该性别(未锁定房 accepts 任意, 符合"算入"约定)
+				total += d.get_empty_count();
+		}
+	}
+	return total;
+}
+
+int dormmanager::get_empty_bed_count_of_building(int building_id) const//指定楼空床位总数
+{
+	if (!check::is_valid_building_id(building_id))
+		return -1;//参数非法
+	auto b_it = dorms.constFind(building_id);
+	if (b_it == dorms.constEnd())
+		return 0;//该楼在 dormmanager 中无宿舍, 空床为0
+	int total = 0;
+	for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
+		total += d_it.value().get_empty_count();
+	return total;
+}
+
+int dormmanager::get_empty_bed_count_of_building(int building_id, int gender) const//指定楼+性别
+{
+	if (!check::is_valid_building_id(building_id) || (gender != 1 && gender != 2))
+		return -1;//参数非法
+	const building* b = buildingmanager::instance().get(building_id);
+	if (b == nullptr || !b->accepts_gender(gender))
+		return 0;//楼未注册或不接纳该性别, 该性别空床为0
+	auto b_it = dorms.constFind(building_id);
+	if (b_it == dorms.constEnd())
+		return 0;//该楼无宿舍
+	int total = 0;
+	for (auto d_it = b_it.value().constBegin(); d_it != b_it.value().constEnd(); ++d_it)
+	{
+		const dorm& d = d_it.value();
+		if (d.accepts_gender(gender))
+			total += d.get_empty_count();
+	}
+	return total;
+}
