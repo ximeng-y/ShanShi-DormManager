@@ -247,5 +247,8 @@ int school::assign_all_students_random()//为当前未入住学生随机补分�
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
 	dormmanager::instance().clear_all_dorms_reset_gender();
+	//再以学生本体表为准统一清零，修复可能存在的“位置字段有值但 beds 无记录”异常状态。
+	for (int student_id : studentmanager::instance().all_ids())
+		studentmanager::instance().clear_dorm_info(student_id);
 	return assign_all_students_random();
 }

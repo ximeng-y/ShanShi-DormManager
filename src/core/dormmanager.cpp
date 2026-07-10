@@ -558,4 +558,3 @@ void dormmanager::reset_and_sync_students(const QVector<int>& original_ids, cons
 	sync_dorm_students(A);
 	sync_dorm_students(B);
 }
-
