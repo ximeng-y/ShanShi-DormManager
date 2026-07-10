@@ -109,6 +109,8 @@ int school::get_empty_bed_count_of_building(int building_id, int gender) const//
 
 bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约束
 {
+	if (!dorm_to_add.is_empty())
+		return false;//禁止携带预填住客入库，所有入住必须经过school闭环
 	const building* b = buildingmanager::instance().get(dorm_to_add.get_building_id());
 	if (b == nullptr || !check::is_valid_dorm_floor(dorm_to_add.get_id(), b->get_max_floor()))
 		return false;
@@ -122,7 +124,17 @@ bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清
 	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
 	if (d == nullptr)
 		return false;
-	QVector<int> student_ids = d->get_student_id_list();
+	QVector<int> student_ids;
+	for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+	{
+		int student_id = d->get_student_id(bed_id);
+		if (student_id < 1)
+			continue;
+		const student* s = studentmanager::instance().get(student_id);
+		if (s == nullptr || s->get_building_id() != building_id || s->get_dorm_id() != dorm_id || s->get_bed_id() != bed_id || s->get_floor() != d->get_floor())
+			return false;//床位与学生位置记录不一致，禁止删除
+		student_ids.append(student_id);
+	}
 	if (!dormmanager::instance().remove_dorm(building_id, dorm_id))
 		return false;
 	for (int student_id : student_ids)
