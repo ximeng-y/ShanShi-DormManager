@@ -120,8 +120,6 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 	auto dorm_it = building_it->find(dorm_id);
 	if (dorm_it == building_it->end())
 		return -8;//宿舍不存在
-	if (!check::is_valid_bed_id(bed_id, dorm_it.value().get_max_num()))
-		return -1;//bed_id非法，保持原接口参数校验优先级
 	return dorm_it.value().add_student(student_id, gender);
 }
 
@@ -135,6 +133,8 @@ int dormmanager::add_student_to_dorm(int building_id, int dorm_id, int student_i
 	auto dorm_it = building_it->find(dorm_id);
 	if (dorm_it == building_it->end())
 		return -8;//宿舍不存在
+	if (!check::is_valid_bed_id(bed_id, dorm_it.value().get_max_num()))
+		return -1;//bed_id非法
 	return dorm_it.value().add_student(student_id, gender, bed_id);
 }
 

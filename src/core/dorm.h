@@ -64,8 +64,8 @@ public:
 	void clear_students_reset_gender();//清空住客并重置房间性别为未锁定
 
 private:
-	//set_for_gender 收 private: 钦定房间性别须校验所在 building 的 for_gender(楼-房一致性 G2),
-	//而 dorm 不依赖 buildingmanager, 故由 dormmanager::set_dorm_gender 经 friend 后门调用, 在 dormmanager 层完成楼级校验。
+	//set_for_gender 收 private: 钦定房间性别须由 school 校验所在 building 的 for_gender(楼-房一致性 G2)
+	//及住客性别，再经 dormmanager 的局部写接口调用本方法。
 	//公开会允许在男生楼里钦定女舍, 产出 get_available_dorm 永远选不中的「死间」。
 	//这里只校验 gender 格式；楼级与住客性别一致性由更高层在调用前完成。
 	bool set_for_gender(int gender);//钦定房间性别

@@ -20,9 +20,8 @@ public:
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大人数, 1=成功/0=宿舍不存在/-1=参数非法/-2=缩容丢人
 
 	//===== 空床位总数统计(注意与已有 get_empty_count()=空宿舍数区分) =====
-	//无参: 全校空床位总数。带 gender(1/2): 该性别可用空床(纯性别楼对号入座, 混宿楼按房间锁, 未锁定房算入该性别)。
-	//带 building_id: 限定某楼，只统计 dormmanager 当前持有的宿舍。
-	//返回值: >=0=床位数  -1=参数非法(gender不为1/2, 或 building_id 格式错)
+	//无参: 全校空床位总数。带 building_id: 限定某楼，只统计 dormmanager 当前持有的宿舍。
+	//返回值: >=0=床位数  -1=building_id 格式非法
 	int get_empty_bed_count() const;
 	int get_empty_bed_count_of_building(int building_id) const;
 
