@@ -41,6 +41,102 @@ int school::get_building_count() const//获取全校宿舍楼总数
 	return buildingmanager::instance().count();
 }
 
+const dorm* school::get_available_dorm(int gender) const//获取指定性别最小顺位可用宿舍
+{
+	if (gender != 1 && gender != 2)
+		return nullptr;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const building* b = buildingmanager::instance().get(key.first);
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender) && !d->is_full())
+			return d;
+	}
+	return nullptr;
+}
+
+const dorm* school::get_available_dorm_random(int gender) const//随机获取指定性别可用宿舍
+{
+	if (gender != 1 && gender != 2)
+		return nullptr;
+	QVector<QPair<int, int>> candidates;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const building* b = buildingmanager::instance().get(key.first);
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender) && !d->is_full())
+			candidates.append(key);
+	}
+	if (candidates.isEmpty())
+		return nullptr;
+	const auto& key = candidates[QRandomGenerator::global()->bounded(candidates.size())];
+	return dormmanager::instance().get(key.first, key.second);
+}
+
+int school::get_empty_bed_count(int gender) const//获取指定性别全校可用空床数
+{
+	if (gender != 1 && gender != 2)
+		return -1;
+	int total = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const building* b = buildingmanager::instance().get(key.first);
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender))
+			total += d->get_empty_count();
+	}
+	return total;
+}
+
+int school::get_empty_bed_count_of_building(int building_id, int gender) const//获取指定楼指定性别可用空床数
+{
+	if (!check::is_valid_building_id(building_id) || (gender != 1 && gender != 2))
+		return -1;
+	const building* b = buildingmanager::instance().get(building_id);
+	if (b == nullptr || !b->accepts_gender(gender))
+		return 0;
+	int total = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		if (key.first != building_id)
+			continue;
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d != nullptr && d->accepts_gender(gender))
+			total += d->get_empty_count();
+	}
+	return total;
+}
+
+bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约束
+{
+	const building* b = buildingmanager::instance().get(dorm_to_add.get_building_id());
+	if (b == nullptr || !check::is_valid_dorm_floor(dorm_to_add.get_id(), b->get_max_floor()))
+		return false;
+	return dormmanager::instance().add_dorm(dorm_to_add);
+}
+
+int school::set_dorm_gender(int building_id, int dorm_id, int gender)//设置房间性别锁
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_gender(gender))
+		return -1;
+	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
+	if (d == nullptr)
+		return 0;
+	if (gender != 0)
+	{
+		const building* b = buildingmanager::instance().get(building_id);
+		if (b == nullptr || !b->accepts_gender(gender))
+			return -2;
+		for (int student_id : d->get_student_id_list())
+		{
+			const student* s = studentmanager::instance().get(student_id);
+			if (s == nullptr || s->get_gender() != gender)
+				return -3;
+		}
+	}
+	return dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+}
+
 int school::assign_student_to_dorm(int building_id, int dorm_id, int student_id)//入住指定宿舍并自动分配最小空床位
 {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
@@ -97,7 +193,7 @@ int school::assign_student_to_available_dorm(int student_id)//入住最小顺位
 		return -6;//学生不存在或性别未设置
 	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
 		return -3;//学生已有宿舍
-	const dorm* available = dormmanager::instance().get_available_dorm(s->get_gender());
+	const dorm* available = get_available_dorm(s->get_gender());
 	if (available == nullptr)
 		return -9;//无可用宿舍
 	return assign_student_to_dorm(available->get_building_id(), available->get_id(), student_id);
@@ -112,7 +208,7 @@ int school::assign_student_to_available_dorm_random(int student_id)//随机入�
 		return -6;//学生不存在或性别未设置
 	if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
 		return -3;//学生已有宿舍
-	const dorm* available = dormmanager::instance().get_available_dorm_random(s->get_gender());
+	const dorm* available = get_available_dorm_random(s->get_gender());
 	if (available == nullptr)
 		return -9;//无可用宿舍
 	return assign_student_to_dorm(available->get_building_id(), available->get_id(), student_id);
@@ -200,7 +296,7 @@ int school::correct_student_gender(int student_id, int gender)//性别纠错
 		int old_gender = s->get_gender();
 		if (sm.set_student_gender(student_id, gender) != 1)
 			return -1;
-		int result = dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+		int result = set_dorm_gender(building_id, dorm_id, gender);
 		if (result != 1)
 		{
 			sm.set_student_gender(student_id, old_gender);
@@ -214,7 +310,7 @@ int school::correct_student_gender(int student_id, int gender)//性别纠错
 	int old_gender = s->get_gender();
 	if (sm.set_student_gender(student_id, gender) != 1)
 		return -1;
-	int result = dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+	int result = set_dorm_gender(building_id, dorm_id, gender);
 	if (result != 1)
 	{
 		sm.set_student_gender(student_id, old_gender);//房间锁修改失败，恢复学生原性别
