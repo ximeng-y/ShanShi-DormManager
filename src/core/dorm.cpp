@@ -277,21 +277,19 @@ int dorm::shuffle_beds()
 	if (current == 0)
 		return 0;//空房无需打乱
 
-	//Fisher-Yates: 从末尾往前, 每步与 [0, i] 内随机位置交换
+	//Fisher-Yates: 从末尾往前, 每步与 [0, i] 内随机位置交换。
+	//位置 i 在交换后不再被触碰, 可立即同步 bed_id, 省去第二遍遍历。
 	for (int i = beds.size() - 1; i > 0; --i)
 	{
 		int j = QRandomGenerator::global()->bounded(i + 1);//[0, i] 等概率
 		int tmp = beds[i];
 		beds[i] = beds[j];
 		beds[j] = tmp;
-	}
-
-	//洗牌后, 对每个非空床位把对应学生本体的 bed_id 同步为新床位号
-	//dorm_id/building_id 不变、floor 派生自 id/100 亦不变, 沿用 this 字段
-	for (int i = 0; i < beds.size(); ++i)
-	{
 		if (beds[i] != 0)
 			studentmanager::instance().assign_dorm_info(beds[i], i + 1, this->id, this->building_id, get_floor());
 	}
+	//beds[0] 从未作为 i 被处理, 单独同步
+	if (beds[0] != 0)
+		studentmanager::instance().assign_dorm_info(beds[0], 1, this->id, this->building_id, get_floor());
 	return current;
 }
