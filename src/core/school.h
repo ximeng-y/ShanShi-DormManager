@@ -39,7 +39,7 @@ public:
 	QVector<int> get_assigned_student_ids() const;//按学号升序列出已入住学生
 	QVector<int> get_unassigned_student_ids() const;//按学号升序列出未入住学生
 	QVector<QPair<int, int>> get_dorm_keys_of_building(int building_id) const;//列出指定楼全部宿舍，参数非法或楼不存在返回空表
-	QVector<int> get_student_ids_of_dorm(int building_id, int dorm_id) const;//按床位顺序列出指定宿舍住客，宿舍不存在返回空表
+	QVector<int> get_student_ids_of_dorm(int building_id, int dorm_id) const;//按床位顺序列出指定宿舍住客，参数非法/宿舍不存在/无住客均返回空表
 	QVector<QPair<int, int>> get_available_dorm_keys(int gender) const;//列出指定性别全部可用宿舍，参数非法返回空表
 
 	//学生基础资料管理
@@ -54,13 +54,13 @@ public:
 	int get_empty_bed_count_of_building(int building_id, int gender) const;//获取指定楼指定性别可用空床数, -1=参数非法
 	//返回值: 1=成功  0=楼号已存在  -1=参数非法
 	int add_building(int building_id, int gender, int max_floor);//添加宿舍楼
-	bool add_dorm(const dorm& dorm_to_add);//添加宿舍并校验所在楼存在及派生楼层不越界
+	bool add_dorm(const dorm& dorm_to_add);//添加宿舍，false=字段非法/楼不存在/楼层或性别冲突/携带住客/复合键重复
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=缩容会丢弃已有住客
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大床位数
-	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客
+	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客，false=参数非法/宿舍不存在/住宿记录不一致/删除失败
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=楼不存在或不接纳该性别  -3=住客性别冲突
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁
-	bool remove_building(int building_id);//删除宿舍楼并级联删除楼内宿舍、清退住客
+	bool remove_building(int building_id);//删除宿舍楼并级联清退，false=参数非法/楼不存在/楼内记录不一致/级联删除失败
 	int set_building_gender(int building_id, int gender);//修改楼性别, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍或住客冲突
 	int set_building_max_floor(int building_id, int max_floor);//修改最大楼层, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍楼层越界
 
