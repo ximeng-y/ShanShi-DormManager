@@ -178,6 +178,22 @@ QToolTip {
 	color: #243447;
 }
 
+QFrame#successToast {
+	border: 1px solid #8db49d;
+	border-radius: 8px;
+	background: #eef8f1;
+}
+
+QLabel#successToastIcon {
+	color: #277349;
+	font-size: 16px;
+	font-weight: 700;
+}
+
+QLabel#successToastLabel {
+	color: #28543a;
+}
+
 QScrollBar:vertical {
 	width: 10px;
 	margin: 0;
