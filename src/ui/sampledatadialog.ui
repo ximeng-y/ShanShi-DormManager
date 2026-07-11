@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SampleDataDialog</class>
+ <widget class="QDialog" name="SampleDataDialog">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>880</width><height>580</height></rect></property>
+  <property name="minimumSize"><size><width>820</width><height>550</height></size></property>
+  <property name="windowTitle"><string>生成样例数据</string></property>
+  <property name="modal"><bool>true</bool></property>
+  <layout class="QVBoxLayout" name="dialogLayout">
+   <property name="spacing"><number>12</number></property>
+   <property name="leftMargin"><number>22</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>22</number></property><property name="bottomMargin"><number>16</number></property>
+   <item>
+    <layout class="QHBoxLayout" name="headingLayout">
+     <item><layout class="QVBoxLayout" name="headingTextLayout"><property name="spacing"><number>2</number></property><item><widget class="QLabel" name="headingLabel"><property name="text"><string>生成样例数据</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item><item><widget class="QLabel" name="descriptionLabel"><property name="text"><string>按分类生成可复现的楼栋、宿舍、学生和住宿关系，用于验证主要业务流程。</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item></layout></item>
+     <item><spacer name="headingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="modeGroupBox">
+     <property name="title"><string>生成方式</string></property>
+     <layout class="QHBoxLayout" name="modeLayout">
+      <item><widget class="QRadioButton" name="appendRadio"><property name="text"><string>追加到当前数据</string></property><property name="checked"><bool>true</bool></property></widget></item>
+      <item><widget class="QRadioButton" name="replaceRadio"><property name="enabled"><bool>false</bool></property><property name="text"><string>清空后生成（Phase 2）</string></property></widget></item>
+      <item><widget class="infobutton" name="replaceInfoButton"><property name="toolTip"><string>清空现有数据后生成将在前端 Phase 2 收尾后实现，当前不会执行任何删除。</string></property></widget></item>
+      <item><spacer name="modeSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="columnsLayout" stretch="1,1">
+     <property name="spacing"><number>12</number></property>
+     <item>
+      <layout class="QVBoxLayout" name="leftColumnLayout">
+       <property name="spacing"><number>10</number></property>
+       <item>
+        <widget class="QGroupBox" name="buildingGroupBox">
+         <property name="title"><string>楼栋与基础结构</string></property>
+         <layout class="QGridLayout" name="buildingLayout">
+          <item row="0" column="0"><widget class="QLabel" name="maleBuildingLabel"><property name="text"><string>男生楼</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="maleBuildingSpin"><property name="maximum"><number>20</number></property><property name="value"><number>2</number></property></widget></item>
+          <item row="0" column="2"><widget class="QLabel" name="femaleBuildingLabel"><property name="text"><string>女生楼</string></property></widget></item><item row="0" column="3"><widget class="QSpinBox" name="femaleBuildingSpin"><property name="maximum"><number>20</number></property><property name="value"><number>2</number></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="mixedBuildingLabel"><property name="text"><string>混合楼</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="mixedBuildingSpin"><property name="maximum"><number>20</number></property><property name="value"><number>1</number></property></widget></item>
+          <item row="1" column="2"><widget class="QLabel" name="floorLabel"><property name="text"><string>每栋楼层</string></property></widget></item><item row="1" column="3"><widget class="QSpinBox" name="floorSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="suffix"><string> 层</string></property><property name="value"><number>3</number></property></widget></item>
+          <item row="2" column="0"><widget class="QLabel" name="dormPerFloorLabel"><property name="text"><string>每层宿舍</string></property></widget></item><item row="2" column="1"><widget class="QSpinBox" name="dormPerFloorSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>4</number></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="capacityGroupBox">
+         <property name="title"><string>每栋宿舍容量组合</string></property>
+         <layout class="QGridLayout" name="capacityLayout">
+          <item row="0" column="0"><widget class="QLabel" name="fourBedDormLabel"><property name="text"><string>4 人间</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="fourBedDormSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>8</number></property></widget></item>
+          <item row="0" column="2"><widget class="QLabel" name="sixBedDormLabel"><property name="text"><string>6 人间</string></property></widget></item><item row="0" column="3"><widget class="QSpinBox" name="sixBedDormSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>4</number></property></widget></item>
+          <item row="1" column="0" colspan="4"><widget class="QLabel" name="capacityHintLabel"><property name="text"><string>两类房间之和应等于每栋宿舍总数（当前 12 间）。</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="mixedDormGroupBox">
+         <property name="title"><string>每栋混合楼房间安排</string></property>
+         <layout class="QGridLayout" name="mixedDormLayout">
+          <item row="0" column="0"><widget class="QLabel" name="mixedMaleDormLabel"><property name="text"><string>男舍</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="mixedMaleDormSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>3</number></property></widget></item>
+          <item row="0" column="2"><widget class="QLabel" name="mixedFemaleDormLabel"><property name="text"><string>女舍</string></property></widget></item><item row="0" column="3"><widget class="QSpinBox" name="mixedFemaleDormSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>3</number></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="mixedUnlockedDormLabel"><property name="text"><string>未锁定</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="mixedUnlockedDormSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>6</number></property></widget></item>
+          <item row="1" column="2"><widget class="QLabel" name="reservedUnlockedLabel"><property name="text"><string>保留空房</string></property></widget></item><item row="1" column="3"><widget class="QSpinBox" name="reservedUnlockedSpin"><property name="maximum"><number>1000</number></property><property name="suffix"><string> 间</string></property><property name="value"><number>2</number></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="rightColumnLayout">
+       <property name="spacing"><number>10</number></property>
+       <item>
+        <widget class="QGroupBox" name="studentGroupBox">
+         <property name="title"><string>学生与入住人数</string></property>
+         <layout class="QGridLayout" name="studentLayout">
+          <item row="0" column="0"><widget class="QLabel" name="maleStudentLabel"><property name="text"><string>男生总数</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="maleStudentSpin"><property name="maximum"><number>2000</number></property><property name="suffix"><string> 人</string></property><property name="value"><number>56</number></property></widget></item>
+          <item row="0" column="2"><widget class="QLabel" name="maleAssignedLabel"><property name="text"><string>其中入住</string></property></widget></item><item row="0" column="3"><widget class="QSpinBox" name="maleAssignedSpin"><property name="maximum"><number>2000</number></property><property name="suffix"><string> 人</string></property><property name="value"><number>40</number></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="femaleStudentLabel"><property name="text"><string>女生总数</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="femaleStudentSpin"><property name="maximum"><number>2000</number></property><property name="suffix"><string> 人</string></property><property name="value"><number>56</number></property></widget></item>
+          <item row="1" column="2"><widget class="QLabel" name="femaleAssignedLabel"><property name="text"><string>其中入住</string></property></widget></item><item row="1" column="3"><widget class="QSpinBox" name="femaleAssignedSpin"><property name="maximum"><number>2000</number></property><property name="suffix"><string> 人</string></property><property name="value"><number>40</number></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="profileGroupBox">
+         <property name="title"><string>资料随机范围</string></property>
+         <layout class="QGridLayout" name="profileLayout">
+          <item row="0" column="0"><widget class="QLabel" name="classRangeLabel"><property name="text"><string>班级范围</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="minimumClassSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="value"><number>1</number></property></widget></item><item row="0" column="2"><widget class="QLabel" name="classRangeSeparator"><property name="text"><string>至</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item><item row="0" column="3"><widget class="QSpinBox" name="maximumClassSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="value"><number>6</number></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="gradeRangeLabel"><property name="text"><string>年级范围</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="minimumGradeSpin"><property name="minimum"><number>2000</number></property><property name="maximum"><number>2999</number></property><property name="value"><number>2024</number></property></widget></item><item row="1" column="2"><widget class="QLabel" name="gradeRangeSeparator"><property name="text"><string>至</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignCenter</set></property></widget></item><item row="1" column="3"><widget class="QSpinBox" name="maximumGradeSpin"><property name="minimum"><number>2000</number></property><property name="maximum"><number>2999</number></property><property name="value"><number>2026</number></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="seedGroupBox">
+         <property name="title"><string>可复现随机</string></property>
+         <layout class="QHBoxLayout" name="seedLayout">
+          <item><widget class="QLabel" name="seedLabel"><property name="text"><string>随机种子</string></property></widget></item>
+          <item><widget class="QLineEdit" name="seedLineEdit"><property name="placeholderText"><string>0～4294967295</string></property><property name="text"><string>0</string></property></widget></item>
+          <item><widget class="QPushButton" name="regenerateSeedButton"><property name="text"><string>换一个</string></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QFrame" name="previewFrame">
+         <property name="statCard" stdset="0"><bool>true</bool></property>
+         <layout class="QVBoxLayout" name="previewLayout">
+          <item><widget class="QLabel" name="previewTitleLabel"><property name="text"><string>预计生成</string></property></widget></item>
+          <item><widget class="QLabel" name="previewValueLabel"><property name="text"><string>5 栋楼 / 60 间宿舍 / 280 张床 / 112 名学生</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+          <item><widget class="QLabel" name="previewDetailLabel"><property name="text"><string>其中 80 人入住，保留 32 名未入住学生和至少 2 间未锁定空宿舍。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item><spacer name="rightColumnSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+   <item><widget class="QLabel" name="validationLabel"><property name="visible"><bool>false</bool></property><property name="text"><string>参数不符合生成规则。</string></property><property name="wordWrap"><bool>true</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
+   <item><widget class="QDialogButtonBox" name="buttonBox"><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set></property></widget></item>
+  </layout>
+ </widget>
+ <customwidgets><customwidget><class>infobutton</class><extends>QToolButton</extends><header>ui/infobutton.h</header></customwidget></customwidgets>
+ <resources/>
+ <connections/>
+</ui>
