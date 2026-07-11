@@ -37,7 +37,11 @@ public:
 	const dorm* get_available_dorm_random(int gender) const;//随机获取指定性别可用宿舍
 	int get_empty_bed_count(int gender) const;//获取指定性别全校可用空床数, -1=参数非法
 	int get_empty_bed_count_of_building(int building_id, int gender) const;//获取指定楼指定性别可用空床数, -1=参数非法
+	//返回值: 1=成功  0=楼号已存在  -1=参数非法
+	int add_building(int building_id, int gender, int max_floor);//添加宿舍楼
 	bool add_dorm(const dorm& dorm_to_add);//添加宿舍并校验所在楼存在及派生楼层不越界
+	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=缩容会丢弃已有住客
+	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大床位数
 	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=楼不存在或不接纳该性别  -3=住客性别冲突
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁

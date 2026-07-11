@@ -133,6 +133,11 @@ int school::get_empty_bed_count_of_building(int building_id, int gender) const//
 	return total;
 }
 
+int school::add_building(int building_id, int gender, int max_floor)//添加宿舍楼
+{
+	return buildingmanager::instance().add_building(building_id, gender, max_floor);
+}
+
 bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约束
 {
 	if (!dorm_to_add.is_empty())
@@ -143,6 +148,11 @@ bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约�
 	if (dorm_to_add.get_for_gender() != 0 && !b->accepts_gender(dorm_to_add.get_for_gender()))
 		return false;//空宿舍预设性别锁必须被所在楼接纳
 	return dormmanager::instance().add_dorm(dorm_to_add);
+}
+
+int school::set_dorm_max_num(int building_id, int dorm_id, int max_num)//修改宿舍最大床位数
+{
+	return dormmanager::instance().set_dorm_max_num(building_id, dorm_id, max_num);
 }
 
 bool school::is_dorm_consistent(int building_id, int dorm_id) const//双向核对床位与学生位置字段
