@@ -12,8 +12,8 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>960</width>
-    <height>540</height>
+    <width>1152</width>
+    <height>648</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -97,7 +97,7 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="bodyLayout">
+    <layout class="QHBoxLayout" name="bodyLayout" stretch="0,1">
      <property name="spacing">
       <number>0</number>
      </property>

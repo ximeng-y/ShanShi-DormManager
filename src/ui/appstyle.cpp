@@ -336,5 +336,17 @@ QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {
 	height: 0;
 }
+
+QSplitter::handle {
+	background: transparent;
+}
+
+QSplitter::handle:horizontal {
+	width: 8px;
+}
+
+QSplitter::handle:horizontal:hover {
+	background: #e2e9ef;
+}
 )");
 }

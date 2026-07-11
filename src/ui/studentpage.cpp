@@ -83,6 +83,9 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+	ui->studentSplitter->setStretchFactor(0, 1);
+	ui->studentSplitter->setStretchFactor(1, 0);
+	ui->studentSplitter->setSizes({720, 360});
 
 	auto* more_menu = new QMenu(ui->moreActionButton);
 	QAction* gender_correction_action = more_menu->addAction(QStringLiteral("性别纠错"));

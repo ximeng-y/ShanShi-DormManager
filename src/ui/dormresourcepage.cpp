@@ -58,6 +58,9 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 	ui->bedTableView->verticalHeader()->setVisible(false);
 	ui->bedTableView->verticalHeader()->setDefaultSectionSize(70);
+	ui->resourceSplitter->setStretchFactor(0, 0);
+	ui->resourceSplitter->setStretchFactor(1, 1);
+	ui->resourceSplitter->setStretchFactor(2, 0);
 	ui->resourceSplitter->setSizes({190, 430, 360});
 	auto* building_menu = new QMenu(ui->buildingActionButton);
 	QAction* edit_building_action = building_menu->addAction(QStringLiteral("修改楼栋属性"));
