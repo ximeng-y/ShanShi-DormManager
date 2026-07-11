@@ -235,6 +235,15 @@ QLabel[fieldError="true"] {
 	font-size: 12px;
 }
 
+QDialog#SampleDataDialog QGroupBox {
+	margin-top: 10px;
+	padding-top: 10px;
+}
+
+QDialog#SampleDataDialog QFrame#previewFrame {
+	background: #f8fbfd;
+}
+
 QTableView,
 QTreeView,
 QListView {

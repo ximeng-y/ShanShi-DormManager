@@ -23,6 +23,7 @@ public:
 
 private:
 	sampledataconfig current_config(bool* seed_valid = nullptr) const;//读取当前控件参数
+	void update_input_limits();//根据结构与学生总数联动输入上限
 	void refresh_preview_and_validation();//刷新规模预览、约束提示与提交状态
 	void regenerate_seed();//生成新的32位随机种子
 	void attempt_generate();//确认后执行追加生成

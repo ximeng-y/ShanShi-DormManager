@@ -63,6 +63,12 @@
      <item>
       <widget class="QPushButton" name="generateSampleDataButton">
        <property name="text"><string>生成样例数据</string></property>
+       <property name="primaryButton" stdset="0"><bool>true</bool></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="infobutton" name="sampleDataInfoButton">
+       <property name="toolTip"><string>追加生成可复现的楼栋、4/6人间、学生和住宿关系；不会删除当前数据。</string></property>
       </widget>
      </item>
     </layout>
