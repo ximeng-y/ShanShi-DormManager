@@ -142,6 +142,16 @@ int dormmanager::remove_student_from_dorm(int building_id, int dorm_id, int stud
 	return target->remove_student(student_id);
 }
 
+int dormmanager::move_student_bed(int building_id, int dorm_id, int from_bed_id, int to_bed_id)//在同一宿舍内移动或交换床位
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
+		return -1;
+	dorm* target = find_dorm(building_id, dorm_id);
+	if (target == nullptr)
+		return -8;
+	return target->swap_student(from_bed_id, to_bed_id);
+}
+
 //高级信息查询
 int dormmanager::count() const//获取当前宿舍总数
 {

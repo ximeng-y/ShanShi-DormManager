@@ -477,6 +477,80 @@ int school::remove_student_from_dorm(int student_id)//退宿但保留学籍
 	return bed_id;
 }
 
+int school::move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed)//调宿与换床共享实现
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_student_id(student_id))
+		return -1;
+	studentmanager& sm = studentmanager::instance();
+	dormmanager& dm = dormmanager::instance();
+	const student* s = sm.get(student_id);
+	if (s == nullptr || s->get_gender() == 0)
+		return -6;
+	if (sm.is_student_have_dorm(student_id) == 0)
+		return 0;
+
+	int old_building_id = s->get_building_id();
+	int old_dorm_id = s->get_dorm_id();
+	int old_bed_id = s->get_bed_id();
+	const dorm* source = dm.get(old_building_id, old_dorm_id);
+	const dorm* target = dm.get(building_id, dorm_id);
+	if (source == nullptr || target == nullptr || !is_dorm_consistent(old_building_id, old_dorm_id) ||
+		((old_building_id != building_id || old_dorm_id != dorm_id) && !is_dorm_consistent(building_id, dorm_id)))
+		return -8;
+	if (specified_bed && !check::is_valid_bed_id(bed_id, target->get_max_num()))
+		return -1;
+
+	bool same_dorm = old_building_id == building_id && old_dorm_id == dorm_id;
+	if (same_dorm)
+	{
+		if (!specified_bed || bed_id == old_bed_id)
+			return old_bed_id;
+		if (target->is_bed_occupied(bed_id) == 1)
+			return -2;
+		if (dm.move_student_bed(building_id, dorm_id, old_bed_id, bed_id) != 1)
+			return -8;
+		return sm.assign_dorm_info(student_id, bed_id, dorm_id, building_id, target->get_floor()) == 1 ? bed_id : -8;
+	}
+
+	const building* target_building = buildingmanager::instance().get(building_id);
+	if (target_building == nullptr || !target_building->accepts_gender(s->get_gender()) || !target->accepts_gender(s->get_gender()))
+		return -7;
+	if (specified_bed && target->is_bed_occupied(bed_id) == 1)
+		return -2;
+	if (!specified_bed && target->is_full())
+		return -4;
+
+	int old_target_gender = target->get_for_gender();
+	if (dm.remove_student_from_dorm(old_building_id, old_dorm_id, student_id) != old_bed_id)
+		return -8;
+	int new_bed_id = specified_bed ?
+		dm.add_student_to_dorm(building_id, dorm_id, student_id, s->get_gender(), bed_id) :
+		dm.add_student_to_dorm(building_id, dorm_id, student_id, s->get_gender());
+	if (new_bed_id <= 0)
+	{
+		int restored = dm.add_student_to_dorm(old_building_id, old_dorm_id, student_id, s->get_gender(), old_bed_id);
+		return restored == old_bed_id ? new_bed_id : -10;
+	}
+	if (sm.assign_dorm_info(student_id, new_bed_id, dorm_id, building_id, target->get_floor()) != 1)
+	{
+		bool removed_target = dm.remove_student_from_dorm(building_id, dorm_id, student_id) == new_bed_id;
+		bool restored_source = dm.add_student_to_dorm(old_building_id, old_dorm_id, student_id, s->get_gender(), old_bed_id) == old_bed_id;
+		bool restored_gender = dm.set_dorm_gender(building_id, dorm_id, old_target_gender) == 1;
+		return removed_target && restored_source && restored_gender ? -8 : -10;
+	}
+	return new_bed_id;
+}
+
+int school::move_student_to_dorm(int building_id, int dorm_id, int student_id)//调往指定宿舍并自动分配床位
+{
+	return move_student_to_dorm_impl(building_id, dorm_id, student_id, 0, false);
+}
+
+int school::move_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id)//调往指定宿舍的指定床位
+{
+	return move_student_to_dorm_impl(building_id, dorm_id, student_id, bed_id, true);
+}
+
 int school::remove_student(int student_id)//退学籍
 {
 	if (!check::is_valid_student_id(student_id))

@@ -47,6 +47,7 @@ private:
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender);//向指定宿舍写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
 	int add_student_to_dorm(int building_id, int dorm_id, int student_id, int gender, int bed_id);//向指定床位写入学生学号, 不查询或同步学生本体, -8=宿舍不存在
 	int remove_student_from_dorm(int building_id, int dorm_id, int student_id);//从指定宿舍移除学生学号, 不同步学生本体, -8=宿舍不存在
+	int move_student_bed(int building_id, int dorm_id, int from_bed_id, int to_bed_id);//在同一宿舍内移动或交换床位，不同步学生本体
 	int clear_dorm_students(int building_id, int dorm_id, bool reset_gender);//清空指定宿舍住客，可选放开性别锁，返回清空人数/-8不存在
 	friend class school;
 	//内部定位: 按楼号、宿舍号返回可写本体指针(供内部搬迁改写用), 不存在返回 nullptr。

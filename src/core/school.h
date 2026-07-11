@@ -72,6 +72,10 @@ public:
 	int assign_student_to_available_dorm_random(int student_id);//随机入住可用宿舍, -9=无可用宿舍
 	//返回值: >0=成功(释放的床位号)  0=学生未入住  -1=参数非法  -6=学生不存在  -8=学生记录指向的宿舍不存在或床位记录不一致
 	int remove_student_from_dorm(int student_id);//退宿但保留学籍
+	//调宿返回值: >0=成功(新床位号)  0=学生未入住  -1=参数非法  -2=目标床位占用  -4=目标宿舍已满
+	//-6=学生不存在或性别未设置  -7=目标楼/宿舍性别冲突  -8=源或目标宿舍不存在/住宿记录不一致  -10=失败后未能恢复原床位
+	int move_student_to_dorm(int building_id, int dorm_id, int student_id);//调往指定宿舍并自动分配最小空床位
+	int move_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id);//调往指定宿舍的指定空床位，同宿舍时用于换床
 
 	//学籍协调
 	//返回值: 1=成功  0=学生不存在  -1=参数非法  -8=住宿记录不一致导致退宿失败
@@ -98,6 +102,7 @@ public:
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
 	int clear_dorm_impl(int building_id, int dorm_id, bool reset_gender);//清空单间宿舍的共享实现
+	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed);//调宿与换床共享实现
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
 	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
