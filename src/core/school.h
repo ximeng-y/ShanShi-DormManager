@@ -27,6 +27,11 @@ public:
 	int get_student_count() const;//获取全校学生总数
 	int get_dorm_count() const;//获取全校宿舍总数
 	int get_building_count() const;//获取全校宿舍楼总数
+	int get_assigned_student_count() const;//获取已入住学生数
+	int get_unassigned_student_count() const;//获取未入住学生数
+	int get_total_bed_count() const;//获取全校总床位数
+	int get_occupied_bed_count() const;//获取全校已占床位数
+	int get_empty_bed_count() const;//获取全校全部空床位数，不区分性别锁
 	QVector<int> get_all_student_ids() const;//按学号升序列出全校学生
 	QVector<QPair<int, int>> get_all_dorm_keys() const;//按楼号、宿舍号升序列出全校宿舍复合键
 	QVector<int> get_all_building_ids() const;//按楼号升序列出全校宿舍楼

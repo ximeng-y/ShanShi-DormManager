@@ -42,6 +42,45 @@ int school::get_building_count() const//获取全校宿舍楼总数
 	return buildingmanager::instance().count();
 }
 
+int school::get_assigned_student_count() const//获取已入住学生数
+{
+	return get_assigned_student_ids().size();
+}
+
+int school::get_unassigned_student_count() const//获取未入住学生数
+{
+	return get_unassigned_student_ids().size();
+}
+
+int school::get_total_bed_count() const//获取全校总床位数
+{
+	int total = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d != nullptr)
+			total += d->get_max_num();
+	}
+	return total;
+}
+
+int school::get_occupied_bed_count() const//获取全校已占床位数
+{
+	int total = 0;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (d != nullptr)
+			total += d->get_current_num();
+	}
+	return total;
+}
+
+int school::get_empty_bed_count() const//获取全校全部空床位数
+{
+	return dormmanager::instance().get_empty_bed_count();
+}
+
 QVector<int> school::get_all_student_ids() const//按学号升序列出全校学生
 {
 	QVector<int> ids = studentmanager::instance().all_ids();
