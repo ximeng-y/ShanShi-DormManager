@@ -6,6 +6,7 @@
 
 #include "core/school.h"
 #include "core/student.h"
+#include "system/check.h"
 
 #include <QHeaderView>
 #include <QList>
@@ -105,6 +106,9 @@ StudentPage::StudentPage(QWidget* parent)
 			uifeedback::show_success(this, QStringLiteral("学生档案已添加。"));
 		}
 	});
+	connect(ui->editStudentButton, &QPushButton::clicked, this, &StudentPage::start_edit_student);
+	connect(ui->cancelEditButton, &QPushButton::clicked, this, &StudentPage::cancel_edit_student);
+	connect(ui->saveEditButton, &QPushButton::clicked, this, &StudentPage::save_student_changes);
 	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {
 		set_detail_panel_visible(false);
 	});
@@ -256,6 +260,7 @@ void StudentPage::show_student_summary(int student_id)
 		: QStringLiteral("办理入住"));
 	ui->detailHintLabel->hide();
 	ui->detailContent->show();
+	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(true);
 	ui->accommodationActionButton->setEnabled(true);
 	ui->moreActionButton->setEnabled(true);
@@ -267,6 +272,7 @@ void StudentPage::clear_student_summary()
 	ui->detailNameLabel->setText(QStringLiteral("学生详情"));
 	ui->detailHintLabel->show();
 	ui->detailContent->hide();
+	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(false);
 	ui->accommodationActionButton->setEnabled(false);
 	ui->moreActionButton->setEnabled(false);
@@ -281,4 +287,96 @@ void StudentPage::set_detail_panel_visible(bool visible)
 	}
 	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
 	settings.setValue(QStringLiteral("student/detailPanelVisible"), visible);
+}
+
+void StudentPage::start_edit_student()
+{
+	const student* current_student = school::instance().get_student(selected_student_id);
+	if (current_student == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("所选学生已经不存在，请刷新列表后重试。"));
+		refresh_data();
+		return;
+	}
+
+	ui->editStudentIdValueLabel->setText(QString::number(current_student->get_id()));
+	ui->editNameLineEdit->setText(current_student->get_name());
+	ui->editClassSpin->setValue(current_student->get_class_num());
+	ui->editGradeSpin->setValue(current_student->get_grade());
+	ui->detailContent->hide();
+	ui->detailHintLabel->hide();
+	ui->editContent->show();
+	ui->editNameLineEdit->setFocus();
+	ui->editNameLineEdit->selectAll();
+}
+
+void StudentPage::cancel_edit_student()
+{
+	show_student_summary(selected_student_id);
+}
+
+void StudentPage::save_student_changes()
+{
+	const student* current_student = school::instance().get_student(selected_student_id);
+	if (current_student == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("所选学生已经不存在，请刷新列表后重试。"));
+		refresh_data();
+		return;
+	}
+
+	const QString new_name = ui->editNameLineEdit->text().trimmed();
+	const int new_class_num = ui->editClassSpin->value();
+	const int new_grade = ui->editGradeSpin->value();
+	if (!check::is_valid_student_name(new_name) || !check::is_valid_class_num(new_class_num) || !check::is_valid_grade(new_grade)) {
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("姓名、班级或年级不符合数据规则。"));
+		return;
+	}
+
+	const QString old_name = current_student->get_name();
+	const int old_class_num = current_student->get_class_num();
+	const int old_grade = current_student->get_grade();
+	const bool change_name = new_name != old_name;
+	const bool change_class = new_class_num != old_class_num;
+	const bool change_grade = new_grade != old_grade;
+	if (!change_name && !change_class && !change_grade) {
+		cancel_edit_student();
+		return;
+	}
+
+	school& current_school = school::instance();
+	bool name_changed = false;
+	bool class_changed = false;
+	if (change_name) {
+		name_changed = current_school.set_student_name(selected_student_id, new_name) == 1;
+		if (!name_changed) {
+			uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生姓名未能保存，请刷新后重试。"));
+			return;
+		}
+	}
+	if (change_class) {
+		class_changed = current_school.set_student_class_num(selected_student_id, new_class_num) == 1;
+		if (!class_changed) {
+			const bool restored = !name_changed || current_school.set_student_name(selected_student_id, old_name) == 1;
+			if (!restored) {
+				uifeedback::show_critical(this, QStringLiteral("资料恢复失败"), QStringLiteral("班级修改失败，且姓名未能恢复。请暂停后续操作并核查学生资料。"));
+			} else {
+				uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生班级未能保存，已恢复原资料。"));
+			}
+			refresh_data();
+			return;
+		}
+	}
+	if (change_grade && current_school.set_student_grade(selected_student_id, new_grade) != 1) {
+		const bool class_restored = !class_changed || current_school.set_student_class_num(selected_student_id, old_class_num) == 1;
+		const bool name_restored = !name_changed || current_school.set_student_name(selected_student_id, old_name) == 1;
+		if (!class_restored || !name_restored) {
+			uifeedback::show_critical(this, QStringLiteral("资料恢复失败"), QStringLiteral("年级修改失败，且原资料未能完整恢复。请暂停后续操作并核查学生资料。"));
+		} else {
+			uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生年级未能保存，已恢复原资料。"));
+		}
+		refresh_data();
+		return;
+	}
+
+	refresh_data();
+	uifeedback::show_success(this, QStringLiteral("学生基础资料已更新。"));
 }
