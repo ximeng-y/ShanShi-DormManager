@@ -112,6 +112,16 @@ bool uifeedback::confirm_danger(QWidget* parent, const QString& title, const QSt
 	return box.clickedButton() == confirm_button;
 }
 
+bool uifeedback::confirm_action(QWidget* parent, const QString& title, const QString& message, const QString& confirm_text)
+{
+	QMessageBox box(QMessageBox::Question, title, message, QMessageBox::Cancel, parent);
+	box.button(QMessageBox::Cancel)->setText(QStringLiteral("取消"));
+	QPushButton* confirm_button = box.addButton(confirm_text, QMessageBox::AcceptRole);
+	box.setDefaultButton(confirm_button);
+	box.exec();
+	return box.clickedButton() == confirm_button;
+}
+
 void uifeedback::show_success(QWidget* parent, const QString& message)
 {
 	if (parent == nullptr) {
