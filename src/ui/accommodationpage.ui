@@ -6,7 +6,7 @@
    <property name="spacing"><number>14</number></property><property name="leftMargin"><number>20</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>20</number></property><property name="bottomMargin"><number>18</number></property>
    <item>
     <layout class="QVBoxLayout" name="headingLayout"><property name="spacing"><number>3</number></property>
-     <item><widget class="QLabel" name="headingLabel"><property name="text"><string>住宿任务中心</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+     <item><layout class="QHBoxLayout" name="headingTitleLayout"><item><widget class="QLabel" name="headingLabel"><property name="text"><string>住宿任务中心</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item><item><widget class="infobutton" name="taskInfoButton"><property name="toolTip"><string>入住、退宿、调宿和交换都会同时核对学生位置与宿舍床位，避免只修改一侧记录。</string></property></widget></item><item><spacer name="headingTitleSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item></layout></item>
      <item><widget class="QLabel" name="headingDescriptionLabel"><property name="text"><string>先确认学生和目标位置，再提交跨对象住宿操作。</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
     </layout>
    </item>
@@ -22,7 +22,7 @@
          <layout class="QFormLayout" name="assignForm">
           <property name="verticalSpacing"><number>12</number></property>
           <item row="0" column="0"><widget class="QLabel" name="assignStudentLabel"><property name="text"><string>学生学号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="assignStudentSpin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item>
-          <item row="1" column="0"><widget class="QLabel" name="assignStrategyLabel"><property name="text"><string>安置方式</string></property></widget></item><item row="1" column="1"><widget class="QComboBox" name="assignStrategyCombo"><item><property name="text"><string>系统推荐最小顺位宿舍</string></property></item><item><property name="text"><string>随机分配可用宿舍</string></property></item><item><property name="text"><string>指定宿舍</string></property></item><item><property name="text"><string>指定床位</string></property></item></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="assignStrategyLabel"><property name="text"><string>安置方式</string></property></widget></item><item row="1" column="1"><widget class="QComboBox" name="assignStrategyCombo"><property name="toolTip"><string>系统推荐按楼号、宿舍号选择最小顺位；随机分配从全部可用宿舍中随机选择。</string></property><item><property name="text"><string>系统推荐最小顺位宿舍</string></property></item><item><property name="text"><string>随机分配可用宿舍</string></property></item><item><property name="text"><string>指定宿舍</string></property></item><item><property name="text"><string>指定床位</string></property></item></widget></item>
           <item row="2" column="0"><widget class="QLabel" name="assignBuildingLabel"><property name="text"><string>目标楼栋</string></property></widget></item><item row="2" column="1"><widget class="QSpinBox" name="assignBuildingSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>99</number></property><property name="specialValueText"><string>由系统选择</string></property></widget></item>
           <item row="3" column="0"><widget class="QLabel" name="assignDormLabel"><property name="text"><string>目标宿舍</string></property></widget></item><item row="3" column="1"><widget class="QSpinBox" name="assignDormSpin"><property name="minimum"><number>100</number></property><property name="maximum"><number>9999</number></property><property name="specialValueText"><string>由系统选择</string></property></widget></item>
           <item row="4" column="0"><widget class="QLabel" name="assignBedLabel"><property name="text"><string>目标床位</string></property></widget></item><item row="4" column="1"><widget class="QSpinBox" name="assignBedSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>2147483647</number></property><property name="specialValueText"><string>自动分配</string></property></widget></item>
@@ -71,6 +71,7 @@
    </item>
   </layout>
  </widget>
+ <customwidgets><customwidget><class>infobutton</class><extends>QToolButton</extends><header>ui/infobutton.h</header></customwidget></customwidgets>
  <resources/>
  <connections/>
 </ui>

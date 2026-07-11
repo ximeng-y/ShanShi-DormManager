@@ -68,7 +68,7 @@
             <item row="3" column="0"><widget class="QLabel" name="capacityTitleLabel"><property name="text"><string>床位</string></property></widget></item><item row="3" column="1"><widget class="QLabel" name="capacityValueLabel"><property name="text"><string>—</string></property></widget></item>
            </layout>
           </item>
-          <item><widget class="QLabel" name="bedAreaTitle"><property name="text"><string>床位与住客</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+          <item><layout class="QHBoxLayout" name="bedAreaHeadingLayout"><item><widget class="QLabel" name="bedAreaTitle"><property name="text"><string>床位与住客</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item><item><widget class="infobutton" name="bedAreaInfoButton"><property name="toolTip"><string>床位号从1开始；空床显示“空闲”，床位学号找不到学生本体时显示“记录异常”。</string></property></widget></item><item><spacer name="bedAreaHeadingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item></layout></item>
           <item>
            <widget class="QTableView" name="bedTableView">
             <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>1</verstretch></sizepolicy></property>
@@ -89,6 +89,7 @@
    </item>
   </layout>
  </widget>
+ <customwidgets><customwidget><class>infobutton</class><extends>QToolButton</extends><header>ui/infobutton.h</header></customwidget></customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -9,6 +9,8 @@
 #include "core/student.h"
 #include "system/check.h"
 
+#include <QBrush>
+#include <QColor>
 #include <QHeaderView>
 #include <QList>
 #include <QMenu>
@@ -285,12 +287,16 @@ void StudentPage::apply_filters()
 			if (column == 0) {
 				item->setData(Qt::UserRole, current_student->get_id());
 			}
+			if (column == 6 && values.at(column) == QStringLiteral("住宿记录异常")) {
+				item->setForeground(QBrush(QColor(QStringLiteral("#a23333"))));
+				item->setToolTip(QStringLiteral("学生位置字段与公开入住状态不一致，请核查数据。"));
+			}
 			ui->studentTable->setItem(row, column, item);
 		}
 	}
 
 	ui->resultCountLabel->setText(matched_ids.isEmpty()
-		? QStringLiteral("没有符合条件的学生")
+		? (current_school.get_student_count() == 0 ? QStringLiteral("学生目录为空") : QStringLiteral("没有符合条件的学生"))
 		: QStringLiteral("已显示 %1 / %2 人").arg(matched_ids.size()).arg(current_school.get_student_count()));
 
 	int selected_row = -1;

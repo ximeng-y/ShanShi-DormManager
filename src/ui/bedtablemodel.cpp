@@ -57,7 +57,8 @@ QVariant bedtablemodel::data(const QModelIndex& index, int role) const
 		return QBrush(occupied ? QColor(QStringLiteral("#eef4f8")) : QColor(QStringLiteral("#f8fafb")));
 	}
 	if (role == Qt::ForegroundRole) {
-		return QBrush(QColor(QStringLiteral("#29455f")));
+		const student* occupant = occupied ? school::instance().get_student(student_id) : nullptr;
+		return QBrush(QColor(occupied && occupant == nullptr ? QStringLiteral("#a23333") : QStringLiteral("#29455f")));
 	}
 	if (role == Qt::ToolTipRole) {
 		return data(index, Qt::DisplayRole).toString().replace(QLatin1Char('\n'), QStringLiteral("："));

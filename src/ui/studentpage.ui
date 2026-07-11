@@ -92,7 +92,7 @@
           <item><widget class="QLabel" name="accommodationValueLabel"><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
           <item><widget class="QPushButton" name="editStudentButton"><property name="text"><string>修改资料</string></property><property name="enabled"><bool>false</bool></property></widget></item>
           <item><widget class="QPushButton" name="accommodationActionButton"><property name="text"><string>办理入住</string></property><property name="enabled"><bool>false</bool></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
-          <item><widget class="QPushButton" name="moreActionButton"><property name="text"><string>更多操作</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+          <item><widget class="QPushButton" name="moreActionButton"><property name="text"><string>更多操作</string></property><property name="toolTip"><string>包含性别纠错和退学籍等低频或高影响操作。</string></property><property name="enabled"><bool>false</bool></property></widget></item>
          </layout>
         </widget>
        </item>
