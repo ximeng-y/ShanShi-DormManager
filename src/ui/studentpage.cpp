@@ -27,17 +27,25 @@ QString student_gender_text(int gender)
 	return QStringLiteral("未设置");
 }
 
-bool student_is_assigned(const student& current_student)
+bool student_has_complete_position(const student& current_student)
 {
 	return current_student.get_building_id() > 0
 		&& current_student.get_dorm_id() > 0
-		&& current_student.get_bed_id() > 0;
+		&& current_student.get_bed_id() > 0
+		&& current_student.get_floor() > 0;
 }
 
-QString student_accommodation_text(const student& current_student)
+QString student_accommodation_text(const student& current_student, bool assigned)
 {
-	if (!student_is_assigned(current_student)) {
+	const bool has_any_position = current_student.get_building_id() > 0
+		|| current_student.get_dorm_id() > 0
+		|| current_student.get_bed_id() > 0
+		|| current_student.get_floor() > 0;
+	if (!assigned && !has_any_position) {
 		return QStringLiteral("未入住");
+	}
+	if (!assigned || !student_has_complete_position(current_student)) {
+		return QStringLiteral("住宿记录异常");
 	}
 	return QStringLiteral("%1号楼 · %2室 · %3号床")
 		.arg(current_student.get_building_id())
@@ -65,6 +73,9 @@ StudentPage::StudentPage(QWidget* parent)
 	connect(ui->classFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
 	connect(ui->statusFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
 	connect(ui->resetFilterButton, &QPushButton::clicked, this, [this]() {
+		const QSignalBlocker search_blocker(ui->searchLineEdit);
+		const QSignalBlocker class_blocker(ui->classFilterCombo);
+		const QSignalBlocker status_blocker(ui->statusFilterCombo);
 		ui->searchLineEdit->clear();
 		ui->classFilterCombo->setCurrentIndex(0);
 		ui->statusFilterCombo->setCurrentIndex(0);
@@ -134,6 +145,10 @@ void StudentPage::apply_filters()
 	const QString search_text = ui->searchLineEdit->text().trimmed();
 	const int selected_class = ui->classFilterCombo->currentData().toInt();
 	const int selected_status = ui->statusFilterCombo->currentIndex();
+	QSet<int> assigned_ids;
+	for (int assigned_id : current_school.get_assigned_student_ids()) {
+		assigned_ids.insert(assigned_id);
+	}
 	QVector<int> matched_ids;
 
 	for (int student_id : current_school.get_all_student_ids()) {
@@ -141,7 +156,7 @@ void StudentPage::apply_filters()
 		if (current_student == nullptr) {
 			continue;
 		}
-		const bool assigned = student_is_assigned(*current_student);
+		const bool assigned = assigned_ids.contains(student_id);
 		const bool matches_search = search_text.isEmpty()
 			|| QString::number(student_id).contains(search_text)
 			|| current_student->get_name().contains(search_text, Qt::CaseInsensitive);
@@ -154,13 +169,15 @@ void StudentPage::apply_filters()
 		}
 	}
 
+	ui->studentTable->clearSelection();
+	ui->studentTable->setCurrentCell(-1, -1);
 	ui->studentTable->setRowCount(matched_ids.size());
 	for (int row = 0; row < matched_ids.size(); ++row) {
 		const student* current_student = current_school.get_student(matched_ids.at(row));
 		if (current_student == nullptr) {
 			continue;
 		}
-		const bool assigned = student_is_assigned(*current_student);
+		const bool assigned = assigned_ids.contains(current_student->get_id());
 		const QStringList values = {
 			QString::number(current_student->get_id()),
 			current_student->get_name(),
@@ -168,7 +185,7 @@ void StudentPage::apply_filters()
 			QStringLiteral("%1班").arg(current_student->get_class_num()),
 			QString::number(current_student->get_grade()),
 			assigned ? QStringLiteral("已入住") : QStringLiteral("未入住"),
-			student_accommodation_text(*current_student)
+			student_accommodation_text(*current_student, assigned)
 		};
 		for (int column = 0; column < values.size(); ++column) {
 			auto* item = new QTableWidgetItem(values.at(column));
@@ -209,13 +226,14 @@ void StudentPage::show_student_summary(int student_id)
 	}
 
 	selected_student_id = student_id;
+	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
 	ui->detailNameLabel->setText(current_student->get_name());
 	ui->studentIdValueLabel->setText(QString::number(current_student->get_id()));
 	ui->genderValueLabel->setText(student_gender_text(current_student->get_gender()));
 	ui->gradeValueLabel->setText(QString::number(current_student->get_grade()));
 	ui->classValueLabel->setText(QStringLiteral("%1班").arg(current_student->get_class_num()));
-	ui->accommodationValueLabel->setText(student_accommodation_text(*current_student));
-	ui->accommodationActionButton->setText(student_is_assigned(*current_student)
+	ui->accommodationValueLabel->setText(student_accommodation_text(*current_student, assigned));
+	ui->accommodationActionButton->setText(assigned
 		? QStringLiteral("办理调宿")
 		: QStringLiteral("办理入住"));
 	ui->detailHintLabel->hide();
