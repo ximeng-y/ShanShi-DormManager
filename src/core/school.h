@@ -2,6 +2,7 @@
 #define SCHOOL_H
 
 #include <QVector>
+#include <QPair>
 
 class student;
 class dorm;
@@ -26,6 +27,15 @@ public:
 	int get_student_count() const;//获取全校学生总数
 	int get_dorm_count() const;//获取全校宿舍总数
 	int get_building_count() const;//获取全校宿舍楼总数
+	QVector<int> get_all_student_ids() const;//按学号升序列出全校学生
+	QVector<QPair<int, int>> get_all_dorm_keys() const;//按楼号、宿舍号升序列出全校宿舍复合键
+	QVector<int> get_all_building_ids() const;//按楼号升序列出全校宿舍楼
+	QVector<int> get_student_ids_of_class(int class_num) const;//按学号升序列出指定班级学生，参数非法返回空表
+	QVector<int> get_assigned_student_ids() const;//按学号升序列出已入住学生
+	QVector<int> get_unassigned_student_ids() const;//按学号升序列出未入住学生
+	QVector<QPair<int, int>> get_dorm_keys_of_building(int building_id) const;//列出指定楼全部宿舍，参数非法或楼不存在返回空表
+	QVector<int> get_student_ids_of_dorm(int building_id, int dorm_id) const;//按床位顺序列出指定宿舍住客，宿舍不存在返回空表
+	QVector<QPair<int, int>> get_available_dorm_keys(int gender) const;//列出指定性别全部可用宿舍，参数非法返回空表
 
 	//学生基础资料管理
 	bool add_student(const student& student_to_add);//添加学生，字段非法、携带住宿位置或学号重复时返回false

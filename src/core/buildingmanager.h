@@ -2,6 +2,7 @@
 #define BUILDINGMANAGER_H
 
 #include <QMap>
+#include <QVector>
 #include "building.h"
 
 //全校宿舍楼本体的唯一归属。以宿舍楼号(id)为 key 存储 building 本体, 按楼号升序有序存储。
@@ -31,6 +32,7 @@ public:
 	//逻辑判断 / 查询
 	int is_building_exist(int building_id);//检查指定楼号是否存在, 1=存在/0=不存在/-1=参数非法
 	int count() const;//获取当前宿舍楼总数
+	QVector<int> all_ids() const;//按楼号升序列出全部宿舍楼
 
 private:
 	buildingmanager() = default;//构造函数, 单例模式禁止外部实例化

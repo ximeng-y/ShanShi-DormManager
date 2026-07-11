@@ -87,3 +87,11 @@ int buildingmanager::count() const
 {
 	return buildings.size();
 }
+
+QVector<int> buildingmanager::all_ids() const//按楼号升序列出全部宿舍楼
+{
+	QVector<int> ids;
+	for (auto it = buildings.constBegin(); it != buildings.constEnd(); ++it)
+		ids.append(it.key());
+	return ids;
+}

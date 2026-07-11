@@ -4,6 +4,7 @@
 #include "buildingmanager.h"
 #include "system/check.h"
 #include <QRandomGenerator>
+#include <algorithm>
 
 school& school::instance()
 {
@@ -41,6 +42,82 @@ int school::get_building_count() const//获取全校宿舍楼总数
 	return buildingmanager::instance().count();
 }
 
+QVector<int> school::get_all_student_ids() const//按学号升序列出全校学生
+{
+	QVector<int> ids = studentmanager::instance().all_ids();
+	std::sort(ids.begin(), ids.end());
+	return ids;
+}
+
+QVector<QPair<int, int>> school::get_all_dorm_keys() const//列出全校宿舍复合键
+{
+	return dormmanager::instance().all_dorm_keys();
+}
+
+QVector<int> school::get_all_building_ids() const//按楼号升序列出全校宿舍楼
+{
+	return buildingmanager::instance().all_ids();
+}
+
+QVector<int> school::get_student_ids_of_class(int class_num) const//列出指定班级学生
+{
+	if (!check::is_valid_class_num(class_num))
+		return {};
+	QVector<int> ids = studentmanager::instance().ids_of_class(class_num);
+	std::sort(ids.begin(), ids.end());
+	return ids;
+}
+
+QVector<int> school::get_assigned_student_ids() const//列出已入住学生
+{
+	QVector<int> ids;
+	for (int student_id : get_all_student_ids())
+		if (studentmanager::instance().is_student_have_dorm(student_id) == 1)
+			ids.append(student_id);
+	return ids;
+}
+
+QVector<int> school::get_unassigned_student_ids() const//列出未入住学生
+{
+	QVector<int> ids;
+	for (int student_id : get_all_student_ids())
+		if (studentmanager::instance().is_student_have_dorm(student_id) == 0)
+			ids.append(student_id);
+	return ids;
+}
+
+QVector<QPair<int, int>> school::get_dorm_keys_of_building(int building_id) const//列出指定楼全部宿舍
+{
+	QVector<QPair<int, int>> keys;
+	if (!check::is_valid_building_id(building_id) || buildingmanager::instance().get(building_id) == nullptr)
+		return keys;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+		if (key.first == building_id)
+			keys.append(key);
+	return keys;
+}
+
+QVector<int> school::get_student_ids_of_dorm(int building_id, int dorm_id) const//列出指定宿舍住客
+{
+	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
+	return d == nullptr ? QVector<int>{} : d->get_student_id_list();
+}
+
+QVector<QPair<int, int>> school::get_available_dorm_keys(int gender) const//列出指定性别全部可用宿舍
+{
+	QVector<QPair<int, int>> keys;
+	if (gender != 1 && gender != 2)
+		return keys;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const building* b = buildingmanager::instance().get(key.first);
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender) && !d->is_full())
+			keys.append(key);
+	}
+	return keys;
+}
+
 bool school::add_student(const student& student_to_add)//添加学生
 {
 	return studentmanager::instance().add(student_to_add);
@@ -69,30 +146,13 @@ int school::set_student_grade(int student_id, int grade)//修改学生年级
 
 const dorm* school::get_available_dorm(int gender) const//获取指定性别最小顺位可用宿舍
 {
-	if (gender != 1 && gender != 2)
-		return nullptr;
-	for (const auto& key : dormmanager::instance().all_dorm_keys())
-	{
-		const building* b = buildingmanager::instance().get(key.first);
-		const dorm* d = dormmanager::instance().get(key.first, key.second);
-		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender) && !d->is_full())
-			return d;
-	}
-	return nullptr;
+	QVector<QPair<int, int>> keys = get_available_dorm_keys(gender);
+	return keys.isEmpty() ? nullptr : dormmanager::instance().get(keys.first().first, keys.first().second);
 }
 
 const dorm* school::get_available_dorm_random(int gender) const//随机获取指定性别可用宿舍
 {
-	if (gender != 1 && gender != 2)
-		return nullptr;
-	QVector<QPair<int, int>> candidates;
-	for (const auto& key : dormmanager::instance().all_dorm_keys())
-	{
-		const building* b = buildingmanager::instance().get(key.first);
-		const dorm* d = dormmanager::instance().get(key.first, key.second);
-		if (b != nullptr && d != nullptr && b->accepts_gender(gender) && d->accepts_gender(gender) && !d->is_full())
-			candidates.append(key);
-	}
+	QVector<QPair<int, int>> candidates = get_available_dorm_keys(gender);
 	if (candidates.isEmpty())
 		return nullptr;
 	const auto& key = candidates[QRandomGenerator::global()->bounded(candidates.size())];
