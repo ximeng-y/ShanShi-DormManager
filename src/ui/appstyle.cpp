@@ -258,6 +258,30 @@ QGroupBox::title {
 	padding: 0 4px;
 }
 
+QTabWidget::pane {
+	border: 1px solid #d8e0e7;
+	border-radius: 8px;
+	background: #f8fafb;
+}
+
+QTabBar::tab {
+	min-width: 110px;
+	min-height: 38px;
+	padding: 0 14px;
+	border: 1px solid transparent;
+	border-bottom: 0;
+	background: transparent;
+	color: #526579;
+}
+
+QTabBar::tab:selected {
+	border-color: #d8e0e7;
+	border-radius: 6px 6px 0 0;
+	background: #ffffff;
+	color: #17324d;
+	font-weight: 600;
+}
+
 QToolTip {
 	padding: 6px 8px;
 	border: 1px solid #9dafbe;

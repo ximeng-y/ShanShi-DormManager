@@ -55,6 +55,9 @@ set(PROJECT_SOURCES
         src/ui/editdormdialog.cpp
         src/ui/editdormdialog.h
         src/ui/editdormdialog.ui
+        src/ui/accommodationpage.cpp
+        src/ui/accommodationpage.h
+        src/ui/accommodationpage.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp

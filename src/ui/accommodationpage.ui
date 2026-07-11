@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AccommodationPage</class>
+ <widget class="QWidget" name="AccommodationPage">
+  <layout class="QVBoxLayout" name="pageLayout" stretch="0,1">
+   <property name="spacing"><number>14</number></property><property name="leftMargin"><number>20</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>20</number></property><property name="bottomMargin"><number>18</number></property>
+   <item>
+    <layout class="QVBoxLayout" name="headingLayout"><property name="spacing"><number>3</number></property>
+     <item><widget class="QLabel" name="headingLabel"><property name="text"><string>住宿任务中心</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+     <item><widget class="QLabel" name="headingDescriptionLabel"><property name="text"><string>先确认学生和目标位置，再提交跨对象住宿操作。</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTabWidget" name="taskTabs">
+     <property name="currentIndex"><number>0</number></property><property name="documentMode"><bool>true</bool></property>
+     <widget class="QWidget" name="assignTab">
+      <attribute name="title"><string>办理入住</string></attribute>
+      <layout class="QHBoxLayout" name="assignLayout" stretch="1,1">
+       <property name="spacing"><number>18</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>18</number></property>
+       <item>
+        <widget class="QGroupBox" name="assignInputGroup"><property name="title"><string>入住信息</string></property>
+         <layout class="QFormLayout" name="assignForm">
+          <property name="verticalSpacing"><number>12</number></property>
+          <item row="0" column="0"><widget class="QLabel" name="assignStudentLabel"><property name="text"><string>学生学号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="assignStudentSpin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item>
+          <item row="1" column="0"><widget class="QLabel" name="assignStrategyLabel"><property name="text"><string>安置方式</string></property></widget></item><item row="1" column="1"><widget class="QComboBox" name="assignStrategyCombo"><item><property name="text"><string>系统推荐最小顺位宿舍</string></property></item><item><property name="text"><string>随机分配可用宿舍</string></property></item><item><property name="text"><string>指定宿舍</string></property></item><item><property name="text"><string>指定床位</string></property></item></widget></item>
+          <item row="2" column="0"><widget class="QLabel" name="assignBuildingLabel"><property name="text"><string>目标楼栋</string></property></widget></item><item row="2" column="1"><widget class="QSpinBox" name="assignBuildingSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>99</number></property><property name="specialValueText"><string>由系统选择</string></property></widget></item>
+          <item row="3" column="0"><widget class="QLabel" name="assignDormLabel"><property name="text"><string>目标宿舍</string></property></widget></item><item row="3" column="1"><widget class="QSpinBox" name="assignDormSpin"><property name="minimum"><number>100</number></property><property name="maximum"><number>9999</number></property><property name="specialValueText"><string>由系统选择</string></property></widget></item>
+          <item row="4" column="0"><widget class="QLabel" name="assignBedLabel"><property name="text"><string>目标床位</string></property></widget></item><item row="4" column="1"><widget class="QSpinBox" name="assignBedSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>99</number></property><property name="specialValueText"><string>自动分配</string></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="assignPreviewGroup"><property name="title"><string>操作确认</string></property>
+         <layout class="QVBoxLayout" name="assignPreviewLayout"><property name="spacing"><number>12</number></property>
+          <item><widget class="QLabel" name="assignStudentPreviewLabel"><property name="text"><string>输入学号后查看学生状态。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+          <item><widget class="QLabel" name="assignTargetPreviewLabel"><property name="text"><string>系统将在提交前检查床位和性别限制。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+          <item><spacer name="assignPreviewSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+          <item><widget class="QPushButton" name="assignSubmitButton"><property name="text"><string>确认办理入住</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="removeTab">
+      <attribute name="title"><string>办理退宿</string></attribute>
+      <layout class="QHBoxLayout" name="removeLayout" stretch="1,1"><property name="spacing"><number>18</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>18</number></property>
+       <item><widget class="QGroupBox" name="removeInputGroup"><property name="title"><string>选择学生</string></property><layout class="QFormLayout" name="removeForm"><item row="0" column="0"><widget class="QLabel" name="removeStudentLabel"><property name="text"><string>学生学号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="removeStudentSpin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item></layout></widget></item>
+       <item><widget class="QGroupBox" name="removePreviewGroup"><property name="title"><string>退宿确认</string></property><layout class="QVBoxLayout" name="removePreviewLayout"><item><widget class="QLabel" name="removePreviewLabel"><property name="text"><string>退宿仅释放床位并保留学生档案。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item><spacer name="removeSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item><item><widget class="QPushButton" name="removeSubmitButton"><property name="text"><string>确认办理退宿</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item></layout></widget></item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="moveTab">
+      <attribute name="title"><string>调宿 / 换床</string></attribute>
+      <layout class="QHBoxLayout" name="moveLayout" stretch="1,1"><property name="spacing"><number>18</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>18</number></property>
+       <item><widget class="QGroupBox" name="moveInputGroup"><property name="title"><string>目标位置</string></property><layout class="QFormLayout" name="moveForm"><property name="verticalSpacing"><number>12</number></property>
+        <item row="0" column="0"><widget class="QLabel" name="moveStudentLabel"><property name="text"><string>学生学号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="moveStudentSpin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item>
+        <item row="1" column="0"><widget class="QLabel" name="moveBuildingLabel"><property name="text"><string>目标楼栋</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="moveBuildingSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property></widget></item>
+        <item row="2" column="0"><widget class="QLabel" name="moveDormLabel"><property name="text"><string>目标宿舍</string></property></widget></item><item row="2" column="1"><widget class="QSpinBox" name="moveDormSpin"><property name="minimum"><number>101</number></property><property name="maximum"><number>9999</number></property></widget></item>
+        <item row="3" column="0"><widget class="QLabel" name="moveBedLabel"><property name="text"><string>指定床位</string></property></widget></item><item row="3" column="1"><widget class="QSpinBox" name="moveBedSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>99</number></property><property name="specialValueText"><string>自动分配</string></property></widget></item>
+       </layout></widget></item>
+       <item><widget class="QGroupBox" name="movePreviewGroup"><property name="title"><string>调宿确认</string></property><layout class="QVBoxLayout" name="movePreviewLayout"><item><widget class="QLabel" name="movePreviewLabel"><property name="text"><string>系统将显示原位置与目标位置，并检查失败恢复状态。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item><spacer name="moveSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item><item><widget class="QPushButton" name="moveSubmitButton"><property name="text"><string>确认调宿 / 换床</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item></layout></widget></item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="swapTab">
+      <attribute name="title"><string>学生互换</string></attribute>
+      <layout class="QHBoxLayout" name="swapLayout" stretch="1,1"><property name="spacing"><number>18</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>18</number></property>
+       <item><widget class="QGroupBox" name="swapInputGroup"><property name="title"><string>选择两名学生</string></property><layout class="QFormLayout" name="swapForm"><property name="verticalSpacing"><number>12</number></property><item row="0" column="0"><widget class="QLabel" name="swapStudent1Label"><property name="text"><string>学生一</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="swapStudent1Spin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item><item row="1" column="0"><widget class="QLabel" name="swapStudent2Label"><property name="text"><string>学生二</string></property></widget></item><item row="1" column="1"><widget class="QSpinBox" name="swapStudent2Spin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item></layout></widget></item>
+       <item><widget class="QGroupBox" name="swapPreviewGroup"><property name="title"><string>互换确认</string></property><layout class="QVBoxLayout" name="swapPreviewLayout"><item><widget class="QLabel" name="swapPreviewLabel"><property name="text"><string>两名学生必须均已入住，系统将在执行前展示双方当前位置。</string></property><property name="wordWrap"><bool>true</bool></property></widget></item><item><spacer name="swapSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item><item><widget class="QPushButton" name="swapSubmitButton"><property name="text"><string>确认交换床位</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item></layout></widget></item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
