@@ -7,6 +7,7 @@
 #include <QHeaderView>
 #include <QList>
 #include <QSet>
+#include <QSettings>
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStringList>
@@ -69,6 +70,21 @@ StudentPage::StudentPage(QWidget* parent)
 		ui->statusFilterCombo->setCurrentIndex(0);
 		apply_filters();
 	});
+	connect(ui->studentTable, &QTableWidget::cellClicked, this, [this](int row, int) {
+		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
+		if (id_item != nullptr) {
+			show_student_summary(id_item->data(Qt::UserRole).toInt());
+		}
+	});
+	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {
+		set_detail_panel_visible(false);
+	});
+	connect(ui->showDetailButton, &QToolButton::clicked, this, [this]() {
+		set_detail_panel_visible(true);
+	});
+
+	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
+	set_detail_panel_visible(settings.value(QStringLiteral("student/detailPanelVisible"), true).toBool());
 }
 
 StudentPage::~StudentPage()
@@ -167,4 +183,66 @@ void StudentPage::apply_filters()
 	ui->resultCountLabel->setText(matched_ids.isEmpty()
 		? QStringLiteral("没有符合条件的学生")
 		: QStringLiteral("已显示 %1 / %2 人").arg(matched_ids.size()).arg(current_school.get_student_count()));
+
+	int selected_row = -1;
+	for (int row = 0; row < ui->studentTable->rowCount(); ++row) {
+		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
+		if (id_item != nullptr && id_item->data(Qt::UserRole).toInt() == selected_student_id) {
+			selected_row = row;
+			break;
+		}
+	}
+	if (selected_row >= 0) {
+		ui->studentTable->selectRow(selected_row);
+		show_student_summary(selected_student_id);
+	} else {
+		clear_student_summary();
+	}
+}
+
+void StudentPage::show_student_summary(int student_id)
+{
+	const student* current_student = school::instance().get_student(student_id);
+	if (current_student == nullptr) {
+		clear_student_summary();
+		return;
+	}
+
+	selected_student_id = student_id;
+	ui->detailNameLabel->setText(current_student->get_name());
+	ui->studentIdValueLabel->setText(QString::number(current_student->get_id()));
+	ui->genderValueLabel->setText(student_gender_text(current_student->get_gender()));
+	ui->gradeValueLabel->setText(QString::number(current_student->get_grade()));
+	ui->classValueLabel->setText(QStringLiteral("%1班").arg(current_student->get_class_num()));
+	ui->accommodationValueLabel->setText(student_accommodation_text(*current_student));
+	ui->accommodationActionButton->setText(student_is_assigned(*current_student)
+		? QStringLiteral("办理调宿")
+		: QStringLiteral("办理入住"));
+	ui->detailHintLabel->hide();
+	ui->detailContent->show();
+	ui->editStudentButton->setEnabled(true);
+	ui->accommodationActionButton->setEnabled(true);
+	ui->moreActionButton->setEnabled(true);
+}
+
+void StudentPage::clear_student_summary()
+{
+	selected_student_id = 0;
+	ui->detailNameLabel->setText(QStringLiteral("学生详情"));
+	ui->detailHintLabel->show();
+	ui->detailContent->hide();
+	ui->editStudentButton->setEnabled(false);
+	ui->accommodationActionButton->setEnabled(false);
+	ui->moreActionButton->setEnabled(false);
+}
+
+void StudentPage::set_detail_panel_visible(bool visible)
+{
+	ui->detailPanel->setVisible(visible);
+	ui->showDetailButton->setVisible(!visible);
+	if (visible) {
+		ui->studentSplitter->setSizes({700, 360});
+	}
+	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
+	settings.setValue(QStringLiteral("student/detailPanelVisible"), visible);
 }
