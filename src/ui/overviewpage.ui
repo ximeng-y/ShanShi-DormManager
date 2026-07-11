@@ -60,6 +60,11 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="generateSampleDataButton">
+       <property name="text"><string>生成样例数据</string></property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

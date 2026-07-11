@@ -5,9 +5,12 @@
 #include "core/dorm.h"
 #include "core/school.h"
 #include "core/student.h"
+#include "sampledatadialog.h"
+#include "uifeedback.h"
 
 #include <QHeaderView>
 #include <QProgressBar>
+#include <QPushButton>
 #include <QSet>
 #include <QShowEvent>
 #include <QStringList>
@@ -42,6 +45,7 @@ OverviewPage::OverviewPage(QWidget* parent)
 	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	ui->buildingCapacityTable->horizontalHeaderItem(4)->setText(QStringLiteral("空床位"));
 	ui->buildingCapacityTable->horizontalHeaderItem(4)->setToolTip(QStringLiteral("统计未被占用的床位，不区分房间性别锁。"));
+	connect(ui->generateSampleDataButton, &QPushButton::clicked, this, &OverviewPage::open_sample_data_dialog);
 }
 
 OverviewPage::~OverviewPage()
@@ -59,6 +63,28 @@ void OverviewPage::showEvent(QShowEvent* event)
 {
 	QWidget::showEvent(event);
 	refresh_data();
+}
+
+void OverviewPage::open_sample_data_dialog()
+{
+	SampleDataDialog dialog(this);
+	if (dialog.exec() != QDialog::Accepted) {
+		return;
+	}
+	const sampledataresult result = dialog.generation_result();
+	if (!result.success) {
+		return;
+	}
+	refresh_data();
+	uifeedback::show_information(this, QStringLiteral("样例数据生成完成"),
+		QStringLiteral("已新增 %1 栋楼、%2 间宿舍和 %3 名学生，其中 %4 人已入住。\n"
+			"当前保留 %5 间未锁定空宿舍；随机种子为 %6。")
+			.arg(result.added_building_count)
+			.arg(result.added_dorm_count)
+			.arg(result.added_student_count)
+			.arg(result.assigned_student_count)
+			.arg(result.remaining_unlocked_dorm_count)
+			.arg(result.random_seed));
 }
 
 void OverviewPage::refresh_summary()

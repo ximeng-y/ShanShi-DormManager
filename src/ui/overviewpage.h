@@ -25,6 +25,7 @@ protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新只读数据
 
 private:
+	void open_sample_data_dialog();//打开样例参数弹窗并在成功后刷新概览
 	void refresh_summary();//刷新学生、床位与入住情况统计
 	void refresh_building_capacity();//刷新楼栋容量表格
 
