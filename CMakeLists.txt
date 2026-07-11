@@ -49,6 +49,9 @@ set(PROJECT_SOURCES
         src/ui/editbuildingdialog.cpp
         src/ui/editbuildingdialog.h
         src/ui/editbuildingdialog.ui
+        src/ui/adddormdialog.cpp
+        src/ui/adddormdialog.h
+        src/ui/adddormdialog.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp
