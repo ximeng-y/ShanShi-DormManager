@@ -84,6 +84,9 @@ public:
 	int reassign_all_students_random();//重排，先清空全部宿舍并放开性别锁
 
 	//宿舍集合协调
+	//单间清退返回值: >=0=成功(清退人数)  -1=参数非法  -8=宿舍不存在或住宿记录不一致
+	int clear_dorm(int building_id, int dorm_id);//清空指定宿舍并保留房间性别锁
+	int clear_dorm_reset_gender(int building_id, int dorm_id);//清空指定宿舍并放开房间性别锁
 	int clear_all_dorms();//清空全部宿舍并保留房间性别锁，返回被清退学生数
 	int clear_all_dorms_reset_gender();//清空全部宿舍并放开房间性别锁，返回被清退学生数
 	//交换返回值通用: 1=成功/-1=参数非法或同一间/-2=宿舍不存在/-3=房间锁不符/-4=人数或男女舍前提不符/-5=住客或目标约束异常/-6=失败后快照恢复不完整。
@@ -94,6 +97,7 @@ public:
 
 private:
 	school() = default;//构造函数，单例模式禁止外部实例化
+	int clear_dorm_impl(int building_id, int dorm_id, bool reset_gender);//清空单间宿舍的共享实现
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
 	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床

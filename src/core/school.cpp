@@ -588,6 +588,33 @@ int school::reassign_all_students_random()//清空后为全校学生随机重排
 	return assign_all_students_random();
 }
 
+int school::clear_dorm_impl(int building_id, int dorm_id, bool reset_gender)//清空单间宿舍的共享实现
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
+		return -1;
+	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
+	if (d == nullptr || !is_dorm_consistent(building_id, dorm_id))
+		return -8;
+	QVector<int> student_ids = d->get_student_id_list();
+	int cleared = dormmanager::instance().clear_dorm_students(building_id, dorm_id, reset_gender);
+	if (cleared != student_ids.size())
+		return -8;
+	for (int student_id : student_ids)
+		if (studentmanager::instance().clear_dorm_info(student_id) != 1)
+			return -8;
+	return cleared;
+}
+
+int school::clear_dorm(int building_id, int dorm_id)//清空指定宿舍并保留房间性别锁
+{
+	return clear_dorm_impl(building_id, dorm_id, false);
+}
+
+int school::clear_dorm_reset_gender(int building_id, int dorm_id)//清空指定宿舍并放开房间性别锁
+{
+	return clear_dorm_impl(building_id, dorm_id, true);
+}
+
 int school::clear_all_dorms()//清空全部宿舍并保留房间性别锁
 {
 	int cleared = 0;
