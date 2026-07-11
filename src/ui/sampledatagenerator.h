@@ -10,7 +10,7 @@ class school;
 enum class sampledatamode
 {
 	append,
-	replace_reserved//Phase 2 预留：清空现有数据后生成
+	replace_reserved//仅预留接口；须等前端 Phase 2 收尾并具备原数据快照恢复后再实现
 };
 
 //样例数据生成参数。数量均描述本次新增数据，不修改既有对象。
