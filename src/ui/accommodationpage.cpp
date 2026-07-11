@@ -24,6 +24,18 @@ QString accommodation_position_text(const student& current_student)
 		.arg(current_student.get_dorm_id())
 		.arg(current_student.get_bed_id());
 }
+
+bool has_complete_accommodation(const student& current_student)
+{
+	return current_student.get_building_id() > 0 && current_student.get_dorm_id() > 0
+		&& current_student.get_floor() > 0 && current_student.get_bed_id() > 0;
+}
+
+bool has_any_accommodation(const student& current_student)
+{
+	return current_student.get_building_id() > 0 || current_student.get_dorm_id() > 0
+		|| current_student.get_floor() > 0 || current_student.get_bed_id() > 0;
+}
 }
 
 AccommodationPage::AccommodationPage(QWidget* parent)
@@ -41,8 +53,12 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	connect(ui->assignDormSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBedSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
+	ui->removeSubmitButton->setEnabled(true);
+	connect(ui->removeStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_remove_preview(); });
+	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
 	update_assign_controls();
 	update_assign_preview();
+	update_remove_preview();
 }
 
 AccommodationPage::~AccommodationPage()
@@ -177,4 +193,68 @@ void AccommodationPage::show_assignment_error(int result)
 	else if (result == -9) message = QStringLiteral("当前没有可用宿舍。");
 	else message = QStringLiteral("输入参数无效，请检查学生、楼栋、宿舍和床位。");
 	uifeedback::show_error(this, QStringLiteral("无法办理入住"), message, QStringLiteral("业务返回值：%1").arg(result));
+}
+
+void AccommodationPage::update_remove_preview()
+{
+	const int student_id = ui->removeStudentSpin->value();
+	const student* current_student = school::instance().get_student(student_id);
+	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
+		ui->removePreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号。退宿仅释放床位并保留学籍。"));
+		return;
+	}
+	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
+	if (assigned && has_complete_accommodation(*current_student)) {
+		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n当前住宿：%2\n退宿后学生档案将继续保留。")
+			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
+	} else if (has_any_accommodation(*current_student)) {
+		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n住宿位置字段不完整，不能办理退宿。")
+			.arg(accommodation_student_text(*current_student)));
+	} else {
+		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n当前未入住，无需办理退宿。")
+			.arg(accommodation_student_text(*current_student)));
+	}
+}
+
+void AccommodationPage::submit_remove()
+{
+	const int student_id = ui->removeStudentSpin->value();
+	const student* current_student = school::instance().get_student(student_id);
+	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法办理退宿"), QStringLiteral("学生学号无效或学生不存在。"));
+		return;
+	}
+	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
+	if (!assigned && has_any_accommodation(*current_student)) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生住宿位置字段不完整，请暂停相关操作并核查数据。"));
+		return;
+	}
+	if (!assigned) {
+		uifeedback::show_error(this, QStringLiteral("无需办理退宿"), QStringLiteral("该学生当前未入住。"));
+		return;
+	}
+	const QString original_position = accommodation_position_text(*current_student);
+	if (!uifeedback::confirm_action(this, QStringLiteral("确认办理退宿"),
+		QStringLiteral("%1\n\n将释放：%2\n学生档案将继续保留。").arg(accommodation_student_text(*current_student), original_position),
+		QStringLiteral("确认退宿"))) {
+		return;
+	}
+
+	const int result = school::instance().remove_student_from_dorm(student_id);
+	if (result > 0) {
+		uifeedback::show_success(this, QStringLiteral("退宿办理成功：已释放 %1。").arg(original_position));
+		update_remove_preview();
+		update_assign_preview();
+		return;
+	}
+	if (result == -8) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生位置与宿舍床位记录不一致，请暂停相关操作并核查数据。"), QStringLiteral("业务返回值：-8"));
+		return;
+	}
+	QString message;
+	if (result == 0) message = QStringLiteral("该学生当前未入住。");
+	else if (result == -6) message = QStringLiteral("学生已经不存在，请刷新后重试。");
+	else message = QStringLiteral("学生学号参数无效。");
+	uifeedback::show_error(this, QStringLiteral("无法办理退宿"), message, QStringLiteral("业务返回值：%1").arg(result));
+	update_remove_preview();
 }

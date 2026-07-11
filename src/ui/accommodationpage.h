@@ -23,6 +23,8 @@ private:
 	void update_assign_preview();//刷新入住学生与目标位置预览
 	void submit_assignment();//提交学生入住业务
 	void show_assignment_error(int result);//解释入住返回码
+	void update_remove_preview();//刷新退宿学生与当前位置预览
+	void submit_remove();//提交保留学籍的退宿业务
 
 	Ui::AccommodationPage* ui;
 };
