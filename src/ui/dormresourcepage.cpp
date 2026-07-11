@@ -6,10 +6,13 @@
 #include "core/school.h"
 
 #include <QHeaderView>
+#include <QLabel>
 #include <QListWidgetItem>
 #include <QShowEvent>
+#include <QSizePolicy>
 #include <QStringList>
 #include <QTableWidgetItem>
+#include <QVBoxLayout>
 
 namespace {
 QString resource_building_gender_text(int gender)
@@ -47,12 +50,22 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->resourceSplitter->setSizes({190, 430, 360});
 
 	connect(ui->buildingList, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* current) {
-		selected_building_id = current == nullptr ? 0 : current->data(Qt::UserRole).toInt();
+		const int new_building_id = current == nullptr ? 0 : current->data(Qt::UserRole).toInt();
+		if (new_building_id != selected_building_id) {
+			selected_dorm_id = 0;
+		}
+		selected_building_id = new_building_id;
 		ui->addDormButton->setEnabled(selected_building_id > 0);
 		refresh_dorm_list();
 	});
 	connect(ui->dormSearchLineEdit, &QLineEdit::textChanged, this, [this]() {
 		refresh_dorm_list();
+	});
+	connect(ui->dormTable, &QTableWidget::cellClicked, this, [this](int row, int) {
+		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
+		if (id_item != nullptr) {
+			show_dorm_detail(id_item->data(Qt::UserRole).toInt());
+		}
 	});
 }
 
@@ -153,7 +166,20 @@ void DormResourcePage::refresh_dorm_list()
 	ui->dormCountLabel->setText(selected_building_id == 0
 		? QStringLiteral("请先选择楼栋")
 		: (matched_keys.isEmpty() ? QStringLiteral("没有符合条件的宿舍") : QStringLiteral("已显示 %1 间宿舍").arg(matched_keys.size())));
-	clear_dorm_detail();
+	int restored_row = -1;
+	for (int row = 0; row < ui->dormTable->rowCount(); ++row) {
+		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
+		if (id_item != nullptr && id_item->data(Qt::UserRole).toInt() == selected_dorm_id) {
+			restored_row = row;
+			break;
+		}
+	}
+	if (restored_row >= 0) {
+		ui->dormTable->selectRow(restored_row);
+		show_dorm_detail(selected_dorm_id);
+	} else {
+		clear_dorm_detail();
+	}
 }
 
 void DormResourcePage::clear_dorm_detail()
@@ -164,4 +190,63 @@ void DormResourcePage::clear_dorm_detail()
 	ui->dormDetailContent->hide();
 	ui->editDormButton->setEnabled(false);
 	ui->removeDormButton->setEnabled(false);
+	clear_bed_grid();
+}
+
+void DormResourcePage::show_dorm_detail(int dorm_id)
+{
+	const dorm* current_dorm = school::instance().get_dorm(selected_building_id, dorm_id);
+	if (current_dorm == nullptr) {
+		clear_dorm_detail();
+		return;
+	}
+
+	selected_dorm_id = dorm_id;
+	ui->dormDetailTitle->setText(QStringLiteral("%1室").arg(current_dorm->get_id()));
+	ui->buildingValueLabel->setText(QStringLiteral("%1号楼").arg(current_dorm->get_building_id()));
+	ui->floorValueLabel->setText(QStringLiteral("%1层").arg(current_dorm->get_floor()));
+	ui->genderLockValueLabel->setText(resource_dorm_gender_text(current_dorm->get_for_gender()));
+	ui->capacityValueLabel->setText(QStringLiteral("%1/%2 已入住").arg(current_dorm->get_current_num()).arg(current_dorm->get_max_num()));
+	ui->dormDetailHint->hide();
+	ui->dormDetailContent->show();
+	ui->editDormButton->setEnabled(true);
+	ui->removeDormButton->setEnabled(true);
+
+	clear_bed_grid();
+	for (int bed_id = 1; bed_id <= current_dorm->get_max_num(); ++bed_id) {
+		const int student_id = current_dorm->get_student_id(bed_id);
+		const bool occupied = student_id > 0;
+		auto* bed_card = new QFrame(ui->bedGridWidget);
+		bed_card->setProperty("bedCard", true);
+		bed_card->setProperty("occupied", occupied);
+		bed_card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+		bed_card->setMinimumHeight(70);
+		auto* card_layout = new QVBoxLayout(bed_card);
+		card_layout->setContentsMargins(10, 8, 10, 8);
+		card_layout->setSpacing(4);
+		auto* bed_label = new QLabel(QStringLiteral("%1号床").arg(bed_id), bed_card);
+		bed_label->setProperty("bedTitle", true);
+		QString occupant_text = QStringLiteral("空闲");
+		if (occupied) {
+			const student* occupant = school::instance().get_student(student_id);
+			occupant_text = occupant == nullptr
+				? QStringLiteral("记录异常：%1").arg(student_id)
+				: QStringLiteral("%1 · %2").arg(occupant->get_name()).arg(student_id);
+		}
+		auto* occupant_label = new QLabel(occupant_text, bed_card);
+		occupant_label->setWordWrap(true);
+		card_layout->addWidget(bed_label);
+		card_layout->addWidget(occupant_label);
+		ui->bedGridLayout->addWidget(bed_card, (bed_id - 1) / 2, (bed_id - 1) % 2);
+	}
+	ui->bedGridLayout->setColumnStretch(0, 1);
+	ui->bedGridLayout->setColumnStretch(1, 1);
+}
+
+void DormResourcePage::clear_bed_grid()
+{
+	while (QLayoutItem* item = ui->bedGridLayout->takeAt(0)) {
+		delete item->widget();
+		delete item;
+	}
 }

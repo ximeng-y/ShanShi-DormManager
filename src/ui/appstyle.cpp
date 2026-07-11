@@ -186,6 +186,22 @@ QLabel[detailSubheading="true"] {
 	font-weight: 600;
 }
 
+QFrame[bedCard="true"] {
+	border: 1px solid #cbd6df;
+	border-radius: 6px;
+	background: #f8fafb;
+}
+
+QFrame[bedCard="true"][occupied="true"] {
+	border-color: #8ca6ba;
+	background: #eef4f8;
+}
+
+QLabel[bedTitle="true"] {
+	color: #35546f;
+	font-weight: 600;
+}
+
 QLineEdit,
 QSpinBox,
 QComboBox {
