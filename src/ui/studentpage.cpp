@@ -1,7 +1,49 @@
 #include "studentpage.h"
 #include "./ui_studentpage.h"
 
+#include "core/school.h"
+#include "core/student.h"
+
 #include <QHeaderView>
+#include <QList>
+#include <QSet>
+#include <QShowEvent>
+#include <QSignalBlocker>
+#include <QStringList>
+#include <QTableWidgetItem>
+
+#include <algorithm>
+
+namespace {
+QString student_gender_text(int gender)
+{
+	if (gender == 1) {
+		return QStringLiteral("男");
+	}
+	if (gender == 2) {
+		return QStringLiteral("女");
+	}
+	return QStringLiteral("未设置");
+}
+
+bool student_is_assigned(const student& current_student)
+{
+	return current_student.get_building_id() > 0
+		&& current_student.get_dorm_id() > 0
+		&& current_student.get_bed_id() > 0;
+}
+
+QString student_accommodation_text(const student& current_student)
+{
+	if (!student_is_assigned(current_student)) {
+		return QStringLiteral("未入住");
+	}
+	return QStringLiteral("%1号楼 · %2室 · %3号床")
+		.arg(current_student.get_building_id())
+		.arg(current_student.get_dorm_id())
+		.arg(current_student.get_bed_id());
+}
+}
 
 StudentPage::StudentPage(QWidget* parent)
 	: QWidget(parent)
@@ -17,9 +59,112 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+
+	connect(ui->searchLineEdit, &QLineEdit::textChanged, this, [this]() { apply_filters(); });
+	connect(ui->classFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
+	connect(ui->statusFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
+	connect(ui->resetFilterButton, &QPushButton::clicked, this, [this]() {
+		ui->searchLineEdit->clear();
+		ui->classFilterCombo->setCurrentIndex(0);
+		ui->statusFilterCombo->setCurrentIndex(0);
+		apply_filters();
+	});
 }
 
 StudentPage::~StudentPage()
 {
 	delete ui;
+}
+
+void StudentPage::refresh_data()
+{
+	rebuild_class_filter();
+	apply_filters();
+}
+
+void StudentPage::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+	refresh_data();
+}
+
+void StudentPage::rebuild_class_filter()
+{
+	const int selected_class = ui->classFilterCombo->currentData().toInt();
+	QSet<int> class_numbers;
+	const school& current_school = school::instance();
+	for (int student_id : current_school.get_all_student_ids()) {
+		const student* current_student = current_school.get_student(student_id);
+		if (current_student != nullptr && current_student->get_class_num() > 0) {
+			class_numbers.insert(current_student->get_class_num());
+		}
+	}
+	QList<int> sorted_classes = class_numbers.values();
+	std::sort(sorted_classes.begin(), sorted_classes.end());
+
+	const QSignalBlocker blocker(ui->classFilterCombo);
+	ui->classFilterCombo->clear();
+	ui->classFilterCombo->addItem(QStringLiteral("全部班级"), 0);
+	for (int class_num : sorted_classes) {
+		ui->classFilterCombo->addItem(QStringLiteral("%1班").arg(class_num), class_num);
+	}
+	const int restored_index = ui->classFilterCombo->findData(selected_class);
+	ui->classFilterCombo->setCurrentIndex(restored_index >= 0 ? restored_index : 0);
+}
+
+void StudentPage::apply_filters()
+{
+	const school& current_school = school::instance();
+	const QString search_text = ui->searchLineEdit->text().trimmed();
+	const int selected_class = ui->classFilterCombo->currentData().toInt();
+	const int selected_status = ui->statusFilterCombo->currentIndex();
+	QVector<int> matched_ids;
+
+	for (int student_id : current_school.get_all_student_ids()) {
+		const student* current_student = current_school.get_student(student_id);
+		if (current_student == nullptr) {
+			continue;
+		}
+		const bool assigned = student_is_assigned(*current_student);
+		const bool matches_search = search_text.isEmpty()
+			|| QString::number(student_id).contains(search_text)
+			|| current_student->get_name().contains(search_text, Qt::CaseInsensitive);
+		const bool matches_class = selected_class == 0 || current_student->get_class_num() == selected_class;
+		const bool matches_status = selected_status == 0
+			|| (selected_status == 1 && assigned)
+			|| (selected_status == 2 && !assigned);
+		if (matches_search && matches_class && matches_status) {
+			matched_ids.append(student_id);
+		}
+	}
+
+	ui->studentTable->setRowCount(matched_ids.size());
+	for (int row = 0; row < matched_ids.size(); ++row) {
+		const student* current_student = current_school.get_student(matched_ids.at(row));
+		if (current_student == nullptr) {
+			continue;
+		}
+		const bool assigned = student_is_assigned(*current_student);
+		const QStringList values = {
+			QString::number(current_student->get_id()),
+			current_student->get_name(),
+			student_gender_text(current_student->get_gender()),
+			QStringLiteral("%1班").arg(current_student->get_class_num()),
+			QString::number(current_student->get_grade()),
+			assigned ? QStringLiteral("已入住") : QStringLiteral("未入住"),
+			student_accommodation_text(*current_student)
+		};
+		for (int column = 0; column < values.size(); ++column) {
+			auto* item = new QTableWidgetItem(values.at(column));
+			item->setTextAlignment(column == 1 || column == 6 ? Qt::AlignVCenter | Qt::AlignLeft : Qt::AlignCenter);
+			if (column == 0) {
+				item->setData(Qt::UserRole, current_student->get_id());
+			}
+			ui->studentTable->setItem(row, column, item);
+		}
+	}
+
+	ui->resultCountLabel->setText(matched_ids.isEmpty()
+		? QStringLiteral("没有符合条件的学生")
+		: QStringLiteral("已显示 %1 / %2 人").arg(matched_ids.size()).arg(current_school.get_student_count()));
 }
