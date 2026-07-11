@@ -58,6 +58,9 @@ set(PROJECT_SOURCES
         src/ui/accommodationpage.cpp
         src/ui/accommodationpage.h
         src/ui/accommodationpage.ui
+        src/ui/advancedadjustmentpage.cpp
+        src/ui/advancedadjustmentpage.h
+        src/ui/advancedadjustmentpage.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp

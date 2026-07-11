@@ -175,6 +175,20 @@ QFrame[resourcePanel="true"] {
 	background: #ffffff;
 }
 
+QFrame[advancedCard="true"] {
+	border: 1px solid #d8e0e7;
+	border-radius: 8px;
+	background: #ffffff;
+}
+
+QLabel[phaseBadge="true"] {
+	border: 1px solid #9dafbe;
+	border-radius: 12px;
+	background: #edf2f6;
+	color: #526579;
+	font-size: 12px;
+}
+
 QLabel[detailHeading="true"] {
 	color: #17324d;
 	font-size: 18px;

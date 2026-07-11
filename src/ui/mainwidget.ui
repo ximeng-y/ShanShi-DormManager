@@ -206,7 +206,7 @@
        <widget class="StudentPage" name="studentPage"/>
        <widget class="DormResourcePage" name="dormResourcePage"/>
        <widget class="AccommodationPage" name="accommodationPage"/>
-       <widget class="QWidget" name="advancedPlaceholderPage"/>
+       <widget class="AdvancedAdjustmentPage" name="advancedAdjustmentPage"/>
       </widget>
      </item>
     </layout>
@@ -236,6 +236,12 @@
    <class>AccommodationPage</class>
    <extends>QWidget</extends>
    <header>ui/accommodationpage.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AdvancedAdjustmentPage</class>
+   <extends>QWidget</extends>
+   <header>ui/advancedadjustmentpage.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
