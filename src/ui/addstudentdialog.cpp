@@ -7,6 +7,17 @@
 #include "uifeedback.h"
 
 #include <QPushButton>
+#include <QStyle>
+
+namespace {
+void set_field_error(QWidget* field, QLabel* error_label, bool has_error)
+{
+	field->setProperty("inputError", has_error);
+	field->style()->unpolish(field);
+	field->style()->polish(field);
+	error_label->setVisible(has_error);
+}
+}
 
 AddStudentDialog::AddStudentDialog(QWidget* parent)
 	: QDialog(parent)
@@ -35,6 +46,7 @@ int AddStudentDialog::added_student_id() const
 
 void AddStudentDialog::attempt_add()
 {
+	clear_validation();
 	const int student_id = ui->studentIdSpin->value();
 	const QString name = ui->nameLineEdit->text().trimmed();
 	const int gender = ui->genderCombo->currentData().toInt();
@@ -42,14 +54,28 @@ void AddStudentDialog::attempt_add()
 	const int grade = ui->gradeSpin->value();
 
 	if (!check::is_valid_student_id(student_id)) {
+		set_field_error(ui->studentIdSpin, ui->studentIdErrorLabel, true);
+		ui->studentIdSpin->setFocus();
 		uifeedback::show_error(this, QStringLiteral("无法新增学生"), QStringLiteral("学号必须为8位有效数字。"));
 		return;
 	}
 	if (!check::is_valid_student_name(name)) {
+		set_field_error(ui->nameLineEdit, ui->nameErrorLabel, true);
+		ui->nameLineEdit->setFocus();
 		uifeedback::show_error(this, QStringLiteral("无法新增学生"), QStringLiteral("姓名应为1～20个字符，且不能包含禁止内容。"));
 		return;
 	}
 	if (!check::is_valid_gender(gender) || !check::is_valid_class_num(class_num) || !check::is_valid_grade(grade)) {
+		if (!check::is_valid_gender(gender)) {
+			set_field_error(ui->genderCombo, ui->genderErrorLabel, true);
+			ui->genderCombo->setFocus();
+		} else if (!check::is_valid_class_num(class_num)) {
+			set_field_error(ui->classSpin, ui->classErrorLabel, true);
+			ui->classSpin->setFocus();
+		} else {
+			set_field_error(ui->gradeSpin, ui->gradeErrorLabel, true);
+			ui->gradeSpin->setFocus();
+		}
 		uifeedback::show_error(this, QStringLiteral("无法新增学生"), QStringLiteral("性别、班级或年级不符合数据规则。"));
 		return;
 	}
@@ -71,4 +97,13 @@ void AddStudentDialog::attempt_add()
 
 	added_id = student_id;
 	accept();
+}
+
+void AddStudentDialog::clear_validation()
+{
+	set_field_error(ui->studentIdSpin, ui->studentIdErrorLabel, false);
+	set_field_error(ui->nameLineEdit, ui->nameErrorLabel, false);
+	set_field_error(ui->genderCombo, ui->genderErrorLabel, false);
+	set_field_error(ui->classSpin, ui->classErrorLabel, false);
+	set_field_error(ui->gradeSpin, ui->gradeErrorLabel, false);
 }

@@ -197,6 +197,18 @@ QComboBox:focus {
 	border: 1px solid #315f86;
 }
 
+QLineEdit[inputError="true"],
+QSpinBox[inputError="true"],
+QComboBox[inputError="true"] {
+	border: 1px solid #b94343;
+	background: #fff7f7;
+}
+
+QLabel[fieldError="true"] {
+	color: #a23333;
+	font-size: 12px;
+}
+
 QTableView,
 QTreeView,
 QListView {

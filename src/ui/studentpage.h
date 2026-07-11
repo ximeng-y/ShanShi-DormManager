@@ -33,6 +33,8 @@ private:
 	void start_edit_student();//在详情面板进入基础资料编辑状态
 	void cancel_edit_student();//退出编辑并恢复学生摘要
 	void save_student_changes();//校验并保存姓名、班级与年级
+	void set_student_directory_enabled(bool enabled);//编辑期间锁定目录与筛选，防止静默丢失输入
+	void clear_edit_validation();//清除编辑字段错误状态
 
 	Ui::StudentPage* ui;
 	int selected_student_id = 0;

@@ -14,12 +14,21 @@
 #include <QSettings>
 #include <QShowEvent>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QStringList>
 #include <QTableWidgetItem>
 
 #include <algorithm>
 
 namespace {
+void set_field_error(QWidget* field, QLabel* error_label, bool has_error)
+{
+	field->setProperty("inputError", has_error);
+	field->style()->unpolish(field);
+	field->style()->polish(field);
+	error_label->setVisible(has_error);
+}
+
 QString student_gender_text(int gender)
 {
 	if (gender == 1) {
@@ -134,7 +143,9 @@ void StudentPage::refresh_data()
 void StudentPage::showEvent(QShowEvent* event)
 {
 	QWidget::showEvent(event);
-	refresh_data();
+	if (!ui->editContent->isVisible()) {
+		refresh_data();
+	}
 }
 
 void StudentPage::rebuild_class_filter()
@@ -294,6 +305,7 @@ void StudentPage::start_edit_student()
 	const student* current_student = school::instance().get_student(selected_student_id);
 	if (current_student == nullptr) {
 		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("所选学生已经不存在，请刷新列表后重试。"));
+		set_student_directory_enabled(true);
 		refresh_data();
 		return;
 	}
@@ -305,12 +317,15 @@ void StudentPage::start_edit_student()
 	ui->detailContent->hide();
 	ui->detailHintLabel->hide();
 	ui->editContent->show();
+	clear_edit_validation();
+	set_student_directory_enabled(false);
 	ui->editNameLineEdit->setFocus();
 	ui->editNameLineEdit->selectAll();
 }
 
 void StudentPage::cancel_edit_student()
 {
+	set_student_directory_enabled(true);
 	show_student_summary(selected_student_id);
 }
 
@@ -319,6 +334,7 @@ void StudentPage::save_student_changes()
 	const student* current_student = school::instance().get_student(selected_student_id);
 	if (current_student == nullptr) {
 		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("所选学生已经不存在，请刷新列表后重试。"));
+		set_student_directory_enabled(true);
 		refresh_data();
 		return;
 	}
@@ -326,8 +342,23 @@ void StudentPage::save_student_changes()
 	const QString new_name = ui->editNameLineEdit->text().trimmed();
 	const int new_class_num = ui->editClassSpin->value();
 	const int new_grade = ui->editGradeSpin->value();
-	if (!check::is_valid_student_name(new_name) || !check::is_valid_class_num(new_class_num) || !check::is_valid_grade(new_grade)) {
-		uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("姓名、班级或年级不符合数据规则。"));
+	clear_edit_validation();
+	if (!check::is_valid_student_name(new_name)) {
+		set_field_error(ui->editNameLineEdit, ui->editNameErrorLabel, true);
+		ui->editNameLineEdit->setFocus();
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), ui->editNameErrorLabel->text());
+		return;
+	}
+	if (!check::is_valid_class_num(new_class_num)) {
+		set_field_error(ui->editClassSpin, ui->editClassErrorLabel, true);
+		ui->editClassSpin->setFocus();
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), ui->editClassErrorLabel->text());
+		return;
+	}
+	if (!check::is_valid_grade(new_grade)) {
+		set_field_error(ui->editGradeSpin, ui->editGradeErrorLabel, true);
+		ui->editGradeSpin->setFocus();
+		uifeedback::show_error(this, QStringLiteral("无法修改资料"), ui->editGradeErrorLabel->text());
 		return;
 	}
 
@@ -361,6 +392,7 @@ void StudentPage::save_student_changes()
 			} else {
 				uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生班级未能保存，已恢复原资料。"));
 			}
+			set_student_directory_enabled(true);
 			refresh_data();
 			return;
 		}
@@ -373,10 +405,30 @@ void StudentPage::save_student_changes()
 		} else {
 			uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生年级未能保存，已恢复原资料。"));
 		}
+		set_student_directory_enabled(true);
 		refresh_data();
 		return;
 	}
 
+	set_student_directory_enabled(true);
 	refresh_data();
 	uifeedback::show_success(this, QStringLiteral("学生基础资料已更新。"));
+}
+
+void StudentPage::set_student_directory_enabled(bool enabled)
+{
+	ui->studentTable->setEnabled(enabled);
+	ui->searchLineEdit->setEnabled(enabled);
+	ui->classFilterCombo->setEnabled(enabled);
+	ui->statusFilterCombo->setEnabled(enabled);
+	ui->resetFilterButton->setEnabled(enabled);
+	ui->addStudentButton->setEnabled(enabled);
+	ui->hideDetailButton->setEnabled(enabled);
+}
+
+void StudentPage::clear_edit_validation()
+{
+	set_field_error(ui->editNameLineEdit, ui->editNameErrorLabel, false);
+	set_field_error(ui->editClassSpin, ui->editClassErrorLabel, false);
+	set_field_error(ui->editGradeSpin, ui->editGradeErrorLabel, false);
 }
