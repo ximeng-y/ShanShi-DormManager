@@ -203,7 +203,7 @@
         <number>0</number>
        </property>
        <widget class="OverviewPage" name="overviewPage"/>
-       <widget class="QWidget" name="studentPlaceholderPage"/>
+       <widget class="StudentPage" name="studentPage"/>
        <widget class="QWidget" name="dormPlaceholderPage"/>
        <widget class="QWidget" name="accommodationPlaceholderPage"/>
        <widget class="QWidget" name="advancedPlaceholderPage"/>
@@ -218,6 +218,12 @@
    <class>OverviewPage</class>
    <extends>QWidget</extends>
    <header>ui/overviewpage.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>StudentPage</class>
+   <extends>QWidget</extends>
+   <header>ui/studentpage.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

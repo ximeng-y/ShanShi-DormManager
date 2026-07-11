@@ -152,6 +152,34 @@ QPushButton:disabled {
 	color: #9ba8b4;
 }
 
+QPushButton[primaryButton="true"] {
+	border-color: #315f86;
+	background: #315f86;
+	color: #ffffff;
+}
+
+QPushButton[primaryButton="true"]:hover {
+	border-color: #274f70;
+	background: #274f70;
+}
+
+QFrame[detailPanel="true"] {
+	border: 1px solid #d8e0e7;
+	border-radius: 8px;
+	background: #ffffff;
+}
+
+QLabel[detailHeading="true"] {
+	color: #17324d;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+QLabel[detailSubheading="true"] {
+	color: #35546f;
+	font-weight: 600;
+}
+
 QLineEdit,
 QSpinBox,
 QComboBox {
