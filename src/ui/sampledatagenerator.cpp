@@ -8,6 +8,8 @@
 #include <QSet>
 #include <QVector>
 
+#include <limits>
+
 namespace {
 struct plannedbuilding
 {
@@ -134,6 +136,22 @@ QString random_student_name(QRandomGenerator& random)
 	}
 	return result;
 }
+
+int bounded_preview_value(qint64 value)
+{
+	if (value > std::numeric_limits<int>::max()) {
+		return std::numeric_limits<int>::max();
+	}
+	if (value < std::numeric_limits<int>::min()) {
+		return std::numeric_limits<int>::min();
+	}
+	return static_cast<int>(value);
+}
+
+int bounded_preview_product(int first, int second)
+{
+	return bounded_preview_value(static_cast<qint64>(first) * second);
+}
 }
 
 struct sampledatagenerator::plan
@@ -148,17 +166,19 @@ struct sampledatagenerator::plan
 sampledatapreview sampledatagenerator::preview(const sampledataconfig& config)//计算预计新增规模
 {
 	sampledatapreview result;
-	result.building_count = config.male_building_count
-		+ config.female_building_count
-		+ config.mixed_building_count;
-	const int dorms_per_building = config.floors_per_building * config.dorms_per_floor;
-	result.dorm_count = result.building_count * dorms_per_building;
-	const int beds_per_building = config.four_bed_dorm_count * 4
-		+ config.six_bed_dorm_count * 6;
-	result.bed_count = result.building_count * beds_per_building;
-	result.student_count = config.male_student_count + config.female_student_count;
-	result.assigned_student_count = config.male_assigned_count + config.female_assigned_count;
-	result.unassigned_student_count = result.student_count - result.assigned_student_count;
+	result.building_count = bounded_preview_value(static_cast<qint64>(config.male_building_count)
+		+ config.female_building_count + config.mixed_building_count);
+	const int dorms_per_building = bounded_preview_product(config.floors_per_building, config.dorms_per_floor);
+	result.dorm_count = bounded_preview_product(result.building_count, dorms_per_building);
+	const int beds_per_building = bounded_preview_value(static_cast<qint64>(config.four_bed_dorm_count) * 4
+		+ static_cast<qint64>(config.six_bed_dorm_count) * 6);
+	result.bed_count = bounded_preview_product(result.building_count, beds_per_building);
+	result.student_count = bounded_preview_value(static_cast<qint64>(config.male_student_count)
+		+ config.female_student_count);
+	result.assigned_student_count = bounded_preview_value(static_cast<qint64>(config.male_assigned_count)
+		+ config.female_assigned_count);
+	result.unassigned_student_count = bounded_preview_value(static_cast<qint64>(config.male_student_count)
+		+ config.female_student_count - config.male_assigned_count - config.female_assigned_count);
 	result.reserved_unlocked_dorm_count = config.minimum_unlocked_empty_dorm_count;
 	return result;
 }
@@ -186,7 +206,7 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 		errors.append(QStringLiteral("每栋楼层数和每层宿舍数必须在1～99之间。"));
 	}
 
-	const int dorms_per_building = config.floors_per_building * config.dorms_per_floor;
+	const int dorms_per_building = bounded_preview_product(config.floors_per_building, config.dorms_per_floor);
 	if (config.four_bed_dorm_count < 0 || config.six_bed_dorm_count < 0
 		|| config.four_bed_dorm_count + config.six_bed_dorm_count != dorms_per_building) {
 		errors.append(QStringLiteral("每栋4人间与6人间数量之和必须等于每栋宿舍总数。"));
