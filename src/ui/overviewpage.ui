@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OverviewPage</class>
+ <widget class="QWidget" name="OverviewPage">
+  <layout class="QVBoxLayout" name="overviewLayout" stretch="0,0,0,1">
+   <property name="spacing">
+    <number>14</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>18</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="headingLayout">
+     <item>
+      <layout class="QVBoxLayout" name="headingTextLayout">
+       <property name="spacing">
+        <number>3</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="headingLabel">
+         <property name="text">
+          <string>数据概况</string>
+         </property>
+         <property name="pageHeading" stdset="0">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="headingDescriptionLabel">
+         <property name="text">
+          <string>查看学生住宿、床位使用和楼栋容量的当前状态。</string>
+         </property>
+         <property name="pageDescription" stdset="0">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="headingSpacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="statisticsLayout" stretch="1,1,1,1">
+     <property name="spacing">
+      <number>12</number>
+     </property>
+     <item>
+      <widget class="QFrame" name="studentCountCard">
+       <property name="statCard" stdset="0">
+        <bool>true</bool>
+       </property>
+       <layout class="QVBoxLayout" name="studentCountCardLayout">
+        <item><widget class="QLabel" name="studentCountTitleLabel"><property name="text"><string>学生总数</string></property></widget></item>
+        <item><widget class="QLabel" name="studentCountValueLabel"><property name="text"><string>0</string></property><property name="statValue" stdset="0"><bool>true</bool></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="assignedCountCard">
+       <property name="statCard" stdset="0"><bool>true</bool></property>
+       <layout class="QVBoxLayout" name="assignedCountCardLayout">
+        <item><widget class="QLabel" name="assignedCountTitleLabel"><property name="text"><string>已入住学生</string></property></widget></item>
+        <item><widget class="QLabel" name="assignedCountValueLabel"><property name="text"><string>0</string></property><property name="statValue" stdset="0"><bool>true</bool></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="emptyBedCard">
+       <property name="statCard" stdset="0"><bool>true</bool></property>
+       <layout class="QVBoxLayout" name="emptyBedCardLayout">
+        <item>
+         <layout class="QHBoxLayout" name="emptyBedTitleLayout">
+          <item><widget class="QLabel" name="emptyBedTitleLabel"><property name="text"><string>全部空床位</string></property></widget></item>
+          <item><widget class="infobutton" name="emptyBedInfoButton"><property name="toolTip"><string>统计所有未被占用的床位，不区分房间性别锁。</string></property></widget></item>
+          <item><spacer name="emptyBedTitleSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+         </layout>
+        </item>
+        <item><widget class="QLabel" name="emptyBedValueLabel"><property name="text"><string>0</string></property><property name="statValue" stdset="0"><bool>true</bool></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="buildingCountCard">
+       <property name="statCard" stdset="0"><bool>true</bool></property>
+       <layout class="QVBoxLayout" name="buildingCountCardLayout">
+        <item><widget class="QLabel" name="buildingCountTitleLabel"><property name="text"><string>宿舍楼</string></property></widget></item>
+        <item><widget class="QLabel" name="buildingCountValueLabel"><property name="text"><string>0</string></property><property name="statValue" stdset="0"><bool>true</bool></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="summaryLayout" stretch="2,1">
+     <property name="spacing"><number>12</number></property>
+     <item>
+      <widget class="QGroupBox" name="occupancyGroupBox">
+       <property name="title"><string>入住情况</string></property>
+       <layout class="QGridLayout" name="occupancyLayout">
+        <item row="0" column="0"><widget class="QLabel" name="maleOccupancyLabel"><property name="text"><string>男生</string></property></widget></item>
+        <item row="0" column="1"><widget class="QProgressBar" name="maleOccupancyProgress"><property name="value"><number>0</number></property><property name="format"><string>%p%</string></property></widget></item>
+        <item row="1" column="0"><widget class="QLabel" name="femaleOccupancyLabel"><property name="text"><string>女生</string></property></widget></item>
+        <item row="1" column="1"><widget class="QProgressBar" name="femaleOccupancyProgress"><property name="value"><number>0</number></property><property name="format"><string>%p%</string></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="pendingGroupBox">
+       <property name="title"><string>待处理事项</string></property>
+       <layout class="QFormLayout" name="pendingLayout">
+        <item row="0" column="0"><widget class="QLabel" name="unassignedTitleLabel"><property name="text"><string>未入住学生</string></property></widget></item>
+        <item row="0" column="1"><widget class="QLabel" name="unassignedValueLabel"><property name="text"><string>0 人</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set></property></widget></item>
+        <item row="1" column="0"><widget class="QLabel" name="unsetGenderTitleLabel"><property name="text"><string>性别未设置</string></property></widget></item>
+        <item row="1" column="1"><widget class="QLabel" name="unsetGenderValueLabel"><property name="text"><string>0 人</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set></property></widget></item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="buildingCapacityGroupBox">
+     <property name="title"><string>宿舍楼容量概况</string></property>
+     <layout class="QVBoxLayout" name="buildingCapacityLayout">
+      <item>
+       <widget class="QTableWidget" name="buildingCapacityTable">
+        <property name="alternatingRowColors"><bool>true</bool></property>
+        <property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property>
+        <property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property>
+        <property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property>
+        <property name="showGrid"><bool>false</bool></property>
+        <property name="columnCount"><number>6</number></property>
+        <column><property name="text"><string>楼号</string></property></column>
+        <column><property name="text"><string>类型</string></property></column>
+        <column><property name="text"><string>宿舍数</string></property></column>
+        <column><property name="text"><string>已入住</string></property></column>
+        <column><property name="text"><string>可用床位</string></property></column>
+        <column><property name="text"><string>入住率</string></property></column>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>infobutton</class>
+   <extends>QToolButton</extends>
+   <header>ui/infobutton.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

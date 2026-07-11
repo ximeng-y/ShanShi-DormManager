@@ -202,7 +202,7 @@
        <property name="currentIndex">
         <number>0</number>
        </property>
-       <widget class="QWidget" name="overviewPlaceholderPage"/>
+       <widget class="OverviewPage" name="overviewPage"/>
        <widget class="QWidget" name="studentPlaceholderPage"/>
        <widget class="QWidget" name="dormPlaceholderPage"/>
        <widget class="QWidget" name="accommodationPlaceholderPage"/>
@@ -213,6 +213,14 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OverviewPage</class>
+   <extends>QWidget</extends>
+   <header>ui/overviewpage.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

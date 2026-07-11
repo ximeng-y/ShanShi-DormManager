@@ -31,6 +31,42 @@ QLabel#pageTitleLabel {
 	font-size: 14px;
 }
 
+QLabel[pageHeading="true"] {
+	color: #17324d;
+	font-size: 22px;
+	font-weight: 600;
+}
+
+QLabel[pageDescription="true"] {
+	color: #6d7f90;
+}
+
+QFrame[statCard="true"] {
+	border: 1px solid #d8e0e7;
+	border-radius: 8px;
+	background: #ffffff;
+}
+
+QLabel[statValue="true"] {
+	color: #17324d;
+	font-size: 26px;
+	font-weight: 600;
+}
+
+QProgressBar {
+	min-height: 18px;
+	border: 0;
+	border-radius: 5px;
+	background: #e6edf3;
+	color: #315066;
+	text-align: center;
+}
+
+QProgressBar::chunk {
+	border-radius: 5px;
+	background: #557f9f;
+}
+
 QToolButton#sidebarToggleButton {
 	min-width: 34px;
 	min-height: 34px;

@@ -23,6 +23,9 @@ set(PROJECT_SOURCES
         src/ui/infobutton.h
         src/ui/uifeedback.cpp
         src/ui/uifeedback.h
+        src/ui/overviewpage.cpp
+        src/ui/overviewpage.h
+        src/ui/overviewpage.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp
