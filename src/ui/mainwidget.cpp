@@ -75,15 +75,6 @@ void MainWidget::switch_page(int index)
 	ui->pageStack->setCurrentIndex(index);
 	ui->pageTitleLabel->setText(page_titles.at(index));
 	navigation_buttons.at(index)->setChecked(true);
-	if (index == 0) {
-		ui->overviewPage->refresh_data();
-	} else if (index == 1) {
-		ui->studentPage->refresh_data();
-	} else if (index == 2) {
-		ui->dormResourcePage->refresh_data();
-	} else if (index == 3) {
-		ui->accommodationPage->refresh_data();
-	}
 }
 
 void MainWidget::set_sidebar_collapsed(bool collapsed)
