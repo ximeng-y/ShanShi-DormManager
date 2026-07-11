@@ -40,7 +40,8 @@ GenderCorrectionDialog::GenderCorrectionDialog(int student_id, QWidget* parent)
 		return;
 	}
 	ui->studentValueLabel->setText(QStringLiteral("%1（%2）").arg(current_student->get_name()).arg(current_student->get_id()));
-	ui->currentGenderValueLabel->setText(correction_gender_text(current_student->get_gender()));
+	current_gender = current_student->get_gender();
+	ui->currentGenderValueLabel->setText(correction_gender_text(current_gender));
 	const int target_index = ui->targetGenderCombo->findData(current_student->get_gender() == 1 ? 2 : 1);
 	ui->targetGenderCombo->setCurrentIndex(target_index >= 0 ? target_index : 0);
 }
@@ -52,7 +53,12 @@ GenderCorrectionDialog::~GenderCorrectionDialog()
 
 void GenderCorrectionDialog::attempt_correction()
 {
-	const int result = school::instance().correct_student_gender(target_student_id, ui->targetGenderCombo->currentData().toInt());
+	const int target_gender = ui->targetGenderCombo->currentData().toInt();
+	if (target_gender == current_gender) {
+		uifeedback::show_error(this, QStringLiteral("无需纠正性别"), QStringLiteral("目标性别与当前性别相同，请选择实际需要纠正的性别。"));
+		return;
+	}
+	const int result = school::instance().correct_student_gender(target_student_id, target_gender);
 	if (result == 1) {
 		accept();
 		return;

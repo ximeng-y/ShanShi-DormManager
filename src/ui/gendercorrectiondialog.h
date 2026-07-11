@@ -23,6 +23,7 @@ private:
 
 	Ui::GenderCorrectionDialog* ui;
 	int target_student_id = 0;
+	int current_gender = 0;
 };
 
 #endif // GENDERCORRECTIONDIALOG_H

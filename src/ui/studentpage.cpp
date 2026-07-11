@@ -104,9 +104,14 @@ StudentPage::StudentPage(QWidget* parent)
 			return;
 		}
 		const QString student_description = QStringLiteral("%1（%2）").arg(current_student->get_name()).arg(current_student->get_id());
-		const bool has_position = current_student->get_building_id() > 0 || current_student->get_dorm_id() > 0
-			|| current_student->get_floor() > 0 || current_student->get_bed_id() > 0;
-		const QString impact = has_position
+		const bool all_empty = current_student->get_building_id() == 0 && current_student->get_dorm_id() == 0
+			&& current_student->get_floor() == 0 && current_student->get_bed_id() == 0;
+		const bool all_assigned = student_has_complete_position(*current_student);
+		if (!all_empty && !all_assigned) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生住宿位置字段不完整，系统不会执行退学籍。请暂停相关操作并核查数据。"));
+			return;
+		}
+		const QString impact = all_assigned
 			? QStringLiteral("该学生存在住宿位置，系统将先办理退宿，再永久删除学生档案。")
 			: QStringLiteral("该操作将永久删除学生档案。当前学生没有住宿位置。");
 		if (!uifeedback::confirm_danger(this, QStringLiteral("确认办理退学籍"),
@@ -118,7 +123,7 @@ StudentPage::StudentPage(QWidget* parent)
 		if (result == 1) {
 			selected_student_id = 0;
 			refresh_data();
-			uifeedback::show_information(this, QStringLiteral("退学籍完成"), has_position
+			uifeedback::show_information(this, QStringLiteral("退学籍完成"), all_assigned
 				? QStringLiteral("学生档案已删除，原住宿位置已同步清退。")
 				: QStringLiteral("学生档案已删除。"));
 			return;
