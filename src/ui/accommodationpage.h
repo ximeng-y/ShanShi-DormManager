@@ -21,6 +21,7 @@ public:
 	explicit AccommodationPage(QWidget* parent = nullptr);
 	~AccommodationPage();
 	void refresh_data();//刷新四类住宿任务的学生与目标预览
+	void prepare_student_task(int student_id, bool assigned);//从学生详情进入并预填入住或调宿任务
 
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新住宿任务预览

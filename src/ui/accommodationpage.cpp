@@ -102,6 +102,19 @@ void AccommodationPage::refresh_data()
 	update_swap_preview();
 }
 
+void AccommodationPage::prepare_student_task(int student_id, bool assigned)
+{
+	if (assigned) {
+		ui->taskTabs->setCurrentWidget(ui->moveTab);
+		ui->moveStudentSpin->setValue(student_id);
+		update_move_preview();
+	} else {
+		ui->taskTabs->setCurrentWidget(ui->assignTab);
+		ui->assignStudentSpin->setValue(student_id);
+		update_assign_preview();
+	}
+}
+
 void AccommodationPage::showEvent(QShowEvent* event)
 {
 	QWidget::showEvent(event);

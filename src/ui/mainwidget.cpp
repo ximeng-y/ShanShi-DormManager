@@ -39,6 +39,10 @@ MainWidget::MainWidget(QWidget *parent)
 	connect(ui->sidebarToggleButton, &QToolButton::clicked, this, [this]() {
 		set_sidebar_collapsed(!sidebar_collapsed);
 	});
+	connect(ui->studentPage, &StudentPage::accommodation_requested, this, [this](int student_id, bool assigned) {
+		switch_page(3);
+		ui->accommodationPage->prepare_student_task(student_id, assigned);
+	});
 }
 
 MainWidget::~MainWidget()

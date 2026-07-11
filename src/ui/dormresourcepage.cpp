@@ -124,7 +124,7 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	connect(ui->dormSearchLineEdit, &QLineEdit::textChanged, this, [this]() {
 		refresh_dorm_list();
 	});
-	connect(ui->dormTable, &QTableWidget::cellClicked, this, [this](int row, int) {
+	connect(ui->dormTable, &QTableWidget::currentCellChanged, this, [this](int row, int, int, int) {
 		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
 		if (id_item != nullptr) {
 			show_dorm_detail(id_item->data(Qt::UserRole).toInt());

@@ -159,7 +159,7 @@ StudentPage::StudentPage(QWidget* parent)
 		ui->statusFilterCombo->setCurrentIndex(0);
 		apply_filters();
 	});
-	connect(ui->studentTable, &QTableWidget::cellClicked, this, [this](int row, int) {
+	connect(ui->studentTable, &QTableWidget::currentCellChanged, this, [this](int row, int, int, int) {
 		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
 		if (id_item != nullptr) {
 			show_student_summary(id_item->data(Qt::UserRole).toInt());
@@ -181,6 +181,15 @@ StudentPage::StudentPage(QWidget* parent)
 		}
 	});
 	connect(ui->editStudentButton, &QPushButton::clicked, this, &StudentPage::start_edit_student);
+	connect(ui->accommodationActionButton, &QPushButton::clicked, this, [this]() {
+		const student* current_student = school::instance().get_student(selected_student_id);
+		if (current_student == nullptr) {
+			uifeedback::show_error(this, QStringLiteral("无法打开住宿任务"), QStringLiteral("所选学生已经不存在，请刷新后重试。"));
+			refresh_data();
+			return;
+		}
+		emit accommodation_requested(selected_student_id, school::instance().get_assigned_student_ids().contains(selected_student_id));
+	});
 	connect(ui->cancelEditButton, &QPushButton::clicked, this, &StudentPage::cancel_edit_student);
 	connect(ui->saveEditButton, &QPushButton::clicked, this, &StudentPage::save_student_changes);
 	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {

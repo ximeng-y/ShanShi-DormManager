@@ -21,6 +21,9 @@ public:
 	~StudentPage();
 	void refresh_data();//刷新学生目录与筛选结果
 
+signals:
+	void accommodation_requested(int student_id, bool assigned);//请求住宿任务页预填当前学生
+
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新学生目录
 
