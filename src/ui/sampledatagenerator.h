@@ -75,6 +75,11 @@ public:
 
 	static sampledatapreview preview(const sampledataconfig& config);//计算预计新增规模
 	static QStringList validate_config(const sampledataconfig& config, const school& current_school);//返回全部参数问题，空表表示可继续规划
+	static sampledataresult generate(const sampledataconfig& config, school& current_school);//生成并追加样例数据
+
+private:
+	struct plan;
+	static plan create_plan(const sampledataconfig& config, const school& current_school);//生成不修改业务数据的完整执行计划
 };
 
 #endif // SAMPLEDATAGENERATOR_H
