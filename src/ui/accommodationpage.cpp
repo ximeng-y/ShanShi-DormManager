@@ -39,6 +39,15 @@ bool has_any_accommodation(const student& current_student)
 	return current_student.get_building_id() > 0 || current_student.get_dorm_id() > 0
 		|| current_student.get_floor() > 0 || current_student.get_bed_id() > 0;
 }
+
+bool has_consistent_accommodation(const student& current_student)
+{
+	if (!has_complete_accommodation(current_student)) {
+		return false;
+	}
+	const dorm* source_dorm = school::instance().get_dorm(current_student.get_building_id(), current_student.get_dorm_id());
+	return source_dorm != nullptr && source_dorm->get_student_id(current_student.get_bed_id()) == current_student.get_id();
+}
 }
 
 AccommodationPage::AccommodationPage(QWidget* parent)
@@ -140,13 +149,18 @@ void AccommodationPage::update_assign_controls()
 
 void AccommodationPage::update_assign_preview()
 {
+	ui->assignSubmitButton->setEnabled(true);
 	const int student_id = ui->assignStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号。"));
-	} else if (school::instance().get_assigned_student_ids().contains(student_id)) {
+	} else if (school::instance().get_assigned_student_ids().contains(student_id) && has_consistent_accommodation(*current_student)) {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("%1\n当前已入住：%2")
 			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
+	} else if (has_any_accommodation(*current_student)) {
+		ui->assignStudentPreviewLabel->setText(QStringLiteral("%1\n住宿记录异常，不能办理入住。")
+			.arg(accommodation_student_text(*current_student)));
+		ui->assignSubmitButton->setEnabled(false);
 	} else {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("%1\n当前未入住，可办理入住。")
 			.arg(accommodation_student_text(*current_student)));
@@ -160,6 +174,10 @@ void AccommodationPage::update_assign_preview()
 		}
 		if (school::instance().get_assigned_student_ids().contains(student_id)) {
 			ui->assignTargetPreviewLabel->setText(QStringLiteral("该学生已经入住，请使用调宿或换床流程。"));
+			return;
+		}
+		if (has_any_accommodation(*current_student)) {
+			ui->assignTargetPreviewLabel->setText(QStringLiteral("学生住宿记录异常，不能推荐新宿舍。"));
 			return;
 		}
 		const dorm* target = school::instance().get_available_dorm(current_student->get_gender());
@@ -196,7 +214,15 @@ void AccommodationPage::submit_assignment()
 		return;
 	}
 	if (school::instance().get_assigned_student_ids().contains(student_id)) {
-		uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("该学生已经入住，请使用调宿或换床流程。"));
+		if (!has_consistent_accommodation(*current_student)) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生位置与宿舍床位记录不一致，请暂停相关操作并核查数据。"));
+		} else {
+			uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("该学生已经入住，请使用调宿或换床流程。"));
+		}
+		return;
+	}
+	if (has_any_accommodation(*current_student)) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生存在部分住宿位置字段，系统不会建立新的床位记录。请暂停相关操作并核查数据。"));
 		return;
 	}
 	if (current_student->get_gender() < 1 || current_student->get_gender() > 2) {
@@ -210,6 +236,27 @@ void AccommodationPage::submit_assignment()
 		if (target == nullptr) {
 			uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("目标宿舍不存在。"));
 			return;
+		}
+		const building* target_building = school::instance().get_building(target->get_building_id());
+		if (target_building == nullptr || !target_building->accepts_gender(current_student->get_gender()) || !target->accepts_gender(current_student->get_gender())) {
+			uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("目标楼栋或宿舍不接纳该学生性别。"));
+			return;
+		}
+		if (strategy == 2 && target->is_full()) {
+			uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("目标宿舍已经住满。"));
+			return;
+		}
+		if (strategy == 3) {
+			const int bed_id = ui->assignBedSpin->value();
+			const int occupied = target->is_bed_occupied(bed_id);
+			if (occupied < 0) {
+				uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("目标床位号无效。"));
+				return;
+			}
+			if (occupied == 1) {
+				uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("目标床位已经被占用。"));
+				return;
+			}
 		}
 		target_description = strategy == 3
 			? QStringLiteral("%1号楼 %2室 %3号床").arg(target->get_building_id()).arg(target->get_id()).arg(ui->assignBedSpin->value())
@@ -240,7 +287,7 @@ void AccommodationPage::submit_assignment()
 	const student* assigned_student = school::instance().get_student(student_id);
 	const QString result_position = assigned_student == nullptr ? QStringLiteral("床位号 %1").arg(result) : accommodation_position_text(*assigned_student);
 	uifeedback::show_success(this, QStringLiteral("入住办理成功：%1").arg(result_position));
-	update_assign_preview();
+	refresh_data();
 }
 
 void AccommodationPage::show_assignment_error(int result)
@@ -260,6 +307,7 @@ void AccommodationPage::show_assignment_error(int result)
 
 void AccommodationPage::update_remove_preview()
 {
+	ui->removeSubmitButton->setEnabled(true);
 	const int student_id = ui->removeStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
@@ -267,12 +315,13 @@ void AccommodationPage::update_remove_preview()
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
-	if (assigned && has_complete_accommodation(*current_student)) {
+	if (assigned && has_consistent_accommodation(*current_student)) {
 		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n当前住宿：%2\n退宿后学生档案将继续保留。")
 			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
 	} else if (has_any_accommodation(*current_student)) {
 		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n住宿位置字段不完整，不能办理退宿。")
 			.arg(accommodation_student_text(*current_student)));
+		ui->removeSubmitButton->setEnabled(false);
 	} else {
 		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n当前未入住，无需办理退宿。")
 			.arg(accommodation_student_text(*current_student)));
@@ -288,8 +337,8 @@ void AccommodationPage::submit_remove()
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
-	const bool complete_position = has_complete_accommodation(*current_student);
-	if (assigned != complete_position || (!assigned && has_any_accommodation(*current_student))) {
+	const bool consistent_position = has_consistent_accommodation(*current_student);
+	if (assigned != consistent_position || (!assigned && has_any_accommodation(*current_student))) {
 		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生住宿位置字段不完整，请暂停相关操作并核查数据。"));
 		return;
 	}
@@ -307,8 +356,7 @@ void AccommodationPage::submit_remove()
 	const int result = school::instance().remove_student_from_dorm(student_id);
 	if (result > 0) {
 		uifeedback::show_success(this, QStringLiteral("退宿办理成功：已释放 %1。").arg(original_position));
-		update_remove_preview();
-		update_assign_preview();
+		refresh_data();
 		return;
 	}
 	if (result == -8) {
@@ -325,6 +373,7 @@ void AccommodationPage::submit_remove()
 
 void AccommodationPage::update_move_preview()
 {
+	ui->moveSubmitButton->setEnabled(true);
 	const int student_id = ui->moveStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
@@ -332,10 +381,13 @@ void AccommodationPage::update_move_preview()
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
-	if (!assigned || !has_complete_accommodation(*current_student)) {
+	if (!assigned || !has_consistent_accommodation(*current_student)) {
 		ui->movePreviewLabel->setText(has_any_accommodation(*current_student)
 			? QStringLiteral("%1\n\n住宿位置记录异常，不能办理调宿。").arg(accommodation_student_text(*current_student))
 			: QStringLiteral("%1\n\n当前未入住，请先办理入住。").arg(accommodation_student_text(*current_student)));
+		if (has_any_accommodation(*current_student)) {
+			ui->moveSubmitButton->setEnabled(false);
+		}
 		return;
 	}
 	const dorm* target = school::instance().get_dorm(ui->moveBuildingSpin->value(), ui->moveDormSpin->value());
@@ -362,8 +414,8 @@ void AccommodationPage::submit_move()
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
-	const bool complete_position = has_complete_accommodation(*current_student);
-	if (assigned != complete_position || (!assigned && has_any_accommodation(*current_student))) {
+	const bool consistent_position = has_consistent_accommodation(*current_student);
+	if (assigned != consistent_position || (!assigned && has_any_accommodation(*current_student))) {
 		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生住宿位置字段不完整，请暂停相关操作并核查数据。"));
 		return;
 	}
@@ -389,6 +441,26 @@ void AccommodationPage::submit_move()
 			return;
 		}
 	}
+	const building* target_building = school::instance().get_building(target_building_id);
+	if (target_building == nullptr || !target_building->accepts_gender(current_student->get_gender()) || !target->accepts_gender(current_student->get_gender())) {
+		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("目标楼栋或宿舍不接纳该学生性别。"));
+		return;
+	}
+	if (target_bed_id == 0 && target->is_full()) {
+		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("目标宿舍已经住满。"));
+		return;
+	}
+	if (target_bed_id > 0) {
+		const int occupied = target->is_bed_occupied(target_bed_id);
+		if (occupied < 0) {
+			uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("目标床位号无效。"));
+			return;
+		}
+		if (occupied == 1) {
+			uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("目标床位已经被占用。"));
+			return;
+		}
+	}
 	const QString original_position = accommodation_position_text(*current_student);
 	const QString target_position = target_bed_id > 0
 		? QStringLiteral("%1号楼 %2室 %3号床").arg(target_building_id).arg(target_dorm_id).arg(target_bed_id)
@@ -411,8 +483,7 @@ void AccommodationPage::submit_move()
 	uifeedback::show_success(this, moved_student == nullptr
 		? QStringLiteral("调宿办理成功，新床位号为 %1。").arg(result)
 		: QStringLiteral("调宿办理成功：%1").arg(accommodation_position_text(*moved_student)));
-	update_move_preview();
-	update_remove_preview();
+	refresh_data();
 }
 
 void AccommodationPage::show_move_error(int result)
@@ -437,6 +508,7 @@ void AccommodationPage::show_move_error(int result)
 
 void AccommodationPage::update_swap_preview()
 {
+	ui->swapSubmitButton->setEnabled(true);
 	const int student_id1 = ui->swapStudent1Spin->value();
 	const int student_id2 = ui->swapStudent2Spin->value();
 	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2)) {
@@ -455,9 +527,10 @@ void AccommodationPage::update_swap_preview()
 	}
 	const bool assigned1 = school::instance().get_assigned_student_ids().contains(student_id1);
 	const bool assigned2 = school::instance().get_assigned_student_ids().contains(student_id2);
-	if (assigned1 != has_complete_accommodation(*student1) || assigned2 != has_complete_accommodation(*student2)
+	if (assigned1 != has_consistent_accommodation(*student1) || assigned2 != has_consistent_accommodation(*student2)
 		|| (!assigned1 && has_any_accommodation(*student1)) || (!assigned2 && has_any_accommodation(*student2))) {
 		ui->swapPreviewLabel->setText(QStringLiteral("至少一名学生的住宿位置记录异常，不能交换。"));
+		ui->swapSubmitButton->setEnabled(false);
 		return;
 	}
 	if (!assigned1 || !assigned2) {
@@ -468,6 +541,7 @@ void AccommodationPage::update_swap_preview()
 	const QString constraint_error = validate_swap_constraints(*student1, *student2, data_error);
 	if (!constraint_error.isEmpty()) {
 		ui->swapPreviewLabel->setText(constraint_error);
+		ui->swapSubmitButton->setEnabled(false);
 		return;
 	}
 	ui->swapPreviewLabel->setText(QStringLiteral("学生一：%1\n当前位置：%2\n\n学生二：%3\n当前位置：%4")
@@ -491,7 +565,7 @@ void AccommodationPage::submit_swap()
 	}
 	const bool assigned1 = school::instance().get_assigned_student_ids().contains(student_id1);
 	const bool assigned2 = school::instance().get_assigned_student_ids().contains(student_id2);
-	if (assigned1 != has_complete_accommodation(*student1) || assigned2 != has_complete_accommodation(*student2)
+	if (assigned1 != has_consistent_accommodation(*student1) || assigned2 != has_consistent_accommodation(*student2)
 		|| (!assigned1 && has_any_accommodation(*student1)) || (!assigned2 && has_any_accommodation(*student2))) {
 		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("至少一名学生的住宿位置字段不完整，请暂停相关操作并核查数据。"));
 		return;
@@ -530,9 +604,7 @@ void AccommodationPage::submit_swap()
 			.arg(accommodation_position_text(*swapped_student1), accommodation_position_text(*swapped_student2))
 		: QStringLiteral("床位交换成功。");
 	uifeedback::show_success(this, result_text);
-	update_swap_preview();
-	update_move_preview();
-	update_remove_preview();
+	refresh_data();
 }
 
 void AccommodationPage::show_swap_error(int result)
