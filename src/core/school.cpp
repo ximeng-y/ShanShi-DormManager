@@ -484,21 +484,29 @@ int school::move_student_to_dorm_impl(int building_id, int dorm_id, int student_
 	studentmanager& sm = studentmanager::instance();
 	dormmanager& dm = dormmanager::instance();
 	const student* s = sm.get(student_id);
-	if (s == nullptr || s->get_gender() == 0)
+	if (s == nullptr)
 		return -6;
-	if (sm.is_student_have_dorm(student_id) == 0)
+	const dorm* target = dm.get(building_id, dorm_id);
+	if (target == nullptr)
+		return -8;
+	if (specified_bed && !check::is_valid_bed_id(bed_id, target->get_max_num()))
+		return -1;
+	bool all_empty = s->get_bed_id() == 0 && s->get_dorm_id() == 0 && s->get_building_id() == 0 && s->get_floor() == 0;
+	bool all_assigned = s->get_bed_id() > 0 && s->get_dorm_id() > 0 && s->get_building_id() > 0 && s->get_floor() > 0;
+	if (!all_empty && !all_assigned)
+		return -8;
+	if (all_empty)
 		return 0;
+	if (s->get_gender() == 0)
+		return -6;
 
 	int old_building_id = s->get_building_id();
 	int old_dorm_id = s->get_dorm_id();
 	int old_bed_id = s->get_bed_id();
 	const dorm* source = dm.get(old_building_id, old_dorm_id);
-	const dorm* target = dm.get(building_id, dorm_id);
-	if (source == nullptr || target == nullptr || !is_dorm_consistent(old_building_id, old_dorm_id) ||
+	if (source == nullptr || !is_dorm_consistent(old_building_id, old_dorm_id) ||
 		((old_building_id != building_id || old_dorm_id != dorm_id) && !is_dorm_consistent(building_id, dorm_id)))
 		return -8;
-	if (specified_bed && !check::is_valid_bed_id(bed_id, target->get_max_num()))
-		return -1;
 
 	bool same_dorm = old_building_id == building_id && old_dorm_id == dorm_id;
 	if (same_dorm)
