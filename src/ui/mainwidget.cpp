@@ -2,8 +2,12 @@
 #include "./ui_mainwidget.h"
 
 #include <QButtonGroup>
+#include <QCloseEvent>
+#include <QGuiApplication>
 #include <QList>
 #include <QPushButton>
+#include <QScreen>
+#include <QSettings>
 #include <QStyle>
 #include <QStringList>
 
@@ -12,7 +16,7 @@ MainWidget::MainWidget(QWidget *parent)
     , ui(new Ui::MainWidget)
 {
     ui->setupUi(this);
-	resize(1280, 720);
+	restore_window_state();
 
 	auto* navigation_group = new QButtonGroup(this);
 	navigation_group->setExclusive(true);
@@ -33,6 +37,12 @@ MainWidget::MainWidget(QWidget *parent)
 MainWidget::~MainWidget()
 {
     delete ui;
+}
+
+void MainWidget::closeEvent(QCloseEvent* event)
+{
+	save_window_state();
+	QWidget::closeEvent(event);
 }
 
 void MainWidget::switch_page(int index)
@@ -76,4 +86,43 @@ void MainWidget::set_sidebar_collapsed(bool collapsed)
 	ui->dormNavButton->setText(collapsed ? QStringLiteral("舍") : QStringLiteral("宿舍资源"));
 	ui->accommodationNavButton->setText(collapsed ? QStringLiteral("住") : QStringLiteral("住宿安排"));
 	ui->advancedNavButton->setText(collapsed ? QStringLiteral("高") : QStringLiteral("高级调整"));
+}
+
+void MainWidget::restore_window_state()
+{
+	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
+	const QByteArray saved_geometry = settings.value(QStringLiteral("window/geometry")).toByteArray();
+	if (saved_geometry.isEmpty()) {
+		QScreen* screen = QGuiApplication::primaryScreen();
+		if (screen != nullptr) {
+			const QRect available = screen->availableGeometry();
+			resize(QSize(1280, 720).boundedTo(available.size()));
+			move(available.center() - rect().center());
+		} else {
+			resize(1280, 720);
+		}
+	} else {
+		restoreGeometry(saved_geometry);
+		bool intersects_screen = false;
+		for (QScreen* screen : QGuiApplication::screens()) {
+			if (screen->availableGeometry().intersects(frameGeometry())) {
+				intersects_screen = true;
+				break;
+			}
+		}
+		if (!intersects_screen && QGuiApplication::primaryScreen() != nullptr) {
+			const QRect available = QGuiApplication::primaryScreen()->availableGeometry();
+			resize(QSize(1280, 720).boundedTo(available.size()));
+			move(available.center() - rect().center());
+		}
+	}
+
+	set_sidebar_collapsed(settings.value(QStringLiteral("navigation/collapsed"), false).toBool());
+}
+
+void MainWidget::save_window_state() const
+{
+	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
+	settings.setValue(QStringLiteral("window/geometry"), saveGeometry());
+	settings.setValue(QStringLiteral("navigation/collapsed"), sidebar_collapsed);
 }
