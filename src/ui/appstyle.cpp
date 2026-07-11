@@ -71,6 +71,11 @@ QFrame#sidebar QPushButton:checked {
 	font-weight: 600;
 }
 
+QFrame#sidebar[collapsed="true"] QPushButton {
+	padding: 0;
+	text-align: center;
+}
+
 QPushButton {
 	min-height: 36px;
 	padding: 0 16px;
