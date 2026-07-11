@@ -17,6 +17,8 @@ set(PROJECT_SOURCES
         src/ui/mainwidget.cpp
         src/ui/mainwidget.h
         src/ui/mainwidget.ui
+        src/ui/appstyle.cpp
+        src/ui/appstyle.h
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp
