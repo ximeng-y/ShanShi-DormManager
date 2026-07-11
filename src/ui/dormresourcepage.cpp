@@ -134,7 +134,9 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		AddDormDialog dialog(selected_building_id, this);
 		if (dialog.exec() == QDialog::Accepted) {
 			selected_dorm_id = dialog.added_dorm_id();
-			refresh_dorm_list();
+			const QSignalBlocker search_blocker(ui->dormSearchLineEdit);
+			ui->dormSearchLineEdit->clear();
+			refresh_data();
 			uifeedback::show_success(this, QStringLiteral("宿舍已添加。"));
 		}
 	});

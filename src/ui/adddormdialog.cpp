@@ -73,7 +73,7 @@ void AddDormDialog::attempt_add()
 		uifeedback::show_error(this, QStringLiteral("无法新增宿舍"), QStringLiteral("宿舍号无效，或宿舍号对应楼层超过该楼最大楼层。"));
 		return;
 	}
-	if (max_num < 1) {
+	if (max_num < 1 || max_num > 99) {
 		set_dorm_field_error(ui->maxNumSpin, ui->maxNumErrorLabel, true);
 		ui->maxNumSpin->setFocus();
 		uifeedback::show_error(this, QStringLiteral("无法新增宿舍"), ui->maxNumErrorLabel->text());
