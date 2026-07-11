@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>StudentDetailDialog</class>
+ <widget class="QDialog" name="StudentDetailDialog">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>520</width><height>470</height></rect></property>
+  <property name="minimumSize"><size><width>480</width><height>430</height></size></property>
+  <property name="windowTitle"><string>学生完整详情</string></property>
+  <property name="modal"><bool>true</bool></property>
+  <layout class="QVBoxLayout" name="dialogLayout">
+   <property name="spacing"><number>16</number></property>
+   <property name="leftMargin"><number>24</number></property><property name="topMargin"><number>22</number></property><property name="rightMargin"><number>24</number></property><property name="bottomMargin"><number>18</number></property>
+   <item><widget class="QLabel" name="nameLabel"><property name="text"><string>学生姓名</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+   <item><widget class="QLabel" name="descriptionLabel"><property name="text"><string>此窗口仅用于查看完整资料，修改操作需通过明确入口发起。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+   <item>
+    <widget class="QWidget" name="contentWidget">
+     <layout class="QVBoxLayout" name="contentLayout">
+      <property name="spacing"><number>14</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+      <item>
+       <widget class="QGroupBox" name="studentGroupBox">
+        <property name="title"><string>学生资料</string></property>
+        <layout class="QFormLayout" name="studentLayout">
+         <item row="0" column="0"><widget class="QLabel" name="studentIdTitleLabel"><property name="text"><string>学号</string></property></widget></item><item row="0" column="1"><widget class="QLabel" name="studentIdValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="1" column="0"><widget class="QLabel" name="genderTitleLabel"><property name="text"><string>性别</string></property></widget></item><item row="1" column="1"><widget class="QLabel" name="genderValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="2" column="0"><widget class="QLabel" name="gradeTitleLabel"><property name="text"><string>年级</string></property></widget></item><item row="2" column="1"><widget class="QLabel" name="gradeValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="3" column="0"><widget class="QLabel" name="classTitleLabel"><property name="text"><string>班级</string></property></widget></item><item row="3" column="1"><widget class="QLabel" name="classValueLabel"><property name="text"><string>—</string></property></widget></item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="accommodationGroupBox">
+        <property name="title"><string>住宿资料</string></property>
+        <layout class="QFormLayout" name="accommodationLayout">
+         <item row="0" column="0"><widget class="QLabel" name="statusTitleLabel"><property name="text"><string>入住状态</string></property></widget></item><item row="0" column="1"><widget class="QLabel" name="statusValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="1" column="0"><widget class="QLabel" name="buildingTitleLabel"><property name="text"><string>宿舍楼</string></property></widget></item><item row="1" column="1"><widget class="QLabel" name="buildingValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="2" column="0"><widget class="QLabel" name="dormTitleLabel"><property name="text"><string>宿舍</string></property></widget></item><item row="2" column="1"><widget class="QLabel" name="dormValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="3" column="0"><widget class="QLabel" name="floorTitleLabel"><property name="text"><string>楼层</string></property></widget></item><item row="3" column="1"><widget class="QLabel" name="floorValueLabel"><property name="text"><string>—</string></property></widget></item>
+         <item row="4" column="0"><widget class="QLabel" name="bedTitleLabel"><property name="text"><string>床位</string></property></widget></item><item row="4" column="1"><widget class="QLabel" name="bedValueLabel"><property name="text"><string>—</string></property></widget></item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item><spacer name="dialogSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+   <item><widget class="QDialogButtonBox" name="buttonBox"><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Close</set></property></widget></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

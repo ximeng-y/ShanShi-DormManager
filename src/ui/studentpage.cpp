@@ -1,5 +1,6 @@
 #include "studentpage.h"
 #include "./ui_studentpage.h"
+#include "studentdetaildialog.h"
 
 #include "core/school.h"
 #include "core/student.h"
@@ -85,6 +86,13 @@ StudentPage::StudentPage(QWidget* parent)
 		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
 		if (id_item != nullptr) {
 			show_student_summary(id_item->data(Qt::UserRole).toInt());
+		}
+	});
+	connect(ui->studentTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
+		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
+		if (id_item != nullptr) {
+			StudentDetailDialog dialog(id_item->data(Qt::UserRole).toInt(), this);
+			dialog.exec();
 		}
 	});
 	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {

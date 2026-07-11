@@ -29,6 +29,9 @@ set(PROJECT_SOURCES
         src/ui/studentpage.cpp
         src/ui/studentpage.h
         src/ui/studentpage.ui
+        src/ui/studentdetaildialog.cpp
+        src/ui/studentdetaildialog.h
+        src/ui/studentdetaildialog.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp
