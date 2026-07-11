@@ -28,6 +28,7 @@
       <layout class="QVBoxLayout" name="buildingPanelLayout">
        <property name="spacing"><number>10</number></property>
        <item><widget class="QLabel" name="buildingPanelTitle"><property name="text"><string>楼栋目录</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+       <item><widget class="QPushButton" name="buildingActionButton"><property name="text"><string>楼栋操作</string></property><property name="enabled"><bool>false</bool></property></widget></item>
        <item><widget class="QListWidget" name="buildingList"><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="spacing"><number>4</number></property></widget></item>
        <item><widget class="QLabel" name="buildingCountLabel"><property name="text"><string>暂无楼栋</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
       </layout>

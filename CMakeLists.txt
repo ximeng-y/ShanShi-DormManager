@@ -46,6 +46,9 @@ set(PROJECT_SOURCES
         src/ui/addbuildingdialog.ui
         src/ui/bedtablemodel.cpp
         src/ui/bedtablemodel.h
+        src/ui/editbuildingdialog.cpp
+        src/ui/editbuildingdialog.h
+        src/ui/editbuildingdialog.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp

@@ -2,6 +2,7 @@
 #include "./ui_dormresourcepage.h"
 #include "addbuildingdialog.h"
 #include "bedtablemodel.h"
+#include "editbuildingdialog.h"
 #include "uifeedback.h"
 
 #include "core/building.h"
@@ -10,6 +11,7 @@
 
 #include <QHeaderView>
 #include <QListWidgetItem>
+#include <QMenu>
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStringList>
@@ -55,6 +57,16 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedTableView->verticalHeader()->setVisible(false);
 	ui->bedTableView->verticalHeader()->setDefaultSectionSize(70);
 	ui->resourceSplitter->setSizes({190, 430, 360});
+	auto* building_menu = new QMenu(ui->buildingActionButton);
+	QAction* edit_building_action = building_menu->addAction(QStringLiteral("修改楼栋属性"));
+	ui->buildingActionButton->setMenu(building_menu);
+	connect(edit_building_action, &QAction::triggered, this, [this]() {
+		EditBuildingDialog dialog(selected_building_id, this);
+		if (dialog.exec() == QDialog::Accepted) {
+			refresh_data();
+			uifeedback::show_success(this, QStringLiteral("楼栋属性已更新。"));
+		}
+	});
 
 	connect(ui->buildingList, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* current) {
 		const int new_building_id = current == nullptr ? 0 : current->data(Qt::UserRole).toInt();
@@ -63,6 +75,7 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		}
 		selected_building_id = new_building_id;
 		ui->addDormButton->setEnabled(selected_building_id > 0);
+		ui->buildingActionButton->setEnabled(selected_building_id > 0);
 		refresh_dorm_list();
 	});
 	connect(ui->dormSearchLineEdit, &QLineEdit::textChanged, this, [this]() {
@@ -132,6 +145,7 @@ void DormResourcePage::refresh_building_list()
 	if (ui->buildingList->count() == 0) {
 		selected_building_id = 0;
 		ui->addDormButton->setEnabled(false);
+		ui->buildingActionButton->setEnabled(false);
 		refresh_dorm_list();
 		return;
 	}
@@ -142,6 +156,7 @@ void DormResourcePage::refresh_building_list()
 		selected_dorm_id = 0;
 	}
 	ui->addDormButton->setEnabled(true);
+	ui->buildingActionButton->setEnabled(true);
 	refresh_dorm_list();
 }
 
