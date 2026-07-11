@@ -25,7 +25,6 @@ AddStudentDialog::AddStudentDialog(QWidget* parent)
 {
 	ui->setupUi(this);
 	ui->genderCombo->clear();
-	ui->genderCombo->addItem(QStringLiteral("未设置"), 0);
 	ui->genderCombo->addItem(QStringLiteral("男"), 1);
 	ui->genderCombo->addItem(QStringLiteral("女"), 2);
 	ui->studentIdSpin->setAccessibleName(QStringLiteral("学生学号"));
@@ -70,8 +69,8 @@ void AddStudentDialog::attempt_add()
 		uifeedback::show_error(this, QStringLiteral("无法新增学生"), QStringLiteral("姓名应为1～20个字符，且不能包含禁止内容。"));
 		return;
 	}
-	if (!check::is_valid_gender(gender) || !check::is_valid_class_num(class_num) || !check::is_valid_grade(grade)) {
-		if (!check::is_valid_gender(gender)) {
+	if ((gender != 1 && gender != 2) || !check::is_valid_class_num(class_num) || !check::is_valid_grade(grade)) {
+		if (gender != 1 && gender != 2) {
 			set_field_error(ui->genderCombo, ui->genderErrorLabel, true);
 			ui->genderCombo->setFocus();
 		} else if (!check::is_valid_class_num(class_num)) {
