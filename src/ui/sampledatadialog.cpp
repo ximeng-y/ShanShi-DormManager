@@ -10,6 +10,8 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QScreen>
+#include <QShowEvent>
 #include <QSpinBox>
 
 #include <limits>
@@ -44,6 +46,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	ui->seedLineEdit->setAccessibleName(QStringLiteral("随机种子"));
 	ui->seedLineEdit->setAccessibleDescription(QStringLiteral("相同参数和种子可生成相同的随机规划结果。"));
 	ui->regenerateSeedButton->setAccessibleName(QStringLiteral("重新生成随机种子"));
+	ui->parameterTabs->setAccessibleName(QStringLiteral("样例数据参数分类"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("开始生成"));
 	ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("取消"));
 	ui->seedLineEdit->setValidator(new QRegularExpressionValidator(
@@ -52,12 +55,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	for (QSpinBox* spin : parameter_spins) {
 		connect(spin, &QSpinBox::valueChanged, this, &SampleDataDialog::refresh_preview_and_validation);
 	}
-	connect(ui->floorSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
-	connect(ui->dormPerFloorSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
-	connect(ui->mixedBuildingSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
-	connect(ui->mixedUnlockedDormSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
-	connect(ui->maleStudentSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
-	connect(ui->femaleStudentSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_input_limits);
+	connect(ui->mixedBuildingSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_mixed_controls);
 	connect(ui->seedLineEdit, &QLineEdit::textChanged, this, &SampleDataDialog::refresh_preview_and_validation);
 	connect(ui->regenerateSeedButton, &QPushButton::clicked, this, &SampleDataDialog::regenerate_seed);
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &SampleDataDialog::attempt_generate);
@@ -83,7 +81,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	QWidget::setTabOrder(ui->minimumGradeSpin, ui->maximumGradeSpin);
 	QWidget::setTabOrder(ui->maximumGradeSpin, ui->seedLineEdit);
 	QWidget::setTabOrder(ui->seedLineEdit, ui->regenerateSeedButton);
-	update_input_limits();
+	update_mixed_controls();
 	regenerate_seed();
 }
 
@@ -95,6 +93,25 @@ SampleDataDialog::~SampleDataDialog()
 sampledataresult SampleDataDialog::generation_result() const
 {
 	return generated_result;
+}
+
+void SampleDataDialog::showEvent(QShowEvent* event)
+{
+	QDialog::showEvent(event);
+	if (fitted_to_screen) {
+		return;
+	}
+	fitted_to_screen = true;
+	QScreen* current_screen = screen();
+	if (current_screen == nullptr) {
+		return;
+	}
+	const QRect available = current_screen->availableGeometry();
+	const QSize target_size(
+		qMin(820, qMax(360, available.width() - 32)),
+		qMin(500, qMax(360, available.height() - 32)));
+	resize(target_size);
+	move(available.center().x() - width() / 2, available.center().y() - height() / 2);
 }
 
 sampledataconfig SampleDataDialog::current_config(bool* seed_valid) const
@@ -112,6 +129,12 @@ sampledataconfig SampleDataDialog::current_config(bool* seed_valid) const
 	config.mixed_female_dorm_count = ui->mixedFemaleDormSpin->value();
 	config.mixed_unlocked_dorm_count = ui->mixedUnlockedDormSpin->value();
 	config.minimum_unlocked_empty_dorm_count = ui->reservedUnlockedSpin->value();
+	if (config.mixed_building_count == 0) {
+		config.mixed_male_dorm_count = 0;
+		config.mixed_female_dorm_count = 0;
+		config.mixed_unlocked_dorm_count = 0;
+		config.minimum_unlocked_empty_dorm_count = 0;
+	}
 	config.male_student_count = ui->maleStudentSpin->value();
 	config.female_student_count = ui->femaleStudentSpin->value();
 	config.male_assigned_count = ui->maleAssignedSpin->value();
@@ -131,38 +154,9 @@ sampledataconfig SampleDataDialog::current_config(bool* seed_valid) const
 	return config;
 }
 
-void SampleDataDialog::update_input_limits()
+void SampleDataDialog::update_mixed_controls()
 {
-	const int dorms_per_building = ui->floorSpin->value() * ui->dormPerFloorSpin->value();
-	ui->fourBedDormSpin->setMaximum(dorms_per_building);
-	ui->sixBedDormSpin->setMaximum(dorms_per_building);
-	ui->mixedMaleDormSpin->setMaximum(dorms_per_building);
-	ui->mixedFemaleDormSpin->setMaximum(dorms_per_building);
-	ui->mixedUnlockedDormSpin->setMaximum(dorms_per_building);
-	ui->maleAssignedSpin->setMaximum(ui->maleStudentSpin->value());
-	ui->femaleAssignedSpin->setMaximum(ui->femaleStudentSpin->value());
-
-	const bool has_mixed_building = ui->mixedBuildingSpin->value() > 0;
-	ui->mixedDormGroupBox->setEnabled(has_mixed_building);
-	if (!has_mixed_building) {
-		ui->mixedMaleDormSpin->setValue(0);
-		ui->mixedFemaleDormSpin->setValue(0);
-		ui->mixedUnlockedDormSpin->setValue(0);
-		ui->reservedUnlockedSpin->setValue(0);
-	} else if (ui->mixedMaleDormSpin->value() == 0
-		&& ui->mixedFemaleDormSpin->value() == 0
-		&& ui->mixedUnlockedDormSpin->value() == 0) {
-		const int gender_locked_count = dorms_per_building / 4;
-		ui->mixedMaleDormSpin->setValue(gender_locked_count);
-		ui->mixedFemaleDormSpin->setValue(gender_locked_count);
-		ui->mixedUnlockedDormSpin->setValue(dorms_per_building - gender_locked_count * 2);
-	}
-	ui->reservedUnlockedSpin->setMaximum(qMin(sampledatagenerator::maximum_dorm_count,
-		ui->mixedBuildingSpin->value() * ui->mixedUnlockedDormSpin->value()));
-	if (has_mixed_building && ui->reservedUnlockedSpin->value() == 0 && ui->mixedUnlockedDormSpin->value() > 0) {
-		ui->reservedUnlockedSpin->setValue(qMin(2,
-			ui->mixedBuildingSpin->value() * ui->mixedUnlockedDormSpin->value()));
-	}
+	ui->mixedDormGroupBox->setEnabled(ui->mixedBuildingSpin->value() > 0);
 }
 
 void SampleDataDialog::refresh_preview_and_validation()
