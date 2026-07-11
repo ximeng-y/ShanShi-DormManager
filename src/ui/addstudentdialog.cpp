@@ -27,9 +27,11 @@ AddStudentDialog::AddStudentDialog(QWidget* parent)
 	ui->genderCombo->clear();
 	ui->genderCombo->addItem(QStringLiteral("男"), 1);
 	ui->genderCombo->addItem(QStringLiteral("女"), 2);
+	ui->genderCombo->setCurrentIndex(-1);
 	ui->studentIdSpin->setAccessibleName(QStringLiteral("学生学号"));
 	ui->nameLineEdit->setAccessibleName(QStringLiteral("学生姓名"));
 	ui->genderCombo->setAccessibleName(QStringLiteral("学生性别"));
+	ui->genderCombo->setAccessibleDescription(QStringLiteral("新增学生必须主动选择男或女。"));
 	ui->classSpin->setAccessibleName(QStringLiteral("学生班级"));
 	ui->gradeSpin->setAccessibleName(QStringLiteral("学生年级"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("添加"));
