@@ -32,6 +32,9 @@ set(PROJECT_SOURCES
         src/ui/studentdetaildialog.cpp
         src/ui/studentdetaildialog.h
         src/ui/studentdetaildialog.ui
+        src/ui/addstudentdialog.cpp
+        src/ui/addstudentdialog.h
+        src/ui/addstudentdialog.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp

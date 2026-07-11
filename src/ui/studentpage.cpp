@@ -1,6 +1,8 @@
 #include "studentpage.h"
 #include "./ui_studentpage.h"
+#include "addstudentdialog.h"
 #include "studentdetaildialog.h"
+#include "uifeedback.h"
 
 #include "core/school.h"
 #include "core/student.h"
@@ -93,6 +95,14 @@ StudentPage::StudentPage(QWidget* parent)
 		if (id_item != nullptr) {
 			StudentDetailDialog dialog(id_item->data(Qt::UserRole).toInt(), this);
 			dialog.exec();
+		}
+	});
+	connect(ui->addStudentButton, &QPushButton::clicked, this, [this]() {
+		AddStudentDialog dialog(this);
+		if (dialog.exec() == QDialog::Accepted) {
+			selected_student_id = dialog.added_student_id();
+			refresh_data();
+			uifeedback::show_success(this, QStringLiteral("学生档案已添加。"));
 		}
 	});
 	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {
