@@ -63,6 +63,9 @@ struct sampledataresult
 	int added_student_count = 0;
 	int assigned_student_count = 0;
 	int remaining_unlocked_dorm_count = 0;
+	int residual_building_count = 0;
+	int residual_dorm_count = 0;
+	int residual_student_count = 0;
 };
 
 //前端样例数据生成器。只通过 school 公开入口写入，不直接访问 manager。
@@ -75,6 +78,7 @@ public:
 
 	static sampledatapreview preview(const sampledataconfig& config);//计算预计新增规模
 	static QStringList validate_config(const sampledataconfig& config, const school& current_school);//返回全部参数问题，空表表示可继续规划
+	static sampledataresult generate(const sampledataconfig& config, school& current_school);//生成并追加样例数据，失败时补偿本次写入
 
 private:
 	struct plan;

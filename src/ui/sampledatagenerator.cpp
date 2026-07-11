@@ -1,6 +1,8 @@
 #include "sampledatagenerator.h"
 
+#include "core/dorm.h"
 #include "core/school.h"
+#include "core/student.h"
 
 #include <QHash>
 #include <QPair>
@@ -151,6 +153,41 @@ int bounded_preview_value(qint64 value)
 int bounded_preview_product(int first, int second)
 {
 	return bounded_preview_value(static_cast<qint64>(first) * second);
+}
+
+void rollback_created_data(school& current_school, const QVector<int>& student_ids,
+	const QVector<QPair<int, int>>& dorm_keys, const QVector<int>& building_ids, sampledataresult& result)
+{
+	for (auto iterator = student_ids.crbegin(); iterator != student_ids.crend(); ++iterator) {
+		if (current_school.get_student(*iterator) != nullptr && current_school.remove_student(*iterator) != 1) {
+			result.rollback_complete = false;
+		}
+	}
+	for (auto iterator = dorm_keys.crbegin(); iterator != dorm_keys.crend(); ++iterator) {
+		if (current_school.get_dorm(iterator->first, iterator->second) != nullptr
+			&& !current_school.remove_dorm(iterator->first, iterator->second)) {
+			result.rollback_complete = false;
+		}
+	}
+	for (auto iterator = building_ids.crbegin(); iterator != building_ids.crend(); ++iterator) {
+		if (current_school.get_building(*iterator) != nullptr && !current_school.remove_building(*iterator)) {
+			result.rollback_complete = false;
+		}
+	}
+
+	for (int student_id : student_ids) {
+		result.residual_student_count += current_school.get_student(student_id) != nullptr ? 1 : 0;
+	}
+	for (const QPair<int, int>& dorm_key : dorm_keys) {
+		result.residual_dorm_count += current_school.get_dorm(dorm_key.first, dorm_key.second) != nullptr ? 1 : 0;
+	}
+	for (int building_id : building_ids) {
+		result.residual_building_count += current_school.get_building(building_id) != nullptr ? 1 : 0;
+	}
+	result.rollback_complete = result.rollback_complete
+		&& result.residual_student_count == 0
+		&& result.residual_dorm_count == 0
+		&& result.residual_building_count == 0;
 }
 }
 
@@ -478,5 +515,90 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	if (result.remaining_unlocked_dorm_count < config.minimum_unlocked_empty_dorm_count) {
 		result.error_message = QStringLiteral("计划未能保留指定数量的未锁定空宿舍。");
 	}
+	return result;
+}
+
+sampledataresult sampledatagenerator::generate(const sampledataconfig& config, school& current_school)//执行追加生成并在失败时补偿
+{
+	sampledataresult result;
+	result.random_seed = config.random_seed;
+	const QStringList validation_errors = validate_config(config, current_school);
+	if (!validation_errors.isEmpty()) {
+		result.error_message = validation_errors.join(QLatin1Char('\n'));
+		return result;
+	}
+	const plan generated_plan = create_plan(config, current_school);
+	if (!generated_plan.error_message.isEmpty()) {
+		result.error_message = generated_plan.error_message;
+		return result;
+	}
+
+	QVector<int> created_building_ids;
+	QVector<QPair<int, int>> created_dorm_keys;
+	QVector<int> created_student_ids;
+	const auto fail = [&](const QString& message) {
+		result.error_message = message;
+		rollback_created_data(current_school, created_student_ids, created_dorm_keys, created_building_ids, result);
+		return result;
+	};
+
+	for (const plannedbuilding& building_plan : generated_plan.buildings) {
+		const int add_result = current_school.add_building(building_plan.id, building_plan.gender, building_plan.max_floor);
+		if (add_result != 1) {
+			return fail(QStringLiteral("添加%1号样例宿舍楼失败，返回码：%2。").arg(building_plan.id).arg(add_result));
+		}
+		created_building_ids.append(building_plan.id);
+		++result.added_building_count;
+	}
+
+	for (const planneddorm& dorm_plan : generated_plan.dorms) {
+		dorm dorm_to_add;
+		const bool initialized = dorm_to_add.set_building_id(dorm_plan.building_id)
+			&& dorm_to_add.set_id(dorm_plan.dorm_id)
+			&& dorm_to_add.set_max_num(dorm_plan.max_num);
+		if (!initialized || !current_school.add_dorm(dorm_to_add)) {
+			return fail(QStringLiteral("添加%1号楼%2宿舍失败。").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id));
+		}
+		created_dorm_keys.append(qMakePair(dorm_plan.building_id, dorm_plan.dorm_id));
+		++result.added_dorm_count;
+		if (dorm_plan.gender_lock != 0) {
+			const int lock_result = current_school.set_dorm_gender(
+				dorm_plan.building_id, dorm_plan.dorm_id, dorm_plan.gender_lock);
+			if (lock_result != 1) {
+				return fail(QStringLiteral("设置%1号楼%2宿舍性别锁失败，返回码：%3。")
+					.arg(dorm_plan.building_id).arg(dorm_plan.dorm_id).arg(lock_result));
+			}
+		}
+	}
+
+	for (const plannedstudent& student_plan : generated_plan.students) {
+		student student_to_add;
+		const bool initialized = student_to_add.set_id(student_plan.id)
+			&& student_to_add.set_name(student_plan.name)
+			&& student_to_add.set_gender(student_plan.gender)
+			&& student_to_add.set_class_num(student_plan.class_num)
+			&& student_to_add.set_grade(student_plan.grade);
+		if (!initialized || !current_school.add_student(student_to_add)) {
+			return fail(QStringLiteral("添加学号为%1的样例学生失败。").arg(student_plan.id));
+		}
+		created_student_ids.append(student_plan.id);
+		++result.added_student_count;
+	}
+
+	for (const plannedstudent& student_plan : generated_plan.students) {
+		if (student_plan.building_id == 0 || student_plan.dorm_id == 0) {
+			continue;
+		}
+		const int assign_result = current_school.assign_student_to_dorm(
+			student_plan.building_id, student_plan.dorm_id, student_plan.id);
+		if (assign_result <= 0) {
+			return fail(QStringLiteral("安排学号为%1的样例学生入住%2号楼%3宿舍失败，返回码：%4。")
+				.arg(student_plan.id).arg(student_plan.building_id).arg(student_plan.dorm_id).arg(assign_result));
+		}
+		++result.assigned_student_count;
+	}
+
+	result.success = true;
+	result.remaining_unlocked_dorm_count = generated_plan.remaining_unlocked_dorm_count;
 	return result;
 }
