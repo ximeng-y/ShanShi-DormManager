@@ -482,7 +482,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	QSet<int> occupied_dorm_indexes;
 	const auto assign_students = [&](const QVector<int>& student_indexes, int assigned_count,
 		QVector<int> dorm_indexes, const QVector<int>& coverage_dorms) {
-		QVector<int> slots;
+		QVector<int> available_slots;
 		const int coverage_count = qMin(assigned_count, coverage_dorms.size());
 		QHash<int, int> covered_beds;
 		for (int i = 0; i < coverage_count; ++i) {
@@ -496,12 +496,12 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 		for (int dorm_index : dorm_indexes) {
 			const int available_beds = result.dorms.at(dorm_index).max_num - covered_beds.value(dorm_index);
 			for (int bed = 0; bed < available_beds; ++bed) {
-				slots.append(dorm_index);
+				available_slots.append(dorm_index);
 			}
 		}
-		shuffle_items(slots, random);
+		shuffle_items(available_slots, random);
 		for (int i = coverage_count; i < assigned_count; ++i) {
-			const int dorm_index = slots.at(i - coverage_count);
+			const int dorm_index = available_slots.at(i - coverage_count);
 			plannedstudent& student_plan = result.students[student_indexes.at(i)];
 			student_plan.building_id = result.dorms.at(dorm_index).building_id;
 			student_plan.dorm_id = result.dorms.at(dorm_index).dorm_id;
