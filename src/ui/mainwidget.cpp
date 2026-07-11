@@ -103,17 +103,29 @@ void MainWidget::restore_window_state()
 		}
 	} else {
 		restoreGeometry(saved_geometry);
-		bool intersects_screen = false;
+		QScreen* target_screen = nullptr;
+		int largest_visible_area = 0;
 		for (QScreen* screen : QGuiApplication::screens()) {
-			if (screen->availableGeometry().intersects(frameGeometry())) {
-				intersects_screen = true;
-				break;
+			const QRect visible = screen->availableGeometry().intersected(frameGeometry());
+			const int visible_area = visible.width() * visible.height();
+			if (visible_area > largest_visible_area) {
+				largest_visible_area = visible_area;
+				target_screen = screen;
 			}
 		}
-		if (!intersects_screen && QGuiApplication::primaryScreen() != nullptr) {
-			const QRect available = QGuiApplication::primaryScreen()->availableGeometry();
-			resize(QSize(1280, 720).boundedTo(available.size()));
-			move(available.center() - rect().center());
+
+		if (target_screen == nullptr) {
+			target_screen = QGuiApplication::primaryScreen();
+		}
+		if (target_screen != nullptr && !isMaximized() && !isFullScreen()) {
+			const QRect available = target_screen->availableGeometry();
+			const QRect visible = available.intersected(frameGeometry());
+			const bool sufficiently_visible = visible.width() >= qMin(320, frameGeometry().width())
+				&& visible.height() >= qMin(180, frameGeometry().height());
+			if (!sufficiently_visible || frameGeometry().width() > available.width() || frameGeometry().height() > available.height()) {
+				resize(size().boundedTo(available.size()));
+				move(available.center() - rect().center());
+			}
 		}
 	}
 

@@ -1,6 +1,7 @@
 #include "uifeedback.h"
 
 #include <QAbstractButton>
+#include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -8,6 +9,71 @@
 #include <QPushButton>
 #include <QTimer>
 #include <QWidget>
+
+namespace {
+class success_toast : public QFrame
+{
+public:
+	explicit success_toast(QWidget* host)
+		: QFrame(host)
+		, host_widget(host)
+		, message_label(new QLabel(this))
+		, hide_timer(new QTimer(this))
+	{
+		setObjectName(QStringLiteral("successToast"));
+		setAttribute(Qt::WA_ShowWithoutActivating);
+		setAttribute(Qt::WA_TransparentForMouseEvents);
+		setMinimumWidth(280);
+		setMaximumWidth(420);
+
+		auto* layout = new QHBoxLayout(this);
+		layout->setContentsMargins(14, 10, 14, 10);
+		layout->setSpacing(10);
+		auto* status_label = new QLabel(QStringLiteral("✓"), this);
+		status_label->setObjectName(QStringLiteral("successToastIcon"));
+		message_label->setObjectName(QStringLiteral("successToastLabel"));
+		message_label->setWordWrap(true);
+		layout->addWidget(status_label, 0, Qt::AlignTop);
+		layout->addWidget(message_label, 1);
+
+		hide_timer->setSingleShot(true);
+		connect(hide_timer, &QTimer::timeout, this, &QWidget::hide);
+		host_widget->installEventFilter(this);
+		hide();
+	}
+
+	void show_message(const QString& message)
+	{
+		message_label->setText(message);
+		adjustSize();
+		reposition();
+		raise();
+		show();
+		hide_timer->start(2600);
+	}
+
+protected:
+	bool eventFilter(QObject* watched, QEvent* event) override
+	{
+		if (watched == host_widget && event->type() == QEvent::Resize) {
+			reposition();
+		}
+		return QFrame::eventFilter(watched, event);
+	}
+
+private:
+	void reposition()
+	{
+		const int margin = 20;
+		const int top_bar_offset = 68;
+		move(qMax(margin, host_widget->width() - width() - margin), top_bar_offset);
+	}
+
+	QWidget* host_widget;
+	QLabel* message_label;
+	QTimer* hide_timer;
+};
+}
 
 void uifeedback::show_error(QWidget* parent, const QString& title, const QString& message, const QString& details)
 {
@@ -46,28 +112,9 @@ void uifeedback::show_success(QWidget* parent, const QString& message)
 	}
 
 	QWidget* host = parent->window();
-	auto* toast = new QFrame(host);
-	toast->setObjectName(QStringLiteral("successToast"));
-	toast->setAttribute(Qt::WA_ShowWithoutActivating);
-	toast->setMinimumWidth(280);
-	toast->setMaximumWidth(420);
-
-	auto* layout = new QHBoxLayout(toast);
-	layout->setContentsMargins(14, 10, 14, 10);
-	layout->setSpacing(10);
-
-	auto* status_label = new QLabel(QStringLiteral("✓"), toast);
-	status_label->setObjectName(QStringLiteral("successToastIcon"));
-	auto* message_label = new QLabel(message, toast);
-	message_label->setObjectName(QStringLiteral("successToastLabel"));
-	message_label->setWordWrap(true);
-	layout->addWidget(status_label, 0, Qt::AlignTop);
-	layout->addWidget(message_label, 1);
-
-	toast->adjustSize();
-	const int margin = 20;
-	toast->move(qMax(margin, host->width() - toast->width() - margin), margin);
-	toast->raise();
-	toast->show();
-	QTimer::singleShot(2600, toast, &QObject::deleteLater);
+	QFrame* existing_frame = host->findChild<QFrame*>(QStringLiteral("successToast"), Qt::FindDirectChildrenOnly);
+	auto* toast = existing_frame == nullptr
+		? new success_toast(host)
+		: static_cast<success_toast*>(existing_frame);
+	toast->show_message(message);
 }
