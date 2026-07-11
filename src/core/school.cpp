@@ -41,6 +41,26 @@ int school::get_building_count() const//获取全校宿舍楼总数
 	return buildingmanager::instance().count();
 }
 
+bool school::add_student(const student& student_to_add)//添加学生
+{
+	return studentmanager::instance().add(student_to_add);
+}
+
+int school::set_student_name(int student_id, const QString& name)//修改学生姓名
+{
+	return studentmanager::instance().set_student_name(student_id, name);
+}
+
+int school::set_student_class_num(int student_id, int class_num)//修改学生班级
+{
+	return studentmanager::instance().set_student_class_num(student_id, class_num);
+}
+
+int school::set_student_grade(int student_id, int grade)//修改学生年级
+{
+	return studentmanager::instance().set_student_grade(student_id, grade);
+}
+
 const dorm* school::get_available_dorm(int gender) const//获取指定性别最小顺位可用宿舍
 {
 	if (gender != 1 && gender != 2)

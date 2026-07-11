@@ -6,6 +6,7 @@
 class student;
 class dorm;
 class building;
+class QString;
 
 //学校顶层协调类。负责组合 studentmanager、dormmanager、buildingmanager
 //完成涉及两个及以上同级 manager 的跨聚合业务，并向 UI 提供统一入口。
@@ -25,6 +26,13 @@ public:
 	int get_student_count() const;//获取全校学生总数
 	int get_dorm_count() const;//获取全校宿舍总数
 	int get_building_count() const;//获取全校宿舍楼总数
+
+	//学生基础资料管理
+	bool add_student(const student& student_to_add);//添加学生，字段非法、携带住宿位置或学号重复时返回false
+	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学生不存在/-1=参数非法
+	int set_student_class_num(int student_id, int class_num);//修改学生班级, 1=成功/0=学生不存在/-1=参数非法
+	int set_student_grade(int student_id, int grade);//修改学生年级, 1=成功/0=学生不存在/-1=参数非法
+
 	const dorm* get_available_dorm(int gender) const;//获取指定性别最小顺位可用宿舍
 	const dorm* get_available_dorm_random(int gender) const;//随机获取指定性别可用宿舍
 	int get_empty_bed_count(int gender) const;//获取指定性别全校可用空床数, -1=参数非法
