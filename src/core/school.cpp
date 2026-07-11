@@ -48,16 +48,22 @@ bool school::add_student(const student& student_to_add)//添加学生
 
 int school::set_student_name(int student_id, const QString& name)//修改学生姓名
 {
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
 	return studentmanager::instance().set_student_name(student_id, name);
 }
 
 int school::set_student_class_num(int student_id, int class_num)//修改学生班级
 {
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
 	return studentmanager::instance().set_student_class_num(student_id, class_num);
 }
 
 int school::set_student_grade(int student_id, int grade)//修改学生年级
 {
+	if (!check::is_valid_student_id(student_id))
+		return -1;//student_id非法
 	return studentmanager::instance().set_student_grade(student_id, grade);
 }
 
