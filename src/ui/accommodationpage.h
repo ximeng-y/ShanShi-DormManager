@@ -28,6 +28,9 @@ private:
 	void update_move_preview();//刷新调宿学生、原位置与目标位置预览
 	void submit_move();//提交调宿或同宿舍换床业务
 	void show_move_error(int result);//解释调宿返回码与恢复失败
+	void update_swap_preview();//刷新两名学生当前位置预览
+	void submit_swap();//提交两名学生床位互换业务
+	void show_swap_error(int result);//解释学生互换返回码
 
 	Ui::AccommodationPage* ui;
 };

@@ -62,10 +62,15 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	connect(ui->moveDormSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveBedSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
+	ui->swapSubmitButton->setEnabled(true);
+	connect(ui->swapStudent1Spin, &QSpinBox::valueChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent2Spin, &QSpinBox::valueChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
 	update_assign_controls();
 	update_assign_preview();
 	update_remove_preview();
 	update_move_preview();
+	update_swap_preview();
 }
 
 AccommodationPage::~AccommodationPage()
@@ -385,4 +390,106 @@ void AccommodationPage::show_move_error(int result)
 	else if (result == -7) message = QStringLiteral("目标楼栋或宿舍不接纳该学生性别。");
 	else message = QStringLiteral("输入参数无效，请检查目标楼栋、宿舍和床位。");
 	uifeedback::show_error(this, QStringLiteral("无法办理调宿"), message, QStringLiteral("业务返回值：%1").arg(result));
+}
+
+void AccommodationPage::update_swap_preview()
+{
+	const int student_id1 = ui->swapStudent1Spin->value();
+	const int student_id2 = ui->swapStudent2Spin->value();
+	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2)) {
+		ui->swapPreviewLabel->setText(QStringLiteral("请输入两名已入住学生的8位学号。"));
+		return;
+	}
+	if (student_id1 == student_id2) {
+		ui->swapPreviewLabel->setText(QStringLiteral("两处学号相同，请选择两名不同学生。"));
+		return;
+	}
+	const student* student1 = school::instance().get_student(student_id1);
+	const student* student2 = school::instance().get_student(student_id2);
+	if (student1 == nullptr || student2 == nullptr) {
+		ui->swapPreviewLabel->setText(QStringLiteral("至少有一名学生不存在，请检查学号。"));
+		return;
+	}
+	const bool assigned1 = school::instance().get_assigned_student_ids().contains(student_id1);
+	const bool assigned2 = school::instance().get_assigned_student_ids().contains(student_id2);
+	if (assigned1 != has_complete_accommodation(*student1) || assigned2 != has_complete_accommodation(*student2)
+		|| (!assigned1 && has_any_accommodation(*student1)) || (!assigned2 && has_any_accommodation(*student2))) {
+		ui->swapPreviewLabel->setText(QStringLiteral("至少一名学生的住宿位置记录异常，不能交换。"));
+		return;
+	}
+	if (!assigned1 || !assigned2) {
+		ui->swapPreviewLabel->setText(QStringLiteral("两名学生必须都已入住才能交换床位。"));
+		return;
+	}
+	ui->swapPreviewLabel->setText(QStringLiteral("学生一：%1\n当前位置：%2\n\n学生二：%3\n当前位置：%4")
+		.arg(accommodation_student_text(*student1), accommodation_position_text(*student1),
+			accommodation_student_text(*student2), accommodation_position_text(*student2)));
+}
+
+void AccommodationPage::submit_swap()
+{
+	const int student_id1 = ui->swapStudent1Spin->value();
+	const int student_id2 = ui->swapStudent2Spin->value();
+	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2) || student_id1 == student_id2) {
+		uifeedback::show_error(this, QStringLiteral("无法交换床位"), QStringLiteral("请输入两名不同学生的有效学号。"));
+		return;
+	}
+	const student* student1 = school::instance().get_student(student_id1);
+	const student* student2 = school::instance().get_student(student_id2);
+	if (student1 == nullptr || student2 == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法交换床位"), QStringLiteral("至少有一名学生不存在。"));
+		return;
+	}
+	const bool assigned1 = school::instance().get_assigned_student_ids().contains(student_id1);
+	const bool assigned2 = school::instance().get_assigned_student_ids().contains(student_id2);
+	if (assigned1 != has_complete_accommodation(*student1) || assigned2 != has_complete_accommodation(*student2)
+		|| (!assigned1 && has_any_accommodation(*student1)) || (!assigned2 && has_any_accommodation(*student2))) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("至少一名学生的住宿位置字段不完整，请暂停相关操作并核查数据。"));
+		return;
+	}
+	if (!assigned1 || !assigned2) {
+		uifeedback::show_error(this, QStringLiteral("无法交换床位"), QStringLiteral("两名学生必须都已入住。"));
+		return;
+	}
+	const QString student1_description = QStringLiteral("%1：%2").arg(accommodation_student_text(*student1), accommodation_position_text(*student1));
+	const QString student2_description = QStringLiteral("%1：%2").arg(accommodation_student_text(*student2), accommodation_position_text(*student2));
+	if (!uifeedback::confirm_action(this, QStringLiteral("确认交换床位"),
+		QStringLiteral("%1\n\n%2\n\n确认交换两人的床位吗？").arg(student1_description, student2_description), QStringLiteral("确认交换"))) {
+		return;
+	}
+
+	const int result = school::instance().swap_students(student_id1, student_id2);
+	if (result != 1) {
+		show_swap_error(result);
+		update_swap_preview();
+		return;
+	}
+	const student* swapped_student1 = school::instance().get_student(student_id1);
+	const student* swapped_student2 = school::instance().get_student(student_id2);
+	const QString result_text = swapped_student1 != nullptr && swapped_student2 != nullptr
+		? QStringLiteral("床位交换成功：%1；%2。")
+			.arg(accommodation_position_text(*swapped_student1), accommodation_position_text(*swapped_student2))
+		: QStringLiteral("床位交换成功。");
+	uifeedback::show_success(this, result_text);
+	update_swap_preview();
+	update_move_preview();
+	update_remove_preview();
+}
+
+void AccommodationPage::show_swap_error(int result)
+{
+	if (result == -6) {
+		uifeedback::show_critical(this, QStringLiteral("交换恢复失败"), QStringLiteral("床位交换失败，且宿舍快照未能完整恢复。请立即暂停后续操作并核查住宿数据。"), QStringLiteral("业务返回值：-6"));
+		return;
+	}
+	if (result == -4) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("源宿舍不存在，或学生位置与床位记录不一致。请暂停相关操作并核查数据。"), QStringLiteral("业务返回值：-4"));
+		return;
+	}
+	QString message;
+	if (result == -1) message = QStringLiteral("学生学号无效，或选择了同一名学生。");
+	else if (result == -2) message = QStringLiteral("至少一名学生不存在或尚未设置有效性别。");
+	else if (result == -3) message = QStringLiteral("至少一名学生未入住，或住宿位置字段不完整。");
+	else message = QStringLiteral("目标楼栋、宿舍或住客约束不允许本次交换，操作未生效。");
+	uifeedback::show_error(this, QStringLiteral("无法交换床位"), message, QStringLiteral("业务返回值：%1").arg(result));
 }
