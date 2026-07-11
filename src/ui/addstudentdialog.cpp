@@ -28,6 +28,11 @@ AddStudentDialog::AddStudentDialog(QWidget* parent)
 	ui->genderCombo->addItem(QStringLiteral("未设置"), 0);
 	ui->genderCombo->addItem(QStringLiteral("男"), 1);
 	ui->genderCombo->addItem(QStringLiteral("女"), 2);
+	ui->studentIdSpin->setAccessibleName(QStringLiteral("学生学号"));
+	ui->nameLineEdit->setAccessibleName(QStringLiteral("学生姓名"));
+	ui->genderCombo->setAccessibleName(QStringLiteral("学生性别"));
+	ui->classSpin->setAccessibleName(QStringLiteral("学生班级"));
+	ui->gradeSpin->setAccessibleName(QStringLiteral("学生年级"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("添加"));
 	ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("取消"));
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &AddStudentDialog::attempt_add);

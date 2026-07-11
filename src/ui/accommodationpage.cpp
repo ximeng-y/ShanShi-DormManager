@@ -62,6 +62,13 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	ui->moveStudentSpin->setAccessibleName(QStringLiteral("调宿学生学号"));
 	ui->swapStudent1Spin->setAccessibleName(QStringLiteral("交换学生一学号"));
 	ui->swapStudent2Spin->setAccessibleName(QStringLiteral("交换学生二学号"));
+	ui->assignStrategyCombo->setAccessibleName(QStringLiteral("入住安置方式"));
+	ui->assignBuildingSpin->setAccessibleName(QStringLiteral("入住目标楼栋"));
+	ui->assignDormSpin->setAccessibleName(QStringLiteral("入住目标宿舍"));
+	ui->assignBedSpin->setAccessibleName(QStringLiteral("入住目标床位"));
+	ui->moveBuildingSpin->setAccessibleName(QStringLiteral("调宿目标楼栋"));
+	ui->moveDormSpin->setAccessibleName(QStringLiteral("调宿目标宿舍"));
+	ui->moveBedSpin->setAccessibleName(QStringLiteral("调宿目标床位"));
 	ui->assignSubmitButton->setEnabled(true);
 	connect(ui->assignStrategyCombo, &QComboBox::currentIndexChanged, this, [this]() {
 		update_assign_controls();

@@ -6,6 +6,7 @@
 #include <QGuiApplication>
 #include <QList>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QScreen>
 #include <QSettings>
 #include <QStyle>
@@ -56,6 +57,14 @@ void MainWidget::closeEvent(QCloseEvent* event)
 	QWidget::closeEvent(event);
 }
 
+void MainWidget::resizeEvent(QResizeEvent* event)
+{
+	QWidget::resizeEvent(event);
+	if (width() < 1180 && !sidebar_collapsed) {
+		set_sidebar_collapsed(true);
+	}
+}
+
 void MainWidget::switch_page(int index)
 {
 	static const QStringList page_titles = {
@@ -83,20 +92,21 @@ void MainWidget::switch_page(int index)
 
 void MainWidget::set_sidebar_collapsed(bool collapsed)
 {
-	sidebar_collapsed = collapsed;
-	const int sidebar_width = collapsed ? 64 : 184;
+	const bool effective_collapsed = collapsed || width() < 1180;
+	sidebar_collapsed = effective_collapsed;
+	const int sidebar_width = effective_collapsed ? 64 : 184;
 	ui->sidebar->setMinimumWidth(sidebar_width);
 	ui->sidebar->setMaximumWidth(sidebar_width);
-	ui->sidebarLayout->setContentsMargins(collapsed ? 6 : 12, 18, collapsed ? 6 : 12, 0);
-	ui->sidebar->setProperty("collapsed", collapsed);
+	ui->sidebarLayout->setContentsMargins(effective_collapsed ? 6 : 12, 18, effective_collapsed ? 6 : 12, 0);
+	ui->sidebar->setProperty("collapsed", effective_collapsed);
 	ui->sidebar->style()->unpolish(ui->sidebar);
 	ui->sidebar->style()->polish(ui->sidebar);
 
-	ui->overviewNavButton->setText(collapsed ? QStringLiteral("概") : QStringLiteral("数据概览"));
-	ui->studentNavButton->setText(collapsed ? QStringLiteral("生") : QStringLiteral("学生管理"));
-	ui->dormNavButton->setText(collapsed ? QStringLiteral("舍") : QStringLiteral("宿舍资源"));
-	ui->accommodationNavButton->setText(collapsed ? QStringLiteral("住") : QStringLiteral("住宿安排"));
-	ui->advancedNavButton->setText(collapsed ? QStringLiteral("高") : QStringLiteral("高级调整"));
+	ui->overviewNavButton->setText(effective_collapsed ? QStringLiteral("概") : QStringLiteral("数据概览"));
+	ui->studentNavButton->setText(effective_collapsed ? QStringLiteral("生") : QStringLiteral("学生管理"));
+	ui->dormNavButton->setText(effective_collapsed ? QStringLiteral("舍") : QStringLiteral("宿舍资源"));
+	ui->accommodationNavButton->setText(effective_collapsed ? QStringLiteral("住") : QStringLiteral("住宿安排"));
+	ui->advancedNavButton->setText(effective_collapsed ? QStringLiteral("高") : QStringLiteral("高级调整"));
 }
 
 void MainWidget::restore_window_state()

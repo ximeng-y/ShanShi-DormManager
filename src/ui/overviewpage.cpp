@@ -8,6 +8,7 @@
 
 #include <QHeaderView>
 #include <QProgressBar>
+#include <QSet>
 #include <QShowEvent>
 #include <QStringList>
 #include <QTableWidgetItem>
@@ -74,12 +75,16 @@ void OverviewPage::refresh_summary()
 	int male_assigned = 0;
 	int female_assigned = 0;
 	int unset_gender_count = 0;
+	QSet<int> assigned_ids;
+	for (int assigned_id : current_school.get_assigned_student_ids()) {
+		assigned_ids.insert(assigned_id);
+	}
 	for (int student_id : current_school.get_all_student_ids()) {
 		const student* current_student = current_school.get_student(student_id);
 		if (current_student == nullptr) {
 			continue;
 		}
-		const bool assigned = current_student->get_dorm_id() > 0;
+		const bool assigned = assigned_ids.contains(student_id);
 		if (current_student->get_gender() == 1) {
 			++male_total;
 			male_assigned += assigned ? 1 : 0;

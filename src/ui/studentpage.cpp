@@ -89,6 +89,12 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->setAccessibleDescription(QStringLiteral("使用方向键选择学生，按回车打开完整只读详情。"));
 	ui->hideDetailButton->setAccessibleName(QStringLiteral("收起学生详情面板"));
 	ui->showDetailButton->setAccessibleName(QStringLiteral("展开学生详情面板"));
+	ui->searchLineEdit->setAccessibleName(QStringLiteral("搜索学生学号或姓名"));
+	ui->classFilterCombo->setAccessibleName(QStringLiteral("按班级筛选学生"));
+	ui->statusFilterCombo->setAccessibleName(QStringLiteral("按入住状态筛选学生"));
+	ui->editNameLineEdit->setAccessibleName(QStringLiteral("修改学生姓名"));
+	ui->editClassSpin->setAccessibleName(QStringLiteral("修改学生班级"));
+	ui->editGradeSpin->setAccessibleName(QStringLiteral("修改学生年级"));
 	ui->studentSplitter->setStretchFactor(0, 1);
 	ui->studentSplitter->setStretchFactor(1, 0);
 	ui->studentSplitter->setSizes({720, 360});

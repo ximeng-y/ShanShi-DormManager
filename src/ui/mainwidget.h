@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class QCloseEvent;
+class QResizeEvent;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -21,6 +22,7 @@ public:
 
 protected:
 	void closeEvent(QCloseEvent* event) override;//关闭前保存窗口与导航状态
+	void resizeEvent(QResizeEvent* event) override;//窄窗口自动收起侧边导航
 
 private:
 	void switch_page(int index);//切换主页面并同步标题与导航选中状态

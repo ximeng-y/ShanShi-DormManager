@@ -27,6 +27,9 @@ AddDormDialog::AddDormDialog(int building_id, QWidget* parent)
 {
 	ui->setupUi(this);
 	ui->buildingValueLabel->setText(QStringLiteral("%1号楼").arg(building_id));
+	ui->dormIdSpin->setAccessibleName(QStringLiteral("宿舍号"));
+	ui->maxNumSpin->setAccessibleName(QStringLiteral("宿舍床位数量"));
+	ui->genderLockCombo->setAccessibleName(QStringLiteral("房间性别锁"));
 	ui->genderLockCombo->addItem(QStringLiteral("暂不锁定"), 0);
 	const building* current_building = school::instance().get_building(building_id);
 	if (current_building != nullptr) {

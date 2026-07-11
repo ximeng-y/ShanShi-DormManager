@@ -16,6 +16,8 @@ EditBuildingDialog::EditBuildingDialog(int building_id, QWidget* parent)
 	ui->genderCombo->addItem(QStringLiteral("男生楼"), 1);
 	ui->genderCombo->addItem(QStringLiteral("女生楼"), 2);
 	ui->genderCombo->addItem(QStringLiteral("男女混宿楼"), 3);
+	ui->genderCombo->setAccessibleName(QStringLiteral("楼栋适用性别"));
+	ui->maxFloorSpin->setAccessibleName(QStringLiteral("楼栋最大楼层"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("保存修改"));
 	ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("取消"));
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &EditBuildingDialog::attempt_save);

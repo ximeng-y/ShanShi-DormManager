@@ -16,6 +16,8 @@ EditDormDialog::EditDormDialog(int building_id, int dorm_id, QWidget* parent)
 {
 	ui->setupUi(this);
 	ui->genderCombo->addItem(QStringLiteral("未锁定"), 0);
+	ui->maxNumSpin->setAccessibleName(QStringLiteral("宿舍床位数量"));
+	ui->genderCombo->setAccessibleName(QStringLiteral("房间性别锁"));
 	const building* current_building = school::instance().get_building(building_id);
 	if (current_building != nullptr && current_building->accepts_gender(1)) {
 		ui->genderCombo->addItem(QStringLiteral("男舍"), 1);

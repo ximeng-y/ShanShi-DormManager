@@ -28,6 +28,7 @@ GenderCorrectionDialog::GenderCorrectionDialog(int student_id, QWidget* parent)
 	ui->setupUi(this);
 	ui->targetGenderCombo->addItem(QStringLiteral("男"), 1);
 	ui->targetGenderCombo->addItem(QStringLiteral("女"), 2);
+	ui->targetGenderCombo->setAccessibleName(QStringLiteral("纠正后的学生性别"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("确认纠错"));
 	ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("取消"));
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &GenderCorrectionDialog::attempt_correction);
