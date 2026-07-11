@@ -26,6 +26,8 @@ set(PROJECT_SOURCES
         src/ui/overviewpage.cpp
         src/ui/overviewpage.h
         src/ui/overviewpage.ui
+        src/ui/sampledatagenerator.cpp
+        src/ui/sampledatagenerator.h
         src/ui/studentpage.cpp
         src/ui/studentpage.h
         src/ui/studentpage.ui
