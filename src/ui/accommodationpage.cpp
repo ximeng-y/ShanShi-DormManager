@@ -56,9 +56,16 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	ui->removeSubmitButton->setEnabled(true);
 	connect(ui->removeStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
+	ui->moveSubmitButton->setEnabled(true);
+	connect(ui->moveStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveBuildingSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveDormSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveBedSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
 	update_assign_controls();
 	update_assign_preview();
 	update_remove_preview();
+	update_move_preview();
 }
 
 AccommodationPage::~AccommodationPage()
@@ -257,4 +264,101 @@ void AccommodationPage::submit_remove()
 	else message = QStringLiteral("学生学号参数无效。");
 	uifeedback::show_error(this, QStringLiteral("无法办理退宿"), message, QStringLiteral("业务返回值：%1").arg(result));
 	update_remove_preview();
+}
+
+void AccommodationPage::update_move_preview()
+{
+	const int student_id = ui->moveStudentSpin->value();
+	const student* current_student = school::instance().get_student(student_id);
+	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
+		ui->movePreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号，并选择目标宿舍。"));
+		return;
+	}
+	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
+	if (!assigned || !has_complete_accommodation(*current_student)) {
+		ui->movePreviewLabel->setText(has_any_accommodation(*current_student)
+			? QStringLiteral("%1\n\n住宿位置记录异常，不能办理调宿。").arg(accommodation_student_text(*current_student))
+			: QStringLiteral("%1\n\n当前未入住，请先办理入住。").arg(accommodation_student_text(*current_student)));
+		return;
+	}
+	const dorm* target = school::instance().get_dorm(ui->moveBuildingSpin->value(), ui->moveDormSpin->value());
+	if (target == nullptr) {
+		ui->moveBedSpin->setMaximum(2147483647);
+		ui->movePreviewLabel->setText(QStringLiteral("%1\n\n当前位置：%2\n目标宿舍不存在。")
+			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
+		return;
+	}
+	ui->moveBedSpin->setMaximum(qMax(1, target->get_max_num()));
+	const QString target_text = ui->moveBedSpin->value() > 0
+		? QStringLiteral("%1号楼 · %2室 · %3号床").arg(target->get_building_id()).arg(target->get_id()).arg(ui->moveBedSpin->value())
+		: QStringLiteral("%1号楼 · %2室 · 自动选择最小空床位").arg(target->get_building_id()).arg(target->get_id());
+	ui->movePreviewLabel->setText(QStringLiteral("%1\n\n当前位置：%2\n目标位置：%3")
+		.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student), target_text));
+}
+
+void AccommodationPage::submit_move()
+{
+	const int student_id = ui->moveStudentSpin->value();
+	const student* current_student = school::instance().get_student(student_id);
+	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("学生学号无效或学生不存在。"));
+		return;
+	}
+	if (!school::instance().get_assigned_student_ids().contains(student_id)) {
+		if (has_any_accommodation(*current_student)) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生住宿位置字段不完整，请暂停相关操作并核查数据。"));
+		} else {
+			uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("该学生当前未入住，请先办理入住。"));
+		}
+		return;
+	}
+	const dorm* target = school::instance().get_dorm(ui->moveBuildingSpin->value(), ui->moveDormSpin->value());
+	if (target == nullptr) {
+		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("目标宿舍不存在。"));
+		return;
+	}
+	const QString original_position = accommodation_position_text(*current_student);
+	const QString target_position = ui->moveBedSpin->value() > 0
+		? QStringLiteral("%1号楼 %2室 %3号床").arg(target->get_building_id()).arg(target->get_id()).arg(ui->moveBedSpin->value())
+		: QStringLiteral("%1号楼 %2室的最小空床位").arg(target->get_building_id()).arg(target->get_id());
+	if (!uifeedback::confirm_action(this, QStringLiteral("确认调宿 / 换床"),
+		QStringLiteral("%1\n\n原位置：%2\n目标位置：%3").arg(accommodation_student_text(*current_student), original_position, target_position),
+		QStringLiteral("确认调整"))) {
+		return;
+	}
+
+	const int result = ui->moveBedSpin->value() > 0
+		? school::instance().move_student_to_dorm(target->get_building_id(), target->get_id(), student_id, ui->moveBedSpin->value())
+		: school::instance().move_student_to_dorm(target->get_building_id(), target->get_id(), student_id);
+	if (result <= 0) {
+		show_move_error(result);
+		update_move_preview();
+		return;
+	}
+	const student* moved_student = school::instance().get_student(student_id);
+	uifeedback::show_success(this, moved_student == nullptr
+		? QStringLiteral("调宿办理成功，新床位号为 %1。").arg(result)
+		: QStringLiteral("调宿办理成功：%1").arg(accommodation_position_text(*moved_student)));
+	update_move_preview();
+	update_remove_preview();
+}
+
+void AccommodationPage::show_move_error(int result)
+{
+	if (result == -10) {
+		uifeedback::show_critical(this, QStringLiteral("调宿恢复失败"), QStringLiteral("调宿执行失败，且学生原床位未能完整恢复。请立即暂停后续操作并核查住宿数据。"), QStringLiteral("业务返回值：-10"));
+		return;
+	}
+	if (result == -8) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("源宿舍或目标宿舍不存在，或学生位置与床位记录不一致。请暂停相关操作并核查数据。"), QStringLiteral("业务返回值：-8"));
+		return;
+	}
+	QString message;
+	if (result == 0) message = QStringLiteral("该学生当前未入住。");
+	else if (result == -2) message = QStringLiteral("目标床位已经被占用。");
+	else if (result == -4) message = QStringLiteral("目标宿舍已经住满。");
+	else if (result == -6) message = QStringLiteral("学生不存在或尚未设置有效性别。");
+	else if (result == -7) message = QStringLiteral("目标楼栋或宿舍不接纳该学生性别。");
+	else message = QStringLiteral("输入参数无效，请检查目标楼栋、宿舍和床位。");
+	uifeedback::show_error(this, QStringLiteral("无法办理调宿"), message, QStringLiteral("业务返回值：%1").arg(result));
 }

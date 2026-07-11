@@ -25,6 +25,9 @@ private:
 	void show_assignment_error(int result);//解释入住返回码
 	void update_remove_preview();//刷新退宿学生与当前位置预览
 	void submit_remove();//提交保留学籍的退宿业务
+	void update_move_preview();//刷新调宿学生、原位置与目标位置预览
+	void submit_move();//提交调宿或同宿舍换床业务
+	void show_move_error(int result);//解释调宿返回码与恢复失败
 
 	Ui::AccommodationPage* ui;
 };
