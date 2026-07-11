@@ -86,6 +86,8 @@ StudentPage::StudentPage(QWidget* parent)
 
 	auto* more_menu = new QMenu(ui->moreActionButton);
 	QAction* gender_correction_action = more_menu->addAction(QStringLiteral("性别纠错"));
+	more_menu->addSeparator();
+	QAction* remove_student_action = more_menu->addAction(QStringLiteral("退学籍"));
 	ui->moreActionButton->setMenu(more_menu);
 	connect(gender_correction_action, &QAction::triggered, this, [this]() {
 		GenderCorrectionDialog dialog(selected_student_id, this);
@@ -93,6 +95,42 @@ StudentPage::StudentPage(QWidget* parent)
 			refresh_data();
 			uifeedback::show_success(this, QStringLiteral("学生性别已纠正。"));
 		}
+	});
+	connect(remove_student_action, &QAction::triggered, this, [this]() {
+		const student* current_student = school::instance().get_student(selected_student_id);
+		if (current_student == nullptr) {
+			uifeedback::show_error(this, QStringLiteral("无法办理退学籍"), QStringLiteral("所选学生已经不存在，请刷新列表后重试。"));
+			refresh_data();
+			return;
+		}
+		const QString student_description = QStringLiteral("%1（%2）").arg(current_student->get_name()).arg(current_student->get_id());
+		const bool has_position = current_student->get_building_id() > 0 || current_student->get_dorm_id() > 0
+			|| current_student->get_floor() > 0 || current_student->get_bed_id() > 0;
+		const QString impact = has_position
+			? QStringLiteral("该学生存在住宿位置，系统将先办理退宿，再永久删除学生档案。")
+			: QStringLiteral("该操作将永久删除学生档案。当前学生没有住宿位置。");
+		if (!uifeedback::confirm_danger(this, QStringLiteral("确认办理退学籍"),
+			QStringLiteral("确定删除 %1 吗？\n\n%2").arg(student_description, impact), QStringLiteral("确认删除"))) {
+			return;
+		}
+
+		const int result = school::instance().remove_student(selected_student_id);
+		if (result == 1) {
+			selected_student_id = 0;
+			refresh_data();
+			uifeedback::show_information(this, QStringLiteral("退学籍完成"), has_position
+				? QStringLiteral("学生档案已删除，原住宿位置已同步清退。")
+				: QStringLiteral("学生档案已删除。"));
+			return;
+		}
+		if (result == -8) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生位置与宿舍床位记录不一致，系统未删除学生档案。请暂停相关操作并核查数据。"));
+			return;
+		}
+		uifeedback::show_error(this, QStringLiteral("无法办理退学籍"), result == 0
+			? QStringLiteral("该学生已经不存在，请刷新列表后重试。")
+			: QStringLiteral("学生学号参数无效。"));
+		refresh_data();
 	});
 
 	connect(ui->searchLineEdit, &QLineEdit::textChanged, this, [this]() { apply_filters(); });

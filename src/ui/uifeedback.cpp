@@ -95,6 +95,13 @@ void uifeedback::show_critical(QWidget* parent, const QString& title, const QStr
 	box.exec();
 }
 
+void uifeedback::show_information(QWidget* parent, const QString& title, const QString& message)
+{
+	QMessageBox box(QMessageBox::Information, title, message, QMessageBox::Ok, parent);
+	box.button(QMessageBox::Ok)->setText(QStringLiteral("确定"));
+	box.exec();
+}
+
 bool uifeedback::confirm_danger(QWidget* parent, const QString& title, const QString& message, const QString& confirm_text)
 {
 	QMessageBox box(QMessageBox::Warning, title, message, QMessageBox::Cancel, parent);
