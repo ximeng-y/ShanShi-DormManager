@@ -9,6 +9,8 @@ class OverviewPage;
 }
 QT_END_NAMESPACE
 
+class QShowEvent;
+
 //数据概览页面。负责展示学校协调层提供的只读统计结果。
 class OverviewPage : public QWidget
 {
@@ -17,8 +19,15 @@ class OverviewPage : public QWidget
 public:
 	explicit OverviewPage(QWidget* parent = nullptr);
 	~OverviewPage();
+	void refresh_data();//刷新概览统计与楼栋容量数据
+
+protected:
+	void showEvent(QShowEvent* event) override;//页面显示时刷新只读数据
 
 private:
+	void refresh_summary();//刷新学生、床位与入住情况统计
+	void refresh_building_capacity();//刷新楼栋容量表格
+
 	Ui::OverviewPage* ui;
 };
 
