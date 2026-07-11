@@ -244,8 +244,10 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 	}
 
 	const int dorms_per_building = bounded_preview_product(config.floors_per_building, config.dorms_per_floor);
+	const qint64 capacity_dorm_count = static_cast<qint64>(config.four_bed_dorm_count)
+		+ config.six_bed_dorm_count;
 	if (config.four_bed_dorm_count < 0 || config.six_bed_dorm_count < 0
-		|| config.four_bed_dorm_count + config.six_bed_dorm_count != dorms_per_building) {
+		|| capacity_dorm_count != dorms_per_building) {
 		errors.append(QStringLiteral("每栋4人间与6人间数量之和必须等于每栋宿舍总数。"));
 	}
 	if (scale.dorm_count > maximum_dorm_count) {
@@ -253,13 +255,15 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 	}
 
 	if (config.mixed_building_count > 0) {
+		const qint64 mixed_dorm_count = static_cast<qint64>(config.mixed_male_dorm_count)
+			+ config.mixed_female_dorm_count + config.mixed_unlocked_dorm_count;
 		if (config.mixed_male_dorm_count < 0 || config.mixed_female_dorm_count < 0
 			|| config.mixed_unlocked_dorm_count < 0
-			|| config.mixed_male_dorm_count + config.mixed_female_dorm_count
-				+ config.mixed_unlocked_dorm_count != dorms_per_building) {
+			|| mixed_dorm_count != dorms_per_building) {
 			errors.append(QStringLiteral("混合楼男舍、女舍与未锁定宿舍数量之和必须等于每栋宿舍总数。"));
 		}
-		const int total_unlocked = config.mixed_building_count * config.mixed_unlocked_dorm_count;
+		const qint64 total_unlocked = static_cast<qint64>(config.mixed_building_count)
+			* config.mixed_unlocked_dorm_count;
 		if (config.minimum_unlocked_empty_dorm_count < 0
 			|| config.minimum_unlocked_empty_dorm_count > total_unlocked) {
 			errors.append(QStringLiteral("保留的未锁定空宿舍数量不能超过混合楼未锁定宿舍总数。"));
