@@ -22,6 +22,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 {
 	ui->setupUi(this);
 	ui->replaceInfoButton->set_information(ui->replaceInfoButton->toolTip());
+	ui->validationInfoButton->set_information(QStringLiteral("查看全部参数问题。"));
 	ui->appendRadio->setAccessibleName(QStringLiteral("追加到当前数据"));
 	ui->replaceRadio->setAccessibleName(QStringLiteral("清空后生成，前端Phase 2预留"));
 	ui->maleBuildingSpin->setAccessibleName(QStringLiteral("男生楼数量"));
@@ -34,7 +35,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	ui->mixedMaleDormSpin->setAccessibleName(QStringLiteral("每栋混合楼男舍数量"));
 	ui->mixedFemaleDormSpin->setAccessibleName(QStringLiteral("每栋混合楼女舍数量"));
 	ui->mixedUnlockedDormSpin->setAccessibleName(QStringLiteral("每栋混合楼未锁定宿舍数量"));
-	ui->reservedUnlockedSpin->setAccessibleName(QStringLiteral("保留的未锁定空宿舍数量"));
+	ui->reservedUnlockedSpin->setAccessibleName(QStringLiteral("全部混合楼合计保留的未锁定空宿舍数量"));
 	ui->maleStudentSpin->setAccessibleName(QStringLiteral("生成男生总数"));
 	ui->maleAssignedSpin->setAccessibleName(QStringLiteral("生成男生入住人数"));
 	ui->femaleStudentSpin->setAccessibleName(QStringLiteral("生成女生总数"));
@@ -182,9 +183,13 @@ void SampleDataDialog::refresh_preview_and_validation()
 	ui->validationLabel->setText(errors.isEmpty()
 		? QString()
 		: errors.first() + (errors.size() > 1
-			? QStringLiteral("（另有%1项参数问题）").arg(errors.size() - 1)
+			? QStringLiteral("（另有%1项，点击说明按钮查看）").arg(errors.size() - 1)
 			: QString()));
 	ui->validationLabel->setToolTip(errors.join(QLatin1Char('\n')));
+	ui->validationInfoButton->setVisible(errors.size() > 1);
+	if (errors.size() > 1) {
+		ui->validationInfoButton->set_information(errors.join(QLatin1Char('\n')));
+	}
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(errors.isEmpty());
 }
 
