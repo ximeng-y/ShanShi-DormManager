@@ -169,6 +169,12 @@ QFrame[detailPanel="true"] {
 	background: #ffffff;
 }
 
+QFrame[resourcePanel="true"] {
+	border: 1px solid #d8e0e7;
+	border-radius: 8px;
+	background: #ffffff;
+}
+
 QLabel[detailHeading="true"] {
 	color: #17324d;
 	font-size: 18px;

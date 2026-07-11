@@ -38,6 +38,9 @@ set(PROJECT_SOURCES
         src/ui/gendercorrectiondialog.cpp
         src/ui/gendercorrectiondialog.h
         src/ui/gendercorrectiondialog.ui
+        src/ui/dormresourcepage.cpp
+        src/ui/dormresourcepage.h
+        src/ui/dormresourcepage.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp

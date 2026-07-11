@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DormResourcePage</class>
+ <widget class="QWidget" name="DormResourcePage">
+  <layout class="QVBoxLayout" name="resourcePageLayout" stretch="0,1">
+   <property name="spacing"><number>14</number></property>
+   <property name="leftMargin"><number>20</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>20</number></property><property name="bottomMargin"><number>18</number></property>
+   <item>
+    <layout class="QHBoxLayout" name="headingLayout">
+     <item>
+      <layout class="QVBoxLayout" name="headingTextLayout">
+       <property name="spacing"><number>3</number></property>
+       <item><widget class="QLabel" name="headingLabel"><property name="text"><string>楼栋与宿舍</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+       <item><widget class="QLabel" name="headingDescriptionLabel"><property name="text"><string>按楼栋、宿舍和床位逐级查看住宿空间。</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+      </layout>
+     </item>
+     <item><spacer name="headingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+     <item><widget class="QPushButton" name="addBuildingButton"><property name="text"><string>新增楼栋</string></property></widget></item>
+     <item><widget class="QPushButton" name="addDormButton"><property name="text"><string>新增宿舍</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QSplitter" name="resourceSplitter">
+     <property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property>
+     <property name="childrenCollapsible"><bool>false</bool></property>
+     <widget class="QFrame" name="buildingPanel">
+      <property name="minimumSize"><size><width>170</width><height>0</height></size></property><property name="maximumSize"><size><width>250</width><height>16777215</height></size></property><property name="resourcePanel" stdset="0"><bool>true</bool></property>
+      <layout class="QVBoxLayout" name="buildingPanelLayout">
+       <property name="spacing"><number>10</number></property>
+       <item><widget class="QLabel" name="buildingPanelTitle"><property name="text"><string>楼栋目录</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+       <item><widget class="QListWidget" name="buildingList"><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="spacing"><number>4</number></property></widget></item>
+       <item><widget class="QLabel" name="buildingCountLabel"><property name="text"><string>暂无楼栋</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+      </layout>
+     </widget>
+     <widget class="QFrame" name="dormPanel">
+      <property name="minimumSize"><size><width>340</width><height>0</height></size></property><property name="resourcePanel" stdset="0"><bool>true</bool></property>
+      <layout class="QVBoxLayout" name="dormPanelLayout">
+       <property name="spacing"><number>10</number></property>
+       <item><widget class="QLabel" name="dormPanelTitle"><property name="text"><string>宿舍目录</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+       <item><widget class="QLineEdit" name="dormSearchLineEdit"><property name="placeholderText"><string>搜索宿舍号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+       <item>
+        <widget class="QTableWidget" name="dormTable">
+         <property name="alternatingRowColors"><bool>true</bool></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="showGrid"><bool>false</bool></property>
+         <property name="columnCount"><number>4</number></property>
+         <column><property name="text"><string>宿舍号</string></property></column><column><property name="text"><string>性别锁</string></property></column><column><property name="text"><string>入住</string></property></column><column><property name="text"><string>状态</string></property></column>
+        </widget>
+       </item>
+       <item><widget class="QLabel" name="dormCountLabel"><property name="text"><string>请先选择楼栋</string></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+      </layout>
+     </widget>
+     <widget class="QFrame" name="dormDetailPanel">
+      <property name="minimumSize"><size><width>320</width><height>0</height></size></property><property name="maximumSize"><size><width>460</width><height>16777215</height></size></property><property name="detailPanel" stdset="0"><bool>true</bool></property>
+      <layout class="QVBoxLayout" name="dormDetailLayout">
+       <property name="spacing"><number>12</number></property><property name="leftMargin"><number>18</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>16</number></property>
+       <item><widget class="QLabel" name="dormDetailTitle"><property name="text"><string>宿舍详情</string></property><property name="detailHeading" stdset="0"><bool>true</bool></property></widget></item>
+       <item><widget class="QLabel" name="dormDetailHint"><property name="text"><string>从中间列表选择一间宿舍查看床位。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+       <item>
+        <widget class="QWidget" name="dormDetailContent">
+         <property name="visible"><bool>false</bool></property>
+         <layout class="QVBoxLayout" name="dormDetailContentLayout">
+          <property name="spacing"><number>12</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+          <item>
+           <layout class="QFormLayout" name="dormSummaryLayout">
+            <item row="0" column="0"><widget class="QLabel" name="buildingTitleLabel"><property name="text"><string>宿舍楼</string></property></widget></item><item row="0" column="1"><widget class="QLabel" name="buildingValueLabel"><property name="text"><string>—</string></property></widget></item>
+            <item row="1" column="0"><widget class="QLabel" name="floorTitleLabel"><property name="text"><string>楼层</string></property></widget></item><item row="1" column="1"><widget class="QLabel" name="floorValueLabel"><property name="text"><string>—</string></property></widget></item>
+            <item row="2" column="0"><widget class="QLabel" name="genderLockTitleLabel"><property name="text"><string>性别锁</string></property></widget></item><item row="2" column="1"><widget class="QLabel" name="genderLockValueLabel"><property name="text"><string>—</string></property></widget></item>
+            <item row="3" column="0"><widget class="QLabel" name="capacityTitleLabel"><property name="text"><string>床位</string></property></widget></item><item row="3" column="1"><widget class="QLabel" name="capacityValueLabel"><property name="text"><string>—</string></property></widget></item>
+           </layout>
+          </item>
+          <item><widget class="QLabel" name="bedAreaTitle"><property name="text"><string>床位与住客</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+          <item>
+           <widget class="QWidget" name="bedGridWidget">
+            <layout class="QGridLayout" name="bedGridLayout"><property name="spacing"><number>8</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout>
+           </widget>
+          </item>
+          <item><widget class="QPushButton" name="editDormButton"><property name="text"><string>修改宿舍属性</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+          <item><widget class="QPushButton" name="removeDormButton"><property name="text"><string>删除宿舍</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item><spacer name="detailSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
