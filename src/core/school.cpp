@@ -517,7 +517,11 @@ int school::move_student_to_dorm_impl(int building_id, int dorm_id, int student_
 			return -2;
 		if (dm.move_student_bed(building_id, dorm_id, old_bed_id, bed_id) != 1)
 			return -8;
-		return sm.assign_dorm_info(student_id, bed_id, dorm_id, building_id, target->get_floor()) == 1 ? bed_id : -8;
+		if (sm.assign_dorm_info(student_id, bed_id, dorm_id, building_id, target->get_floor()) == 1)
+			return bed_id;
+		bool restored_bed = dm.move_student_bed(building_id, dorm_id, bed_id, old_bed_id) == 1;
+		bool restored_info = sm.assign_dorm_info(student_id, old_bed_id, old_dorm_id, old_building_id, source->get_floor()) == 1;
+		return restored_bed && restored_info && is_dorm_consistent(old_building_id, old_dorm_id) ? -8 : -10;
 	}
 
 	const building* target_building = buildingmanager::instance().get(building_id);

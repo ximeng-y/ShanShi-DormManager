@@ -6,6 +6,10 @@ This file provides guidance to Codex when working with code in this repository.
 
 山东石油化工学院宿舍管理系统（ShanShiDormManager）——C++/Qt6 Widgets 桌面应用，为 2025 级程序设计实习课程作业。当前领域模型、三个 manager 与顶层 `school` 基础业务层已建立，学生、宿舍、宿舍楼的常用维护、查询、统计和住宿调整入口基本完备；UI 层仍仅占位，尚无业务逻辑接入。
 
+## Project Memory
+
+- 对影响范围明确且存在天然逆操作的局部状态变更，失败恢复优先执行反向操作；涉及多对象、多步骤或跨聚合、无法依靠单一逆操作完整恢复的事务，应在修改前保存必要快照并在失败时整体恢复。
+
 > **重要**：修改代码后**不要**自动执行构建验证，应提示用户自行进行验证。
 
 无测试框架、无 lint 配置。`AUTOMOC`/`AUTOUIC`/`AUTORCC` 均开启；新增 `Q_OBJECT` 类、`.ui`、`.qrc` 时无需手动运行 moc/uic/rcc。新增源文件必须同时加入 `CMakeLists.txt` 的 `PROJECT_SOURCES`。
