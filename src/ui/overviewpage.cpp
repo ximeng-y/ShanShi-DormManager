@@ -1,17 +1,44 @@
 #include "overviewpage.h"
 #include "./ui_overviewpage.h"
 
+#include "core/building.h"
+#include "core/dorm.h"
 #include "core/school.h"
 #include "core/student.h"
 
+#include <QHeaderView>
 #include <QProgressBar>
 #include <QShowEvent>
+#include <QStringList>
+#include <QTableWidgetItem>
+
+namespace {
+QString building_gender_text(int gender)
+{
+	if (gender == 1) {
+		return QStringLiteral("男生");
+	}
+	if (gender == 2) {
+		return QStringLiteral("女生");
+	}
+	if (gender == 3) {
+		return QStringLiteral("混宿");
+	}
+	return QStringLiteral("未知");
+}
+}
 
 OverviewPage::OverviewPage(QWidget* parent)
 	: QWidget(parent)
 	, ui(new Ui::OverviewPage)
 {
 	ui->setupUi(this);
+	ui->buildingCapacityTable->verticalHeader()->setVisible(false);
+	ui->buildingCapacityTable->verticalHeader()->setDefaultSectionSize(42);
+	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+	ui->buildingCapacityTable->horizontalHeaderItem(4)->setText(QStringLiteral("空床位"));
+	ui->buildingCapacityTable->horizontalHeaderItem(4)->setToolTip(QStringLiteral("统计未被占用的床位，不区分房间性别锁。"));
 }
 
 OverviewPage::~OverviewPage()
@@ -76,6 +103,49 @@ void OverviewPage::refresh_summary()
 
 void OverviewPage::refresh_building_capacity()
 {
-	//楼栋容量表格在独立提交中接入，当前先保持结构与刷新入口稳定。
-	ui->buildingCapacityTable->setRowCount(0);
+	school& current_school = school::instance();
+	const QVector<int> building_ids = current_school.get_all_building_ids();
+	ui->buildingCapacityTable->setRowCount(building_ids.size());
+	ui->buildingCapacityGroupBox->setTitle(building_ids.isEmpty()
+		? QStringLiteral("宿舍楼容量概况（暂无楼栋）")
+		: QStringLiteral("宿舍楼容量概况"));
+
+	for (int row = 0; row < building_ids.size(); ++row) {
+		const int building_id = building_ids.at(row);
+		const building* current_building = current_school.get_building(building_id);
+		if (current_building == nullptr) {
+			continue;
+		}
+
+		int occupied_beds = 0;
+		int empty_beds = 0;
+		const QVector<QPair<int, int>> dorm_keys = current_school.get_dorm_keys_of_building(building_id);
+		for (const QPair<int, int>& dorm_key : dorm_keys) {
+			const dorm* current_dorm = current_school.get_dorm(dorm_key.first, dorm_key.second);
+			if (current_dorm == nullptr) {
+				continue;
+			}
+			occupied_beds += current_dorm->get_occupied_count();
+			empty_beds += current_dorm->get_empty_count();
+		}
+		const int total_beds = occupied_beds + empty_beds;
+		const int occupancy_rate = total_beds > 0 ? occupied_beds * 100 / total_beds : 0;
+
+		const QStringList values = {
+			QString::number(building_id),
+			building_gender_text(current_building->get_for_gender()),
+			QString::number(dorm_keys.size()),
+			QString::number(occupied_beds),
+			QString::number(empty_beds),
+			QStringLiteral("%1%").arg(occupancy_rate)
+		};
+		for (int column = 0; column < values.size(); ++column) {
+			auto* item = new QTableWidgetItem(values.at(column));
+			item->setTextAlignment(Qt::AlignCenter);
+			if (column == 0) {
+				item->setData(Qt::UserRole, building_id);
+			}
+			ui->buildingCapacityTable->setItem(row, column, item);
+		}
+	}
 }
