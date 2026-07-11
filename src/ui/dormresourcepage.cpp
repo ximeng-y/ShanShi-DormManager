@@ -4,6 +4,7 @@
 #include "adddormdialog.h"
 #include "bedtablemodel.h"
 #include "editbuildingdialog.h"
+#include "editdormdialog.h"
 #include "uifeedback.h"
 
 #include "core/building.h"
@@ -138,6 +139,13 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 			ui->dormSearchLineEdit->clear();
 			refresh_data();
 			uifeedback::show_success(this, QStringLiteral("宿舍已添加。"));
+		}
+	});
+	connect(ui->editDormButton, &QPushButton::clicked, this, [this]() {
+		EditDormDialog dialog(selected_building_id, selected_dorm_id, this);
+		if (dialog.exec() == QDialog::Accepted) {
+			refresh_data();
+			uifeedback::show_success(this, QStringLiteral("宿舍属性已更新。"));
 		}
 	});
 }
