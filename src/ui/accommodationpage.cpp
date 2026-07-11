@@ -44,6 +44,13 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	, ui(new Ui::AccommodationPage)
 {
 	ui->setupUi(this);
+	ui->taskInfoButton->set_information(ui->taskInfoButton->toolTip());
+	ui->taskTabs->setAccessibleName(QStringLiteral("住宿任务类型"));
+	ui->assignStudentSpin->setAccessibleName(QStringLiteral("入住学生学号"));
+	ui->removeStudentSpin->setAccessibleName(QStringLiteral("退宿学生学号"));
+	ui->moveStudentSpin->setAccessibleName(QStringLiteral("调宿学生学号"));
+	ui->swapStudent1Spin->setAccessibleName(QStringLiteral("交换学生一学号"));
+	ui->swapStudent2Spin->setAccessibleName(QStringLiteral("交换学生二学号"));
 	ui->assignSubmitButton->setEnabled(true);
 	connect(ui->assignStrategyCombo, &QComboBox::currentIndexChanged, this, [this]() {
 		update_assign_controls();
@@ -72,6 +79,12 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	update_remove_preview();
 	update_move_preview();
 	update_swap_preview();
+	setTabOrder(ui->taskTabs, ui->assignStudentSpin);
+	setTabOrder(ui->assignStudentSpin, ui->assignStrategyCombo);
+	setTabOrder(ui->assignStrategyCombo, ui->assignBuildingSpin);
+	setTabOrder(ui->assignBuildingSpin, ui->assignDormSpin);
+	setTabOrder(ui->assignDormSpin, ui->assignBedSpin);
+	setTabOrder(ui->assignBedSpin, ui->assignSubmitButton);
 }
 
 AccommodationPage::~AccommodationPage()

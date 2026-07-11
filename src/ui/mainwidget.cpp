@@ -18,6 +18,12 @@ MainWidget::MainWidget(QWidget *parent)
 {
     ui->setupUi(this);
 	restore_window_state();
+	ui->sidebarToggleButton->setAccessibleName(QStringLiteral("展开或收起导航栏"));
+	ui->overviewNavButton->setAccessibleName(QStringLiteral("数据概览"));
+	ui->studentNavButton->setAccessibleName(QStringLiteral("学生管理"));
+	ui->dormNavButton->setAccessibleName(QStringLiteral("宿舍资源"));
+	ui->accommodationNavButton->setAccessibleName(QStringLiteral("住宿安排"));
+	ui->advancedNavButton->setAccessibleName(QStringLiteral("高级调整"));
 
 	auto* navigation_group = new QButtonGroup(this);
 	navigation_group->setExclusive(true);

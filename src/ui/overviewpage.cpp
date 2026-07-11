@@ -33,6 +33,8 @@ OverviewPage::OverviewPage(QWidget* parent)
 	, ui(new Ui::OverviewPage)
 {
 	ui->setupUi(this);
+	ui->emptyBedInfoButton->set_information(ui->emptyBedInfoButton->toolTip());
+	ui->buildingCapacityTable->setAccessibleName(QStringLiteral("宿舍楼容量概况"));
 	ui->buildingCapacityTable->verticalHeader()->setVisible(false);
 	ui->buildingCapacityTable->verticalHeader()->setDefaultSectionSize(42);
 	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);

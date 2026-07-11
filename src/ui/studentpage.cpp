@@ -85,6 +85,10 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+	ui->studentTable->setAccessibleName(QStringLiteral("学生目录"));
+	ui->studentTable->setAccessibleDescription(QStringLiteral("使用方向键选择学生，按回车打开完整只读详情。"));
+	ui->hideDetailButton->setAccessibleName(QStringLiteral("收起学生详情面板"));
+	ui->showDetailButton->setAccessibleName(QStringLiteral("展开学生详情面板"));
 	ui->studentSplitter->setStretchFactor(0, 1);
 	ui->studentSplitter->setStretchFactor(1, 0);
 	ui->studentSplitter->setSizes({720, 360});
@@ -161,7 +165,7 @@ StudentPage::StudentPage(QWidget* parent)
 			show_student_summary(id_item->data(Qt::UserRole).toInt());
 		}
 	});
-	connect(ui->studentTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
+	connect(ui->studentTable, &QTableWidget::cellActivated, this, [this](int row, int) {
 		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
 		if (id_item != nullptr) {
 			StudentDetailDialog dialog(id_item->data(Qt::UserRole).toInt(), this);
@@ -188,6 +192,14 @@ StudentPage::StudentPage(QWidget* parent)
 
 	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
 	set_detail_panel_visible(settings.value(QStringLiteral("student/detailPanelVisible"), true).toBool());
+	setTabOrder(ui->addStudentButton, ui->searchLineEdit);
+	setTabOrder(ui->searchLineEdit, ui->classFilterCombo);
+	setTabOrder(ui->classFilterCombo, ui->statusFilterCombo);
+	setTabOrder(ui->statusFilterCombo, ui->resetFilterButton);
+	setTabOrder(ui->resetFilterButton, ui->studentTable);
+	setTabOrder(ui->studentTable, ui->editStudentButton);
+	setTabOrder(ui->editStudentButton, ui->accommodationActionButton);
+	setTabOrder(ui->accommodationActionButton, ui->moreActionButton);
 }
 
 StudentPage::~StudentPage()

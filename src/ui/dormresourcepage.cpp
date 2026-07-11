@@ -58,6 +58,10 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 	ui->bedTableView->verticalHeader()->setVisible(false);
 	ui->bedTableView->verticalHeader()->setDefaultSectionSize(70);
+	ui->buildingList->setAccessibleName(QStringLiteral("楼栋目录"));
+	ui->dormTable->setAccessibleName(QStringLiteral("宿舍目录"));
+	ui->bedTableView->setAccessibleName(QStringLiteral("床位与住客"));
+	ui->bedAreaInfoButton->set_information(ui->bedAreaInfoButton->toolTip());
 	ui->resourceSplitter->setStretchFactor(0, 0);
 	ui->resourceSplitter->setStretchFactor(1, 1);
 	ui->resourceSplitter->setStretchFactor(2, 0);
@@ -144,6 +148,14 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 			uifeedback::show_success(this, QStringLiteral("宿舍已添加。"));
 		}
 	});
+	setTabOrder(ui->addBuildingButton, ui->addDormButton);
+	setTabOrder(ui->addDormButton, ui->buildingActionButton);
+	setTabOrder(ui->buildingActionButton, ui->buildingList);
+	setTabOrder(ui->buildingList, ui->dormSearchLineEdit);
+	setTabOrder(ui->dormSearchLineEdit, ui->dormTable);
+	setTabOrder(ui->dormTable, ui->bedTableView);
+	setTabOrder(ui->bedTableView, ui->editDormButton);
+	setTabOrder(ui->editDormButton, ui->removeDormButton);
 	connect(ui->editDormButton, &QPushButton::clicked, this, [this]() {
 		EditDormDialog dialog(selected_building_id, selected_dorm_id, this);
 		if (dialog.exec() == QDialog::Accepted) {
