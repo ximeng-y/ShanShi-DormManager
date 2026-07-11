@@ -1,5 +1,7 @@
 #include "dormresourcepage.h"
 #include "./ui_dormresourcepage.h"
+#include "addbuildingdialog.h"
+#include "uifeedback.h"
 
 #include "core/building.h"
 #include "core/dorm.h"
@@ -65,6 +67,14 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
 		if (id_item != nullptr) {
 			show_dorm_detail(id_item->data(Qt::UserRole).toInt());
+		}
+	});
+	connect(ui->addBuildingButton, &QPushButton::clicked, this, [this]() {
+		AddBuildingDialog dialog(this);
+		if (dialog.exec() == QDialog::Accepted) {
+			selected_building_id = dialog.added_building_id();
+			refresh_data();
+			uifeedback::show_success(this, QStringLiteral("宿舍楼已添加。"));
 		}
 	});
 }

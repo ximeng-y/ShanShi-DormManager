@@ -41,6 +41,9 @@ set(PROJECT_SOURCES
         src/ui/dormresourcepage.cpp
         src/ui/dormresourcepage.h
         src/ui/dormresourcepage.ui
+        src/ui/addbuildingdialog.cpp
+        src/ui/addbuildingdialog.h
+        src/ui/addbuildingdialog.ui
         src/core/student.cpp
         src/core/student.h
         src/core/dorm.cpp
