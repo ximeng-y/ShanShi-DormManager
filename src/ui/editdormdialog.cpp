@@ -81,13 +81,14 @@ void EditDormDialog::attempt_save()
 			if (!restored) {
 				uifeedback::show_critical(this, QStringLiteral("宿舍属性恢复失败"), QStringLiteral("性别锁修改失败，且原床位容量未能恢复。请暂停后续操作并核查数据。"));
 			} else {
+				const QString restore_suffix = capacity_changed ? QStringLiteral("，已恢复原容量") : QString();
 				QString message;
 				if (result == -2) {
-					message = QStringLiteral("所在楼栋不接纳目标性别，已恢复原容量。");
+					message = QStringLiteral("所在楼栋不接纳目标性别%1。").arg(restore_suffix);
 				} else if (result == -3) {
-					message = QStringLiteral("现有住客与目标性别锁冲突，或有住客时不能解除性别锁；已恢复原容量。");
+					message = QStringLiteral("现有住客与目标性别锁冲突，或有住客时不能解除性别锁%1。").arg(restore_suffix);
 				} else {
-					message = result == 0 ? QStringLiteral("宿舍已经不存在。") : QStringLiteral("性别锁参数无效，已恢复原容量。");
+					message = result == 0 ? QStringLiteral("宿舍已经不存在。") : QStringLiteral("性别锁参数无效%1。").arg(restore_suffix);
 				}
 				uifeedback::show_error(this, QStringLiteral("无法修改宿舍"), message);
 			}
