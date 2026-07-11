@@ -9,6 +9,7 @@ class AccommodationPage;
 }
 QT_END_NAMESPACE
 
+class QShowEvent;
 class student;
 
 //住宿安排页面。按任务组织入住、退宿、调宿换床与学生互换流程。
@@ -19,6 +20,10 @@ class AccommodationPage : public QWidget
 public:
 	explicit AccommodationPage(QWidget* parent = nullptr);
 	~AccommodationPage();
+	void refresh_data();//刷新四类住宿任务的学生与目标预览
+
+protected:
+	void showEvent(QShowEvent* event) override;//页面显示时刷新住宿任务预览
 
 private:
 	void update_assign_controls();//按安置方式启用目标宿舍与床位输入

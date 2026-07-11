@@ -8,6 +8,8 @@
 #include "system/check.h"
 #include "uifeedback.h"
 
+#include <QShowEvent>
+
 namespace {
 QString accommodation_student_text(const student& current_student)
 {
@@ -90,6 +92,20 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 AccommodationPage::~AccommodationPage()
 {
 	delete ui;
+}
+
+void AccommodationPage::refresh_data()
+{
+	update_assign_preview();
+	update_remove_preview();
+	update_move_preview();
+	update_swap_preview();
+}
+
+void AccommodationPage::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+	refresh_data();
 }
 
 void AccommodationPage::update_assign_controls()
