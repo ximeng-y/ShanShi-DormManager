@@ -76,6 +76,9 @@ public:
 	//-6=学生不存在或性别未设置  -7=目标楼/宿舍性别冲突  -8=源或目标宿舍不存在/住宿记录不一致  -10=失败后未能恢复原床位
 	int move_student_to_dorm(int building_id, int dorm_id, int student_id);//调往指定宿舍并自动分配最小空床位
 	int move_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id);//调往指定宿舍的指定空床位，同宿舍时用于换床
+	//返回值: 1=成功  -1=参数非法或同一学生  -2=学生不存在或性别未设置  -3=学生未入住或位置字段不完整
+	//-4=源宿舍不存在或住宿记录不一致  -5=目标约束异常或执行失败  -6=失败后未能完整恢复快照
+	int swap_students(int student_id1, int student_id2);//交换两名学生的床位，支持同宿舍及跨宿舍
 
 	//学籍协调
 	//返回值: 1=成功  0=学生不存在  -1=参数非法  -8=住宿记录不一致导致退宿失败

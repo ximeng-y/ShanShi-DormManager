@@ -559,6 +559,81 @@ int school::move_student_to_dorm(int building_id, int dorm_id, int student_id, i
 	return move_student_to_dorm_impl(building_id, dorm_id, student_id, bed_id, true);
 }
 
+int school::swap_students(int student_id1, int student_id2)//交换两名学生的床位
+{
+	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2) || student_id1 == student_id2)
+		return -1;
+	studentmanager& sm = studentmanager::instance();
+	dormmanager& dm = dormmanager::instance();
+	const student* s1 = sm.get(student_id1);
+	const student* s2 = sm.get(student_id2);
+	if (s1 == nullptr || s2 == nullptr || s1->get_gender() == 0 || s2->get_gender() == 0)
+		return -2;
+	auto has_complete_position = [](const student* s)
+	{
+		return s->get_bed_id() > 0 && s->get_dorm_id() > 0 && s->get_building_id() > 0 && s->get_floor() > 0;
+	};
+	if (!has_complete_position(s1) || !has_complete_position(s2))
+		return -3;
+
+	int b1 = s1->get_building_id();
+	int d1 = s1->get_dorm_id();
+	int bed1 = s1->get_bed_id();
+	int b2 = s2->get_building_id();
+	int d2 = s2->get_dorm_id();
+	int bed2 = s2->get_bed_id();
+	const dorm* dorm1 = dm.get(b1, d1);
+	const dorm* dorm2 = dm.get(b2, d2);
+	if (dorm1 == nullptr || dorm2 == nullptr || !is_dorm_consistent(b1, d1) ||
+		((b1 != b2 || d1 != d2) && !is_dorm_consistent(b2, d2)))
+		return -4;
+
+	bool same_dorm = b1 == b2 && d1 == d2;
+	if (same_dorm)
+	{
+		if (dm.move_student_bed(b1, d1, bed1, bed2) != 1)
+			return -5;
+		bool synced1 = sm.assign_dorm_info(student_id1, bed2, d1, b1, dorm1->get_floor()) == 1;
+		bool synced2 = sm.assign_dorm_info(student_id2, bed1, d1, b1, dorm1->get_floor()) == 1;
+		if (synced1 && synced2 && is_dorm_consistent(b1, d1))
+			return 1;
+		bool restored_beds = dm.move_student_bed(b1, d1, bed2, bed1) == 1;
+		bool restored1 = sm.assign_dorm_info(student_id1, bed1, d1, b1, dorm1->get_floor()) == 1;
+		bool restored2 = sm.assign_dorm_info(student_id2, bed2, d1, b1, dorm1->get_floor()) == 1;
+		return restored_beds && restored1 && restored2 && is_dorm_consistent(b1, d1) ? -5 : -6;
+	}
+
+	const building* building1 = buildingmanager::instance().get(b1);
+	const building* building2 = buildingmanager::instance().get(b2);
+	if (building1 == nullptr || building2 == nullptr ||
+		!building2->accepts_gender(s1->get_gender()) || !dorm2->accepts_gender(s1->get_gender()) ||
+		!building1->accepts_gender(s2->get_gender()) || !dorm1->accepts_gender(s2->get_gender()))
+		return -5;
+
+	QVector<int> beds1 = snapshot_dorm(*dorm1);
+	QVector<int> beds2 = snapshot_dorm(*dorm2);
+	int gender1 = dorm1->get_for_gender();
+	int gender2 = dorm2->get_for_gender();
+	QVector<int> original_ids = dorm1->get_student_id_list();
+	original_ids += dorm2->get_student_id_list();
+	bool moved = dm.remove_student_from_dorm(b1, d1, student_id1) == bed1 &&
+		dm.remove_student_from_dorm(b2, d2, student_id2) == bed2 &&
+		dm.add_student_to_dorm(b2, d2, student_id1, s1->get_gender(), bed2) == bed2 &&
+		dm.add_student_to_dorm(b1, d1, student_id2, s2->get_gender(), bed1) == bed1;
+	if (moved)
+	{
+		reset_and_sync_students(original_ids, b1, d1, b2, d2);
+		if (is_dorm_consistent(b1, d1) && is_dorm_consistent(b2, d2))
+			return 1;
+	}
+
+	bool restored1 = restore_dorm(b1, d1, beds1, gender1);
+	bool restored2 = restore_dorm(b2, d2, beds2, gender2);
+	reset_and_sync_students(original_ids, b1, d1, b2, d2);
+	bool restored = restored1 && restored2 && is_dorm_consistent(b1, d1) && is_dorm_consistent(b2, d2);
+	return restored ? -5 : -6;
+}
+
 int school::remove_student(int student_id)//退学籍
 {
 	if (!check::is_valid_student_id(student_id))
