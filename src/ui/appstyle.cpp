@@ -186,20 +186,10 @@ QLabel[detailSubheading="true"] {
 	font-weight: 600;
 }
 
-QFrame[bedCard="true"] {
-	border: 1px solid #cbd6df;
+QTableView#bedTableView {
+	border: 1px solid #d8e0e7;
 	border-radius: 6px;
-	background: #f8fafb;
-}
-
-QFrame[bedCard="true"][occupied="true"] {
-	border-color: #8ca6ba;
-	background: #eef4f8;
-}
-
-QLabel[bedTitle="true"] {
-	color: #35546f;
-	font-weight: 600;
+	gridline-color: #d8e0e7;
 }
 
 QLineEdit,

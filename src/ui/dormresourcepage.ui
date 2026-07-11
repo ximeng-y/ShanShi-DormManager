@@ -69,16 +69,11 @@
           </item>
           <item><widget class="QLabel" name="bedAreaTitle"><property name="text"><string>床位与住客</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
           <item>
-           <widget class="QScrollArea" name="bedScrollArea">
+           <widget class="QTableView" name="bedTableView">
             <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>1</verstretch></sizepolicy></property>
             <property name="minimumSize"><size><width>0</width><height>120</height></size></property>
             <property name="frameShape"><enum>QFrame::Shape::NoFrame</enum></property>
-            <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum></property>
-            <property name="widgetResizable"><bool>true</bool></property>
-            <widget class="QWidget" name="bedGridWidget">
-             <property name="geometry"><rect><x>0</x><y>0</y><width>280</width><height>120</height></rect></property>
-             <layout class="QGridLayout" name="bedGridLayout"><property name="spacing"><number>8</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property></layout>
-            </widget>
+            <property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::NoSelection</enum></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="showGrid"><bool>true</bool></property><property name="wordWrap"><bool>true</bool></property>
            </widget>
           </item>
           <item><widget class="QPushButton" name="editDormButton"><property name="text"><string>修改宿舍属性</string></property><property name="enabled"><bool>false</bool></property></widget></item>
