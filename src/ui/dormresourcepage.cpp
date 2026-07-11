@@ -59,6 +59,8 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->resourceSplitter->setSizes({190, 430, 360});
 	auto* building_menu = new QMenu(ui->buildingActionButton);
 	QAction* edit_building_action = building_menu->addAction(QStringLiteral("修改楼栋属性"));
+	building_menu->addSeparator();
+	QAction* remove_building_action = building_menu->addAction(QStringLiteral("删除楼栋"));
 	ui->buildingActionButton->setMenu(building_menu);
 	connect(edit_building_action, &QAction::triggered, this, [this]() {
 		EditBuildingDialog dialog(selected_building_id, this);
@@ -66,6 +68,38 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 			refresh_data();
 			uifeedback::show_success(this, QStringLiteral("楼栋属性已更新。"));
 		}
+	});
+	connect(remove_building_action, &QAction::triggered, this, [this]() {
+		const building* current_building = school::instance().get_building(selected_building_id);
+		if (current_building == nullptr) {
+			uifeedback::show_error(this, QStringLiteral("无法删除楼栋"), QStringLiteral("所选楼栋已经不存在，请刷新后重试。"));
+			refresh_data();
+			return;
+		}
+		const QVector<QPair<int, int>> dorm_keys = school::instance().get_dorm_keys_of_building(selected_building_id);
+		int occupant_count = 0;
+		for (const QPair<int, int>& dorm_key : dorm_keys) {
+			const dorm* current_dorm = school::instance().get_dorm(dorm_key.first, dorm_key.second);
+			if (current_dorm != nullptr) {
+				occupant_count += current_dorm->get_current_num();
+			}
+		}
+		const QString impact = QStringLiteral("将删除 %1号楼及其 %2 间宿舍，并清退 %3 名住客。此操作无法撤销。")
+			.arg(selected_building_id)
+			.arg(dorm_keys.size())
+			.arg(occupant_count);
+		if (!uifeedback::confirm_danger(this, QStringLiteral("确认删除楼栋"), impact, QStringLiteral("确认删除"))) {
+			return;
+		}
+		if (!school::instance().remove_building(selected_building_id)) {
+			uifeedback::show_critical(this, QStringLiteral("楼栋删除失败"), QStringLiteral("楼内住宿记录可能存在不一致，系统未能完成级联删除。请暂停相关操作并核查数据。"));
+			return;
+		}
+		selected_building_id = 0;
+		selected_dorm_id = 0;
+		refresh_data();
+		uifeedback::show_information(this, QStringLiteral("楼栋删除完成"),
+			QStringLiteral("楼栋及 %1 间宿舍已删除，%2 名住客已同步清退。").arg(dorm_keys.size()).arg(occupant_count));
 	});
 
 	connect(ui->buildingList, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* current) {
