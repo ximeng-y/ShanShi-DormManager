@@ -131,10 +131,10 @@ QString random_student_name(QRandomGenerator& random)
 		QStringLiteral("彤"), QStringLiteral("文"), QStringLiteral("欣"), QStringLiteral("轩"), QStringLiteral("妍"),
 		QStringLiteral("阳"), QStringLiteral("怡"), QStringLiteral("宇"), QStringLiteral("悦"), QStringLiteral("泽")
 	};
-	QString result = surnames.at(random.bounded(surnames.size()));
-	result += given_characters.at(random.bounded(given_characters.size()));
+	QString result = surnames.at(random.bounded(static_cast<int>(surnames.size())));
+	result += given_characters.at(random.bounded(static_cast<int>(given_characters.size())));
 	if (random.bounded(100) < 65) {
-		result += given_characters.at(random.bounded(given_characters.size()));
+		result += given_characters.at(random.bounded(static_cast<int>(given_characters.size())));
 	}
 	return result;
 }
