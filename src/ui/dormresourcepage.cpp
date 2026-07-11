@@ -148,6 +148,32 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 			uifeedback::show_success(this, QStringLiteral("宿舍属性已更新。"));
 		}
 	});
+	connect(ui->removeDormButton, &QPushButton::clicked, this, [this]() {
+		const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
+		if (current_dorm == nullptr) {
+			uifeedback::show_error(this, QStringLiteral("无法删除宿舍"), QStringLiteral("所选宿舍已经不存在，请刷新后重试。"));
+			refresh_data();
+			return;
+		}
+		const int occupant_count = current_dorm->get_current_num();
+		const QString impact = occupant_count > 0
+			? QStringLiteral("将删除 %1号楼 %2室，并清退其中 %3 名住客。此操作无法撤销。")
+				.arg(selected_building_id).arg(selected_dorm_id).arg(occupant_count)
+			: QStringLiteral("将删除 %1号楼 %2室。当前宿舍没有住客，此操作无法撤销。")
+				.arg(selected_building_id).arg(selected_dorm_id);
+		if (!uifeedback::confirm_danger(this, QStringLiteral("确认删除宿舍"), impact, QStringLiteral("确认删除"))) {
+			return;
+		}
+		if (!school::instance().remove_dorm(selected_building_id, selected_dorm_id)) {
+			uifeedback::show_critical(this, QStringLiteral("宿舍删除失败"), QStringLiteral("宿舍床位与学生位置记录可能不一致，系统未执行删除。请暂停相关操作并核查数据。"));
+			return;
+		}
+		selected_dorm_id = 0;
+		refresh_data();
+		uifeedback::show_information(this, QStringLiteral("宿舍删除完成"), occupant_count > 0
+			? QStringLiteral("宿舍已删除，%1 名住客已同步清退。").arg(occupant_count)
+			: QStringLiteral("宿舍已删除。"));
+	});
 }
 
 DormResourcePage::~DormResourcePage()
