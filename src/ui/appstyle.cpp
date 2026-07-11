@@ -45,6 +45,22 @@ QToolButton#sidebarToggleButton:hover {
 	background: #e9f0f6;
 }
 
+QToolButton[infoButton="true"] {
+	padding: 0;
+	border: 1px solid #7890a4;
+	border-radius: 10px;
+	background: #ffffff;
+	color: #46657f;
+	font-size: 12px;
+}
+
+QToolButton[infoButton="true"]:hover,
+QToolButton[infoButton="true"]:focus {
+	border-color: #315f86;
+	background: #e9f1f7;
+	color: #17324d;
+}
+
 QFrame#sidebar {
 	background: #18324a;
 	border: 0;
