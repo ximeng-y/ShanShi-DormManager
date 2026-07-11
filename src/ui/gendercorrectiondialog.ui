@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GenderCorrectionDialog</class>
+ <widget class="QDialog" name="GenderCorrectionDialog">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>500</width><height>330</height></rect></property>
+  <property name="minimumSize"><size><width>460</width><height>310</height></size></property>
+  <property name="windowTitle"><string>性别纠错</string></property>
+  <property name="modal"><bool>true</bool></property>
+  <layout class="QVBoxLayout" name="dialogLayout">
+   <property name="spacing"><number>14</number></property><property name="leftMargin"><number>24</number></property><property name="topMargin"><number>22</number></property><property name="rightMargin"><number>24</number></property><property name="bottomMargin"><number>18</number></property>
+   <item><widget class="QLabel" name="headingLabel"><property name="text"><string>纠正学生性别</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+   <item><widget class="QLabel" name="descriptionLabel"><property name="text"><string>已入住学生仅在楼栋、房间和其他住客均兼容时允许纠正；系统不会自动迁宿。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+   <item>
+    <layout class="QFormLayout" name="formLayout">
+     <property name="verticalSpacing"><number>12</number></property>
+     <item row="0" column="0"><widget class="QLabel" name="studentLabel"><property name="text"><string>学生</string></property></widget></item><item row="0" column="1"><widget class="QLabel" name="studentValueLabel"><property name="text"><string>—</string></property></widget></item>
+     <item row="1" column="0"><widget class="QLabel" name="currentGenderLabel"><property name="text"><string>当前性别</string></property></widget></item><item row="1" column="1"><widget class="QLabel" name="currentGenderValueLabel"><property name="text"><string>—</string></property></widget></item>
+     <item row="2" column="0"><widget class="QLabel" name="targetGenderLabel"><property name="text"><string>纠正为</string></property></widget></item><item row="2" column="1"><widget class="QComboBox" name="targetGenderCombo"/></item>
+    </layout>
+   </item>
+   <item><spacer name="dialogSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+   <item><widget class="QDialogButtonBox" name="buttonBox"><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set></property></widget></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

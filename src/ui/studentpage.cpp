@@ -1,6 +1,7 @@
 #include "studentpage.h"
 #include "./ui_studentpage.h"
 #include "addstudentdialog.h"
+#include "gendercorrectiondialog.h"
 #include "studentdetaildialog.h"
 #include "uifeedback.h"
 
@@ -10,6 +11,7 @@
 
 #include <QHeaderView>
 #include <QList>
+#include <QMenu>
 #include <QSet>
 #include <QSettings>
 #include <QShowEvent>
@@ -81,6 +83,17 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+
+	auto* more_menu = new QMenu(ui->moreActionButton);
+	QAction* gender_correction_action = more_menu->addAction(QStringLiteral("性别纠错"));
+	ui->moreActionButton->setMenu(more_menu);
+	connect(gender_correction_action, &QAction::triggered, this, [this]() {
+		GenderCorrectionDialog dialog(selected_student_id, this);
+		if (dialog.exec() == QDialog::Accepted) {
+			refresh_data();
+			uifeedback::show_success(this, QStringLiteral("学生性别已纠正。"));
+		}
+	});
 
 	connect(ui->searchLineEdit, &QLineEdit::textChanged, this, [this]() { apply_filters(); });
 	connect(ui->classFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
