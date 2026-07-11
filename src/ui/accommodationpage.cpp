@@ -1,6 +1,7 @@
 #include "accommodationpage.h"
 #include "./ui_accommodationpage.h"
 
+#include "core/building.h"
 #include "core/dorm.h"
 #include "core/school.h"
 #include "core/student.h"
@@ -421,6 +422,12 @@ void AccommodationPage::update_swap_preview()
 		ui->swapPreviewLabel->setText(QStringLiteral("两名学生必须都已入住才能交换床位。"));
 		return;
 	}
+	bool data_error = false;
+	const QString constraint_error = validate_swap_constraints(*student1, *student2, data_error);
+	if (!constraint_error.isEmpty()) {
+		ui->swapPreviewLabel->setText(constraint_error);
+		return;
+	}
 	ui->swapPreviewLabel->setText(QStringLiteral("学生一：%1\n当前位置：%2\n\n学生二：%3\n当前位置：%4")
 		.arg(accommodation_student_text(*student1), accommodation_position_text(*student1),
 			accommodation_student_text(*student2), accommodation_position_text(*student2)));
@@ -449,6 +456,16 @@ void AccommodationPage::submit_swap()
 	}
 	if (!assigned1 || !assigned2) {
 		uifeedback::show_error(this, QStringLiteral("无法交换床位"), QStringLiteral("两名学生必须都已入住。"));
+		return;
+	}
+	bool data_error = false;
+	const QString constraint_error = validate_swap_constraints(*student1, *student2, data_error);
+	if (!constraint_error.isEmpty()) {
+		if (data_error) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), constraint_error);
+		} else {
+			uifeedback::show_error(this, QStringLiteral("无法交换床位"), constraint_error);
+		}
 		return;
 	}
 	const QString student1_description = QStringLiteral("%1：%2").arg(accommodation_student_text(*student1), accommodation_position_text(*student1));
@@ -492,4 +509,27 @@ void AccommodationPage::show_swap_error(int result)
 	else if (result == -3) message = QStringLiteral("至少一名学生未入住，或住宿位置字段不完整。");
 	else message = QStringLiteral("目标楼栋、宿舍或住客约束不允许本次交换，操作未生效。");
 	uifeedback::show_error(this, QStringLiteral("无法交换床位"), message, QStringLiteral("业务返回值：%1").arg(result));
+}
+
+QString AccommodationPage::validate_swap_constraints(const student& student1, const student& student2, bool& data_error) const
+{
+	data_error = false;
+	if (student1.get_gender() < 1 || student1.get_gender() > 2 || student2.get_gender() < 1 || student2.get_gender() > 2) {
+		return QStringLiteral("至少一名学生尚未设置有效性别。请先完成性别纠错。");
+	}
+	const dorm* dorm1 = school::instance().get_dorm(student1.get_building_id(), student1.get_dorm_id());
+	const dorm* dorm2 = school::instance().get_dorm(student2.get_building_id(), student2.get_dorm_id());
+	const building* building1 = school::instance().get_building(student1.get_building_id());
+	const building* building2 = school::instance().get_building(student2.get_building_id());
+	if (dorm1 == nullptr || dorm2 == nullptr || building1 == nullptr || building2 == nullptr
+		|| dorm1->get_student_id(student1.get_bed_id()) != student1.get_id()
+		|| dorm2->get_student_id(student2.get_bed_id()) != student2.get_id()) {
+		data_error = true;
+		return QStringLiteral("学生位置与宿舍床位记录不一致，请暂停相关操作并核查数据。");
+	}
+	if (!building1->accepts_gender(student2.get_gender()) || !dorm1->accepts_gender(student2.get_gender())
+		|| !building2->accepts_gender(student1.get_gender()) || !dorm2->accepts_gender(student1.get_gender())) {
+		return QStringLiteral("交换后至少一名学生的性别不被目标楼栋或房间接纳。");
+	}
+	return QString();
 }

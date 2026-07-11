@@ -10,6 +10,7 @@
 #include <QSettings>
 #include <QStyle>
 #include <QStringList>
+#include <QWindow>
 
 MainWidget::MainWidget(QWidget *parent)
     : QWidget(parent)
@@ -90,14 +91,24 @@ void MainWidget::set_sidebar_collapsed(bool collapsed)
 
 void MainWidget::restore_window_state()
 {
+	winId();//创建原生窗口，以便获取 Windows 标题栏和边框尺寸
+	const QMargins frame_margins = windowHandle() == nullptr ? QMargins(8, 32, 8, 8) : windowHandle()->frameMargins();
+	const auto fit_to_available = [this, frame_margins](const QRect& available, const QSize& preferred_client_size) {
+		const QSize frame_size(frame_margins.left() + frame_margins.right(), frame_margins.top() + frame_margins.bottom());
+		const QSize available_client_size = (available.size() - frame_size).expandedTo(minimumSize());
+		const QSize client_size = preferred_client_size.boundedTo(available_client_size);
+		resize(client_size);
+		const QSize outer_size = client_size + frame_size;
+		const QPoint frame_top_left = available.topLeft() + QPoint((available.width() - outer_size.width()) / 2, (available.height() - outer_size.height()) / 2);
+		move(frame_top_left);
+	};
+
 	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
 	const QByteArray saved_geometry = settings.value(QStringLiteral("window/geometry")).toByteArray();
 	if (saved_geometry.isEmpty()) {
 		QScreen* screen = QGuiApplication::primaryScreen();
 		if (screen != nullptr) {
-			const QRect available = screen->availableGeometry();
-			resize(QSize(1280, 720).boundedTo(available.size()));
-			move(available.center() - rect().center());
+			fit_to_available(screen->availableGeometry(), QSize(1280, 720));
 		} else {
 			resize(1280, 720);
 		}
@@ -123,8 +134,7 @@ void MainWidget::restore_window_state()
 			const bool sufficiently_visible = visible.width() >= qMin(320, frameGeometry().width())
 				&& visible.height() >= qMin(180, frameGeometry().height());
 			if (!sufficiently_visible || frameGeometry().width() > available.width() || frameGeometry().height() > available.height()) {
-				resize(size().boundedTo(available.size()));
-				move(available.center() - rect().center());
+				fit_to_available(available, size());
 			}
 		}
 	}

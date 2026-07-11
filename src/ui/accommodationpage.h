@@ -9,6 +9,8 @@ class AccommodationPage;
 }
 QT_END_NAMESPACE
 
+class student;
+
 //住宿安排页面。按任务组织入住、退宿、调宿换床与学生互换流程。
 class AccommodationPage : public QWidget
 {
@@ -31,6 +33,7 @@ private:
 	void update_swap_preview();//刷新两名学生当前位置预览
 	void submit_swap();//提交两名学生床位互换业务
 	void show_swap_error(int result);//解释学生互换返回码
+	QString validate_swap_constraints(const student& student1, const student& student2, bool& data_error) const;//交换前只读检查性别与目标约束
 
 	Ui::AccommodationPage* ui;
 };
