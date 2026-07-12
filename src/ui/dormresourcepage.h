@@ -32,6 +32,11 @@ private:
 	void clear_dorm_detail();//清除失效宿舍选择
 	void show_dorm_detail(int dorm_id);//显示宿舍摘要与床位住客
 	void update_bed_action_state(const QModelIndex& index);//按选中床位更新情境操作栏
+	void assign_selected_bed();//为当前空床办理指定床位入住
+	void remove_selected_occupant();//为当前住客办理退宿
+	void begin_within_dorm_move();//进入同宿舍空床目标选择状态
+	void cancel_pending_bed_action();//取消床位目标选择状态
+	void complete_within_dorm_move(int target_bed_id);//确认并执行同宿舍换床
 
 	Ui::DormResourcePage* ui;
 	bedtablemodel* bed_model = nullptr;
@@ -39,6 +44,8 @@ private:
 	int selected_dorm_id = 0;
 	int selected_bed_id = 0;
 	int selected_student_id = 0;
+	int pending_move_student_id = 0;
+	int pending_source_bed_id = 0;
 };
 
 #endif // DORMRESOURCEPAGE_H

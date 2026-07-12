@@ -55,6 +55,9 @@ set(PROJECT_SOURCES
         src/ui/addbuildingdialog.ui
         src/ui/bedtablemodel.cpp
         src/ui/bedtablemodel.h
+        src/ui/bedassignmentdialog.cpp
+        src/ui/bedassignmentdialog.h
+        src/ui/bedassignmentdialog.ui
         src/ui/editbuildingdialog.cpp
         src/ui/editbuildingdialog.h
         src/ui/editbuildingdialog.ui
