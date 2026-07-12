@@ -290,6 +290,13 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 	if (config.minimum_grade < 2000 || config.maximum_grade > 2999
 		|| config.minimum_grade > config.maximum_grade) {
 		errors.append(QStringLiteral("年级范围必须处于2000～2999，且起始值不能大于结束值。"));
+	} else {
+		for (int grade = config.minimum_grade; grade <= config.maximum_grade; ++grade) {
+			if (grade % 100 < 10) {
+				errors.append(QStringLiteral("年级%1无法编码为合法8位学号：学号前两位必须是年级后两位且不能以0开头。").arg(grade));
+				break;
+			}
+		}
 	}
 	if (errors.isEmpty()) {
 		const plan generated_plan = create_plan(config, current_school);
@@ -367,27 +374,49 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	}
 	QVector<int> male_student_indexes;
 	QVector<int> female_student_indexes;
-	const auto append_students = [&](int count, int gender, QVector<int>& indexes) {
+	const int grade_count = config.maximum_grade - config.minimum_grade + 1;
+	const int class_count = config.maximum_class_num - config.minimum_class_num + 1;
+	const int profile_count = grade_count * class_count;
+	const auto append_students = [&](int count, int gender, QVector<int>& indexes) -> bool {
 		for (int i = 0; i < count; ++i) {
 			int student_id = 0;
-			do {
-				student_id = 10000000 + random.bounded(90000000);
-			} while (used_student_ids.contains(student_id));
+			int grade = 0;
+			int class_num = 0;
+			const int first_profile = random.bounded(profile_count);
+			for (int profile_offset = 0; profile_offset < profile_count && student_id == 0; ++profile_offset) {
+				const int profile_index = (first_profile + profile_offset) % profile_count;
+				grade = config.minimum_grade + profile_index / class_count;
+				class_num = config.minimum_class_num + profile_index % class_count;
+				const int first_sequence = random.bounded(9999) + 1;
+				for (int sequence_offset = 0; sequence_offset < 9999; ++sequence_offset) {
+					const int sequence = (first_sequence - 1 + sequence_offset) % 9999 + 1;
+					const int candidate = (grade % 100) * 1000000 + class_num * 10000 + sequence;
+					if (!used_student_ids.contains(candidate)) {
+						student_id = candidate;
+						break;
+					}
+				}
+			}
+			if (student_id == 0) {
+				return false;
+			}
 			used_student_ids.insert(student_id);
 			plannedstudent student_plan;
 			student_plan.id = student_id;
 			student_plan.name = random_student_name(random);
 			student_plan.gender = gender;
-			student_plan.class_num = config.minimum_class_num
-				+ random.bounded(config.maximum_class_num - config.minimum_class_num + 1);
-			student_plan.grade = config.minimum_grade
-				+ random.bounded(config.maximum_grade - config.minimum_grade + 1);
+			student_plan.class_num = class_num;
+			student_plan.grade = grade;
 			indexes.append(result.students.size());
 			result.students.append(student_plan);
 		}
+		return true;
 	};
-	append_students(config.male_student_count, 1, male_student_indexes);
-	append_students(config.female_student_count, 2, female_student_indexes);
+	if (!append_students(config.male_student_count, 1, male_student_indexes)
+		|| !append_students(config.female_student_count, 2, female_student_indexes)) {
+		result.error_message = QStringLiteral("所选年级与班级范围内没有足够的可用学号序列。");
+		return result;
+	}
 	shuffle_items(male_student_indexes, random);
 	shuffle_items(female_student_indexes, random);
 
