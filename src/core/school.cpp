@@ -1076,7 +1076,6 @@ school::school_data_snapshot school::take_school_data_snapshot() const//保存�
 
 bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验样例数据计划
 {
-	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty()) return false;
 	QHash<int, samplebuildingplan> buildings;
 	for (const samplebuildingplan& item : plan.buildings)
 	{
@@ -1098,6 +1097,7 @@ bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验
 	}
 	QSet<int> student_ids;
 	QHash<int, QSet<int>> sequences;
+	QHash<QString, int> planned_dorm_genders;
 	for (const samplestudentplan& item : plan.students)
 	{
 		if (!check::is_valid_student_id(item.id) || !check::is_valid_student_name(item.name)
@@ -1115,6 +1115,9 @@ bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验
 			|| occupied_beds[dorm_key].contains(item.bed_id)
 			|| (buildings.value(item.building_id).gender != 3 && buildings.value(item.building_id).gender != item.gender)
 			|| (dorms.value(dorm_key).gender_lock != 0 && dorms.value(dorm_key).gender_lock != item.gender)) return false;
+		const int planned_gender = planned_dorm_genders.value(dorm_key, dorms.value(dorm_key).gender_lock);
+		if (planned_gender != 0 && planned_gender != item.gender) return false;
+		planned_dorm_genders[dorm_key] = item.gender;
 		occupied_beds[dorm_key].insert(item.bed_id);
 	}
 	return true;
@@ -1166,9 +1169,10 @@ bool school::restore_school_data_snapshot(const school_data_snapshot& snapshot)/
 
 int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后生成样例数据
 {
-	if (!validate_sample_data_plan(plan)) return -1;
+	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty() || !validate_sample_data_plan(plan)) return -1;
 	if (!collect_accommodation_issues().isEmpty()) return -8;
 	const school_data_snapshot snapshot = take_school_data_snapshot();
+	if (!validate_sample_data_plan(snapshot.data)) return -8;
 	if (!purge_all_data()) return restore_school_data_snapshot(snapshot) ? -5 : -6;
 	if (write_sample_data_plan(plan)) return 1;
 	return restore_school_data_snapshot(snapshot) ? -5 : -6;

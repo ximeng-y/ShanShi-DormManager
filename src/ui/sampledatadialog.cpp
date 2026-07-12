@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QHash>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
@@ -61,7 +62,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 		connect(spin, &QSpinBox::valueChanged, this, &SampleDataDialog::refresh_preview_and_validation);
 	}
 	connect(ui->mixedBuildingSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_mixed_controls);
-	connect(ui->appendRadio, &QRadioButton::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
+	connect(ui->appendRadio, &QRadioButton::toggled, this, [this](bool checked) { if (checked) ui->replaceRiskCheckBox->setChecked(false); refresh_preview_and_validation(); });
 	connect(ui->replaceRadio, &QRadioButton::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
 	connect(ui->replaceRiskCheckBox, &QCheckBox::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
 	connect(ui->seedLineEdit, &QLineEdit::textChanged, this, &SampleDataDialog::refresh_preview_and_validation);
@@ -251,10 +252,13 @@ void SampleDataDialog::attempt_generate()
 			generated_result.added_student_count = scale.student_count;
 			generated_result.assigned_student_count = scale.assigned_student_count;
 			QSet<QString> occupied_dorms;
+			QHash<int, int> building_genders;
+			for (const samplebuildingplan& building_plan : plan.buildings) building_genders.insert(building_plan.id, building_plan.gender);
 			for (const samplestudentplan& student_plan : plan.students)
 				if (student_plan.building_id > 0) occupied_dorms.insert(QStringLiteral("%1/%2").arg(student_plan.building_id).arg(student_plan.dorm_id));
 			for (const sampledormplan& dorm_plan : plan.dorms)
-				if (dorm_plan.gender_lock == 0 && !occupied_dorms.contains(QStringLiteral("%1/%2").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id)))
+				if (building_genders.value(dorm_plan.building_id) == 3 && dorm_plan.gender_lock == 0
+					&& !occupied_dorms.contains(QStringLiteral("%1/%2").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id)))
 					++generated_result.remaining_unlocked_dorm_count;
 			accept();
 			return;

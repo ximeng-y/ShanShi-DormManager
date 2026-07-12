@@ -489,26 +489,31 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	QSet<int> occupied_dorm_indexes;
 	const auto assign_students = [&](const QVector<int>& student_indexes, int assigned_count,
 		QVector<int> dorm_indexes, const QVector<int>& coverage_dorms) {
-		QVector<int> available_slots;
-		const int coverage_count = qMin(assigned_count, coverage_dorms.size());
-		QHash<int, int> covered_beds;
-		for (int i = 0; i < coverage_count; ++i) {
-			const int dorm_index = coverage_dorms.at(i);
-			plannedstudent& student_plan = result.students[student_indexes.at(i)];
-			student_plan.building_id = result.dorms.at(dorm_index).building_id;
-			student_plan.dorm_id = result.dorms.at(dorm_index).dorm_id;
-			occupied_dorm_indexes.insert(dorm_index);
-			covered_beds[dorm_index] = covered_beds.value(dorm_index) + 1;
+		QVector<int> unique_dorms;
+		for (int dorm_index : dorm_indexes) if (!unique_dorms.contains(dorm_index)) unique_dorms.append(dorm_index);
+		QVector<int> planned_slots;
+		QHash<int, int> used_beds;
+		if (unique_dorms.size() >= 2 && assigned_count >= result.dorms.at(unique_dorms[0]).max_num + 1) {
+			for (int i = 0; i < result.dorms.at(unique_dorms[0]).max_num; ++i) planned_slots.append(unique_dorms[0]);
+			planned_slots.append(unique_dorms[1]);
+			used_beds[unique_dorms[0]] = result.dorms.at(unique_dorms[0]).max_num;
+			used_beds[unique_dorms[1]] = 1;
 		}
-		for (int dorm_index : dorm_indexes) {
-			const int available_beds = result.dorms.at(dorm_index).max_num - covered_beds.value(dorm_index);
-			for (int bed = 0; bed < available_beds; ++bed) {
-				available_slots.append(dorm_index);
+		for (int dorm_index : coverage_dorms) {
+			if (planned_slots.size() >= assigned_count) break;
+			if (used_beds.value(dorm_index) == 0) {
+				planned_slots.append(dorm_index);
+				used_beds[dorm_index] = 1;
 			}
 		}
-		shuffle_items(available_slots, random);
-		for (int i = coverage_count; i < assigned_count; ++i) {
-			const int dorm_index = available_slots.at(i - coverage_count);
+		QVector<int> remaining_slots;
+		for (int dorm_index : unique_dorms)
+			for (int bed = used_beds.value(dorm_index); bed < result.dorms.at(dorm_index).max_num; ++bed)
+				remaining_slots.append(dorm_index);
+		shuffle_items(remaining_slots, random);
+		while (planned_slots.size() < assigned_count) planned_slots.append(remaining_slots.takeLast());
+		for (int i = 0; i < assigned_count; ++i) {
+			const int dorm_index = planned_slots.at(i);
 			plannedstudent& student_plan = result.students[student_indexes.at(i)];
 			student_plan.building_id = result.dorms.at(dorm_index).building_id;
 			student_plan.dorm_id = result.dorms.at(dorm_index).dorm_id;

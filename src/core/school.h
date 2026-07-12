@@ -236,7 +236,7 @@ public:
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿；一方为空时无操作成功
 	dorm_adjustment_preview preview_dorm_adjustment(int b1, int d1, int b2, int d2, dorm_adjustment_mode mode) const;//生成两间宿舍整体调整的固定预览
 	int apply_dorm_adjustment(const dorm_adjustment_preview& preview);//重新核对预览后分发至对应宿舍调整事务
-	//返回值: 1=成功  -1=样例计划非法  -5=写入失败且原数据已恢复  -6=原数据恢复不完整  -8=替换前住宿数据异常
+	//返回值: 1=成功  -1=样例计划非法  -5=替换失败且原数据已恢复  -6=原数据恢复不完整  -8=替换前原数据异常或无法按当前规则恢复
 	int replace_all_with_sample_data(const sampledataplan& plan);//清空全部现有数据后按固定计划生成样例数据
 
 private:
