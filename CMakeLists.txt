@@ -23,6 +23,8 @@ set(PROJECT_SOURCES
         src/ui/windowtheme.h
         src/ui/infobutton.cpp
         src/ui/infobutton.h
+        src/ui/identifierlineedit.cpp
+        src/ui/identifierlineedit.h
         src/ui/uifeedback.cpp
         src/ui/uifeedback.h
         src/ui/overviewpage.cpp
