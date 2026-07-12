@@ -11,7 +11,7 @@ class AdvancedAdjustmentPage;
 }
 QT_END_NAMESPACE
 
-//高级调整说明页面。只预告第二阶段能力，不提供尚未接入的操作按钮。
+//高级调整中心。提供批量住宿、宿舍整体调整与批量清退向导入口。
 class AdvancedAdjustmentPage : public QWidget
 {
 	Q_OBJECT

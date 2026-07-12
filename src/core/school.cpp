@@ -967,6 +967,8 @@ QVector<accommodation_data_issue> school::collect_accommodation_issues() const//
 		}
 		if (d->get_for_gender() != 0 && !b->accepts_gender(d->get_for_gender()))
 			issues.append({0, key.first, key.second, QStringLiteral("宿舍性别锁与所属宿舍楼的性别要求冲突。")});
+		if (d->get_current_num() > 0 && d->get_for_gender() == 0)
+			issues.append({0, key.first, key.second, QStringLiteral("宿舍已有住客，但宿舍性别锁仍为未设置。")});
 		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
 		{
 			const int student_id = d->get_student_id(bed_id);
@@ -984,6 +986,8 @@ QVector<accommodation_data_issue> school::collect_accommodation_issues() const//
 				issues.append({student_id, key.first, key.second, QStringLiteral("床位中的学生档案不存在。")});
 				continue;
 			}
+			if (s->get_gender() != 1 && s->get_gender() != 2)
+				issues.append({student_id, key.first, key.second, QStringLiteral("已入住学生的性别尚未明确设置。")});
 			if (s->get_building_id() != key.first || s->get_dorm_id() != key.second
 				|| s->get_bed_id() != bed_id || s->get_floor() != d->get_floor())
 				issues.append({student_id, key.first, key.second, QStringLiteral("学生登记的住宿位置与实际床位不一致。")});
@@ -1012,6 +1016,31 @@ QVector<accommodation_data_issue> school::collect_accommodation_issues() const//
 			issues.append({student_id, s->get_building_id(), s->get_dorm_id(), QStringLiteral("学生登记为已入住，但对应床位没有该学生。")});
 	}
 	return issues;
+}
+
+quint64 school::accommodation_resource_signature() const//生成住宿资源状态签名
+{
+	quint64 value = 1469598103934665603ULL;
+	const auto mix = [&value](quint64 part) { value ^= part + 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2); };
+	for (int building_id : get_all_building_ids())
+	{
+		const building* b = get_building(building_id);
+		if (b != nullptr) { mix(building_id); mix(b->get_for_gender()); mix(b->get_max_floor()); }
+	}
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d == nullptr) continue;
+		mix(key.first); mix(key.second); mix(d->get_max_num()); mix(d->get_for_gender());
+		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id) mix(static_cast<quint64>(qMax(0, d->get_student_id(bed_id))));
+	}
+	for (int student_id : get_all_student_ids())
+	{
+		const student* s = get_student(student_id);
+		if (s == nullptr) continue;
+		mix(student_id); mix(s->get_gender()); mix(s->get_building_id()); mix(s->get_dorm_id()); mix(s->get_bed_id()); mix(s->get_floor());
+	}
+	return value;
 }
 
 school::accommodation_snapshot school::take_accommodation_snapshot() const//保存全校住宿快照
@@ -1074,7 +1103,7 @@ school::school_data_snapshot school::take_school_data_snapshot() const//保存�
 	return snapshot;
 }
 
-bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验样例数据计划
+bool school::validate_sample_data_plan(const sampledataplan& plan, bool snapshot_mode) const//校验样例数据计划或原数据快照
 {
 	QHash<int, samplebuildingplan> buildings;
 	for (const samplebuildingplan& item : plan.buildings)
@@ -1089,7 +1118,7 @@ bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验
 	{
 		const QString key = QStringLiteral("%1/%2").arg(item.building_id).arg(item.dorm_id);
 		if (!buildings.contains(item.building_id) || !check::is_valid_dorm_id(item.dorm_id)
-			|| item.dorm_id / 100 > buildings.value(item.building_id).max_floor || item.max_num < 1 || item.max_num > 99
+			|| item.dorm_id / 100 > buildings.value(item.building_id).max_floor || item.max_num < 1 || (!snapshot_mode && item.max_num > 99)
 			|| item.gender_lock < 0 || item.gender_lock > 2 || dorms.contains(key)
 			|| (item.gender_lock != 0 && buildings.value(item.building_id).gender != 3
 				&& buildings.value(item.building_id).gender != item.gender_lock)) return false;
@@ -1101,7 +1130,7 @@ bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验
 	for (const samplestudentplan& item : plan.students)
 	{
 		if (!check::is_valid_student_id(item.id) || !check::is_valid_student_name(item.name)
-			|| (item.gender != 1 && item.gender != 2) || !check::is_valid_grade(item.grade)
+			|| (snapshot_mode ? !check::is_valid_gender(item.gender) : (item.gender != 1 && item.gender != 2)) || !check::is_valid_grade(item.grade)
 			|| !check::is_valid_class_num(item.class_num) || !check::is_student_id_consistent(item.id, item.grade, item.class_num)
 			|| student_ids.contains(item.id)) return false;
 		const int sequence = check::student_id_sequence(item.id);
@@ -1172,7 +1201,7 @@ int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后�
 	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty() || !validate_sample_data_plan(plan)) return -1;
 	if (!collect_accommodation_issues().isEmpty()) return -8;
 	const school_data_snapshot snapshot = take_school_data_snapshot();
-	if (!validate_sample_data_plan(snapshot.data)) return -8;
+	if (!validate_sample_data_plan(snapshot.data, true)) return -8;
 	if (!purge_all_data()) return restore_school_data_snapshot(snapshot) ? -5 : -6;
 	if (write_sample_data_plan(plan)) return 1;
 	return restore_school_data_snapshot(snapshot) ? -5 : -6;
@@ -1183,6 +1212,7 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 	batch_assignment_preview preview;
 	preview.strategy = strategy;
 	preview.random_seed = random_seed;
+	preview.resource_signature = accommodation_resource_signature();
 	preview.issues = collect_accommodation_issues();
 	if (!preview.issues.isEmpty())
 		return preview;
@@ -1285,6 +1315,7 @@ reassignment_preview school::preview_reassign_all_students(reassignment_strategy
 	reassignment_preview preview;
 	preview.strategy = strategy;
 	preview.random_seed = random_seed;
+	preview.resource_signature = accommodation_resource_signature();
 	preview.issues = collect_accommodation_issues();
 	if (!preview.issues.isEmpty())
 		return preview;
@@ -1420,6 +1451,8 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		return 0;
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
+	if (preview.resource_signature != accommodation_resource_signature())
+		return -7;
 	QSet<int> preview_candidates;
 	for (const accommodation_change& change : preview.changes) preview_candidates.insert(change.student_id);
 	for (int student_id : preview.unassigned_student_ids) preview_candidates.insert(student_id);
@@ -1495,6 +1528,8 @@ int school::apply_reassignment(const reassignment_preview& preview)//按固定�
 {
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
+	if (preview.resource_signature != accommodation_resource_signature())
+		return -7;
 	QSet<int> all_preview_students;
 	QSet<QString> target_beds;
 	QHash<QString, int> simulated_genders;

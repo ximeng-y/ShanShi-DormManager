@@ -64,6 +64,7 @@ struct batch_assignment_preview
 	quint32 random_seed = 0;
 	int candidate_count = 0;
 	int available_bed_count = 0;
+	quint64 resource_signature = 0;
 	QVector<accommodation_change> changes;
 	QVector<int> unassigned_student_ids;
 	QVector<accommodation_data_issue> issues;
@@ -77,6 +78,7 @@ struct reassignment_preview
 	quint32 random_seed = 0;
 	int candidate_count = 0;
 	int available_bed_count = 0;
+	quint64 resource_signature = 0;
 	QVector<accommodation_change> changes;
 	QVector<int> unassigned_student_ids;
 	QVector<accommodation_data_issue> issues;
@@ -264,7 +266,8 @@ private:
 	accommodation_snapshot take_accommodation_snapshot() const;//保存全校床位与宿舍性别锁，调用前应完成一致性检查
 	bool restore_accommodation_snapshot(const accommodation_snapshot& snapshot);//清空当前住宿后按原床位恢复快照
 	school_data_snapshot take_school_data_snapshot() const;//保存楼栋、宿舍、学生档案和具体床位
-	bool validate_sample_data_plan(const sampledataplan& plan) const;//校验样例计划内部引用、容量、学号和性别约束
+	bool validate_sample_data_plan(const sampledataplan& plan, bool snapshot_mode = false) const;//校验样例计划；快照模式兼容核心允许的性别0和大容量宿舍
+	quint64 accommodation_resource_signature() const;//汇总楼栋、宿舍、床位和学生住宿字段，用于判定固定预览是否失效
 	bool purge_all_data();//事务内部清除三个manager当前全部对象
 	bool write_sample_data_plan(const sampledataplan& plan);//按楼栋、空宿舍、学生、指定床位顺序写入
 	bool restore_school_data_snapshot(const school_data_snapshot& snapshot);//清除残留后恢复完整原数据
