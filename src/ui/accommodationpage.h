@@ -34,6 +34,9 @@ private:
 	void update_remove_preview();//刷新退宿学生与当前位置预览
 	void submit_remove();//提交保留学籍的退宿业务
 	void update_move_preview();//刷新调宿学生、原位置与目标位置预览
+	void refresh_move_buildings();//按学生性别与可用宿舍刷新目标楼栋
+	void refresh_move_dorms();//按目标楼栋刷新可用宿舍
+	void refresh_move_beds();//按目标宿舍刷新可用床位
 	void submit_move();//提交调宿或同宿舍换床业务
 	void show_move_error(int result);//解释调宿返回码与恢复失败
 	void update_swap_preview();//刷新两名学生当前位置预览
