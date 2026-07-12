@@ -66,6 +66,13 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		this, &DormResourcePage::update_bed_action_state);
 	ui->buildingList->setAccessibleName(QStringLiteral("楼栋目录"));
 	ui->dormTable->setAccessibleName(QStringLiteral("宿舍目录"));
+	ui->dormStatusFilterCombo->setAccessibleName(QStringLiteral("按入住状态筛选宿舍"));
+	ui->resetDormFilterButton->setAccessibleName(QStringLiteral("重置宿舍筛选"));
+	ui->dormStatusFilterCombo->addItem(QStringLiteral("全部状态"), 0);
+	ui->dormStatusFilterCombo->addItem(QStringLiteral("空闲"), 1);
+	ui->dormStatusFilterCombo->addItem(QStringLiteral("可用"), 2);
+	ui->dormStatusFilterCombo->addItem(QStringLiteral("已满"), 3);
+	ui->dormStatusFilterCombo->addItem(QStringLiteral("空闲与可用"), 4);
 	ui->bedTableView->setAccessibleName(QStringLiteral("床位与住客"));
 	ui->bedAreaInfoButton->set_information(ui->bedAreaInfoButton->toolTip());
 	ui->bedSelectionLabel->setAccessibleName(QStringLiteral("当前选中床位"));
@@ -142,6 +149,16 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	connect(ui->dormSearchLineEdit, &QLineEdit::textChanged, this, [this]() {
 		refresh_dorm_list();
 	});
+	connect(ui->dormStatusFilterCombo, &QComboBox::currentIndexChanged, this, [this]() {
+		refresh_dorm_list();
+	});
+	connect(ui->resetDormFilterButton, &QPushButton::clicked, this, [this]() {
+		const QSignalBlocker search_blocker(ui->dormSearchLineEdit);
+		const QSignalBlocker status_blocker(ui->dormStatusFilterCombo);
+		ui->dormSearchLineEdit->clear();
+		ui->dormStatusFilterCombo->setCurrentIndex(0);
+		refresh_dorm_list();
+	});
 	connect(ui->dormTable, &QTableWidget::currentCellChanged, this, [this](int row, int, int, int) {
 		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
 		if (id_item != nullptr) {
@@ -161,7 +178,9 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		if (dialog.exec() == QDialog::Accepted) {
 			selected_dorm_id = dialog.added_dorm_id();
 			const QSignalBlocker search_blocker(ui->dormSearchLineEdit);
+			const QSignalBlocker status_blocker(ui->dormStatusFilterCombo);
 			ui->dormSearchLineEdit->clear();
+			ui->dormStatusFilterCombo->setCurrentIndex(0);
 			refresh_data();
 			uifeedback::show_success(this, QStringLiteral("宿舍已添加。"));
 		}
@@ -170,7 +189,9 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	setTabOrder(ui->addDormButton, ui->buildingActionButton);
 	setTabOrder(ui->buildingActionButton, ui->buildingList);
 	setTabOrder(ui->buildingList, ui->dormSearchLineEdit);
-	setTabOrder(ui->dormSearchLineEdit, ui->dormTable);
+	setTabOrder(ui->dormSearchLineEdit, ui->dormStatusFilterCombo);
+	setTabOrder(ui->dormStatusFilterCombo, ui->resetDormFilterButton);
+	setTabOrder(ui->resetDormFilterButton, ui->dormTable);
 	setTabOrder(ui->dormTable, ui->bedTableView);
 	setTabOrder(ui->bedTableView, ui->assignSelectedBedButton);
 	setTabOrder(ui->assignSelectedBedButton, ui->removeSelectedBedButton);
@@ -299,10 +320,23 @@ void DormResourcePage::refresh_dorm_list()
 {
 	const school& current_school = school::instance();
 	const QString search_text = ui->dormSearchLineEdit->text().trimmed();
+	const int status_filter = ui->dormStatusFilterCombo->currentData().toInt();
+	const QVector<QPair<int, int>> all_keys = selected_building_id > 0
+		? current_school.get_dorm_keys_of_building(selected_building_id) : QVector<QPair<int, int>>{};
 	QVector<QPair<int, int>> matched_keys;
 	if (selected_building_id > 0) {
-		for (const QPair<int, int>& dorm_key : current_school.get_dorm_keys_of_building(selected_building_id)) {
-			if (search_text.isEmpty() || QString::number(dorm_key.second).contains(search_text)) {
+		for (const QPair<int, int>& dorm_key : all_keys) {
+			const dorm* current_dorm = current_school.get_dorm(dorm_key.first, dorm_key.second);
+			if (current_dorm == nullptr)
+				continue;
+			const int current_num = current_dorm->get_current_num();
+			const int max_num = current_dorm->get_max_num();
+			const bool matches_status = status_filter == 0
+				|| (status_filter == 1 && current_num == 0)
+				|| (status_filter == 2 && current_num > 0 && current_num < max_num)
+				|| (status_filter == 3 && current_num == max_num)
+				|| (status_filter == 4 && current_num < max_num);
+			if ((search_text.isEmpty() || QString::number(dorm_key.second).contains(search_text)) && matches_status) {
 				matched_keys.append(dorm_key);
 			}
 		}
@@ -337,9 +371,11 @@ void DormResourcePage::refresh_dorm_list()
 	ui->dormPanelTitle->setText(selected_building_id > 0
 		? QStringLiteral("%1号楼宿舍").arg(selected_building_id)
 		: QStringLiteral("宿舍目录"));
-	ui->dormCountLabel->setText(selected_building_id == 0
-		? QStringLiteral("请先选择楼栋")
-		: (matched_keys.isEmpty() ? QStringLiteral("没有符合条件的宿舍") : QStringLiteral("已显示 %1 间宿舍").arg(matched_keys.size())));
+	const bool filter_active = !search_text.isEmpty() || status_filter != 0;
+	ui->dormCountLabel->setText(selected_building_id == 0 ? QStringLiteral("请先选择楼栋")
+		: matched_keys.isEmpty() ? QStringLiteral("没有符合条件的宿舍")
+		: filter_active ? QStringLiteral("已显示 %1 / %2 间宿舍").arg(matched_keys.size()).arg(all_keys.size())
+		: QStringLiteral("已显示 %1 间宿舍").arg(matched_keys.size()));
 	int restored_row = -1;
 	for (int row = 0; row < ui->dormTable->rowCount(); ++row) {
 		QTableWidgetItem* id_item = ui->dormTable->item(row, 0);
@@ -352,7 +388,10 @@ void DormResourcePage::refresh_dorm_list()
 		ui->dormTable->selectRow(restored_row);
 		show_dorm_detail(selected_dorm_id);
 	} else {
+		const int requested_dorm_id = selected_dorm_id;
 		clear_dorm_detail();
+		if (current_school.get_dorm(selected_building_id, requested_dorm_id) != nullptr)
+			selected_dorm_id = requested_dorm_id;
 	}
 }
 

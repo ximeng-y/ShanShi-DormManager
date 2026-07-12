@@ -38,7 +38,7 @@
       <layout class="QVBoxLayout" name="dormPanelLayout">
        <property name="spacing"><number>10</number></property>
        <item><widget class="QLabel" name="dormPanelTitle"><property name="text"><string>宿舍目录</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
-       <item><widget class="QLineEdit" name="dormSearchLineEdit"><property name="placeholderText"><string>搜索宿舍号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+       <item><layout class="QHBoxLayout" name="dormFilterLayout"><property name="spacing"><number>8</number></property><item><widget class="QLineEdit" name="dormSearchLineEdit"><property name="placeholderText"><string>搜索宿舍号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item><item><widget class="QComboBox" name="dormStatusFilterCombo"/></item><item><widget class="QPushButton" name="resetDormFilterButton"><property name="text"><string>重置</string></property></widget></item></layout></item>
        <item>
         <widget class="QTableWidget" name="dormTable">
          <property name="alternatingRowColors"><bool>true</bool></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="showGrid"><bool>false</bool></property>
