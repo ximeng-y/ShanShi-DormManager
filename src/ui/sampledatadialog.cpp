@@ -59,14 +59,15 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 		QRegularExpression(QStringLiteral("[0-9]{0,10}")), ui->seedLineEdit));
 	const QList<QSpinBox*> parameter_spins = findChildren<QSpinBox*>();
 	for (QSpinBox* spin : parameter_spins) {
-		connect(spin, &QSpinBox::valueChanged, this, &SampleDataDialog::refresh_preview_and_validation);
+		connect(spin, &QSpinBox::valueChanged, this, [this] { invalidate_replace_preview(); refresh_preview_and_validation(); });
 	}
 	connect(ui->mixedBuildingSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_mixed_controls);
-	connect(ui->appendRadio, &QRadioButton::toggled, this, [this](bool checked) { if (checked) ui->replaceRiskCheckBox->setChecked(false); refresh_preview_and_validation(); });
-	connect(ui->replaceRadio, &QRadioButton::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
+	connect(ui->appendRadio, &QRadioButton::toggled, this, [this](bool checked) { if (checked) invalidate_replace_preview(); refresh_preview_and_validation(); });
+	connect(ui->replaceRadio, &QRadioButton::toggled, this, [this] { invalidate_replace_preview(); refresh_preview_and_validation(); });
 	connect(ui->replaceRiskCheckBox, &QCheckBox::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
-	connect(ui->seedLineEdit, &QLineEdit::textChanged, this, &SampleDataDialog::refresh_preview_and_validation);
+	connect(ui->seedLineEdit, &QLineEdit::textChanged, this, [this] { invalidate_replace_preview(); refresh_preview_and_validation(); });
 	connect(ui->regenerateSeedButton, &QPushButton::clicked, this, &SampleDataDialog::regenerate_seed);
+	connect(ui->generateReplacePreviewButton, &QPushButton::clicked, this, &SampleDataDialog::generate_replace_preview);
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &SampleDataDialog::attempt_generate);
 	connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 	QWidget::setTabOrder(ui->appendRadio, ui->maleBuildingSpin);
@@ -199,13 +200,16 @@ void SampleDataDialog::refresh_preview_and_validation()
 		ui->validationInfoButton->set_information(errors.join(QLatin1Char('\n')));
 	}
 	const bool replace_mode = config.mode == sampledatamode::replace_reserved;
-	ui->replaceImpactLabel->setVisible(replace_mode);
-	ui->replaceRiskCheckBox->setVisible(replace_mode);
-	ui->replaceImpactLabel->setText(QStringLiteral("将删除当前 %1 名学生、%2 间宿舍和 %3 栋宿舍楼，再生成新的样例数据。")
-		.arg(school::instance().get_student_count()).arg(school::instance().get_dorm_count()).arg(school::instance().get_building_count()));
+	ui->generateReplacePreviewButton->setVisible(replace_mode);
+	ui->generateReplacePreviewButton->setEnabled(errors.isEmpty());
+	ui->replaceImpactLabel->setVisible(replace_mode && replace_plan_ready);
+	ui->replaceRiskCheckBox->setVisible(replace_mode && replace_plan_ready);
+	ui->replaceImpactLabel->setText(QStringLiteral("固定预览已生成：将删除当前 %1 名学生、%2 间宿舍和 %3 栋宿舍楼，再生成 %4 名学生、%5 间宿舍和 %6 栋宿舍楼。")
+		.arg(school::instance().get_student_count()).arg(school::instance().get_dorm_count()).arg(school::instance().get_building_count())
+		.arg(scale.student_count).arg(scale.dorm_count).arg(scale.building_count));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(replace_mode ? QStringLiteral("清空并生成") : QStringLiteral("开始生成"));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setProperty("dangerButton", replace_mode);
-	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(errors.isEmpty() && (!replace_mode || ui->replaceRiskCheckBox->isChecked()));
+	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(errors.isEmpty() && (!replace_mode || (replace_plan_ready && ui->replaceRiskCheckBox->isChecked())));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->style()->unpolish(ui->buttonBox->button(QDialogButtonBox::Ok));
 	ui->buttonBox->button(QDialogButtonBox::Ok)->style()->polish(ui->buttonBox->button(QDialogButtonBox::Ok));
 }
@@ -213,6 +217,30 @@ void SampleDataDialog::refresh_preview_and_validation()
 void SampleDataDialog::regenerate_seed()
 {
 	ui->seedLineEdit->setText(QString::number(QRandomGenerator::global()->generate()));
+}
+
+void SampleDataDialog::invalidate_replace_preview()
+{
+	replace_plan = {};
+	replace_plan_ready = false;
+	ui->replaceRiskCheckBox->setChecked(false);
+}
+
+void SampleDataDialog::generate_replace_preview()
+{
+	bool seed_valid = false;
+	const sampledataconfig config = current_config(&seed_valid);
+	QString error;
+	if (!seed_valid) error = QStringLiteral("随机种子必须是0～4294967295之间的整数。");
+	else replace_plan = sampledatagenerator::create_replace_plan(config, school::instance(), &error);
+	if (!error.isEmpty()) {
+		invalidate_replace_preview();
+		uifeedback::show_error(this, QStringLiteral("无法生成替换预览"), error);
+		return;
+	}
+	replace_plan_ready = true;
+	ui->replaceRiskCheckBox->setChecked(false);
+	refresh_preview_and_validation();
 }
 
 void SampleDataDialog::attempt_generate()
@@ -234,14 +262,12 @@ void SampleDataDialog::attempt_generate()
 			uifeedback::show_error(this, QStringLiteral("请确认数据替换风险"), QStringLiteral("请先勾选“我已了解现有数据将被全部删除并替换”。"));
 			return;
 		}
-		QString plan_error;
-		const sampledataplan plan = sampledatagenerator::create_replace_plan(config, school::instance(), &plan_error);
-		if (!plan_error.isEmpty()) {
-			uifeedback::show_error(this, QStringLiteral("无法生成样例数据计划"), plan_error);
+		if (!replace_plan_ready) {
+			uifeedback::show_error(this, QStringLiteral("替换预览已失效"), QStringLiteral("请重新生成替换预览并核对影响。"));
 			return;
 		}
 		QApplication::setOverrideCursor(Qt::WaitCursor);
-		const int result = school::instance().replace_all_with_sample_data(plan);
+		const int result = school::instance().replace_all_with_sample_data(replace_plan);
 		QApplication::restoreOverrideCursor();
 		if (result == 1) {
 			generated_result.success = true;
@@ -253,10 +279,10 @@ void SampleDataDialog::attempt_generate()
 			generated_result.assigned_student_count = scale.assigned_student_count;
 			QSet<QString> occupied_dorms;
 			QHash<int, int> building_genders;
-			for (const samplebuildingplan& building_plan : plan.buildings) building_genders.insert(building_plan.id, building_plan.gender);
-			for (const samplestudentplan& student_plan : plan.students)
+			for (const samplebuildingplan& building_plan : replace_plan.buildings) building_genders.insert(building_plan.id, building_plan.gender);
+			for (const samplestudentplan& student_plan : replace_plan.students)
 				if (student_plan.building_id > 0) occupied_dorms.insert(QStringLiteral("%1/%2").arg(student_plan.building_id).arg(student_plan.dorm_id));
-			for (const sampledormplan& dorm_plan : plan.dorms)
+			for (const sampledormplan& dorm_plan : replace_plan.dorms)
 				if (building_genders.value(dorm_plan.building_id) == 3 && dorm_plan.gender_lock == 0
 					&& !occupied_dorms.contains(QStringLiteral("%1/%2").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id)))
 					++generated_result.remaining_unlocked_dorm_count;
