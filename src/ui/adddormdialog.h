@@ -20,7 +20,7 @@ public:
 	int added_dorm_id() const;//返回成功添加的宿舍号，未成功时为0
 
 private:
-	void attempt_add();//新增宿舍并在性别锁设置失败时回滚
+	void attempt_add();//校验输入并调用 school 统一扩层新增事务
 	void clear_validation();//清除字段错误状态
 	void refresh_floor_selection();//刷新楼层提示、最小缺号建议和添加状态
 	void refresh_dorm_id_preview();//按楼层与后两位刷新完整宿舍号预览
