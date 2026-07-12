@@ -22,6 +22,13 @@ enum class reassignment_strategy
 	preserve_building_first
 };
 
+enum class clear_scope
+{
+	dorm,
+	building,
+	all
+};
+
 struct accommodation_change
 {
 	int student_id = 0;
@@ -63,6 +70,27 @@ struct reassignment_preview
 	int available_bed_count = 0;
 	QVector<accommodation_change> changes;
 	QVector<int> unassigned_student_ids;
+	QVector<accommodation_data_issue> issues;
+
+	bool can_apply() const { return issues.isEmpty() && !changes.isEmpty(); }
+};
+
+struct dorm_gender_change
+{
+	int building_id = 0;
+	int dorm_id = 0;
+	int old_gender = 0;
+	int new_gender = 0;
+};
+
+struct batch_clear_preview
+{
+	clear_scope scope = clear_scope::dorm;
+	int building_id = 0;
+	int dorm_id = 0;
+	bool reset_gender = false;
+	QVector<accommodation_change> changes;
+	QVector<dorm_gender_change> dorm_changes;
 	QVector<accommodation_data_issue> issues;
 
 	bool can_apply() const { return issues.isEmpty() && !changes.isEmpty(); }
@@ -164,6 +192,11 @@ public:
 	int clear_dorm_reset_gender(int building_id, int dorm_id);//清空指定宿舍并放开房间性别锁
 	int clear_all_dorms();//清空全部宿舍并保留房间性别锁，返回被清退学生数
 	int clear_all_dorms_reset_gender();//清空全部宿舍并放开房间性别锁，返回被清退学生数
+	batch_clear_preview preview_clear_dorms(clear_scope scope, int building_id, int dorm_id, bool reset_gender) const;//生成指定宿舍、指定楼栋或全部宿舍清退预览
+	//返回值: >=0=清退人数  -5=执行失败且已恢复  -6=恢复不完整  -7=预览失效  -8=住宿数据异常
+	int apply_batch_clear(const batch_clear_preview& preview);//按固定预览执行批量清退
+	int clear_building_dorms(int building_id);//清退指定宿舍楼并保留宿舍性别锁
+	int clear_building_dorms_reset_gender(int building_id);//清退指定宿舍楼并解除宿舍性别锁
 	//交换返回值通用: 1=成功/-1=参数非法或同一间/-2=宿舍不存在/-3=房间锁不符/-4=人数或男女舍前提不符/-5=住客或目标约束异常/-6=失败后快照恢复不完整。
 	int swap_dorms(int b1, int d1, int b2, int d2);//同锁同人数宿舍整体互换
 	int swap_dorms_overlap(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客留原处；一方为空时无操作成功

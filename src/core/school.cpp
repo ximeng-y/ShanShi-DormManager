@@ -1399,6 +1399,131 @@ int school::reassign_all_students_random()//清空后为全校学生随机重排
 	return assign_all_students_random();
 }
 
+batch_clear_preview school::preview_clear_dorms(clear_scope scope, int building_id, int dorm_id, bool reset_gender) const//生成批量清退预览
+{
+	batch_clear_preview preview;
+	preview.scope = scope;
+	preview.building_id = building_id;
+	preview.dorm_id = dorm_id;
+	preview.reset_gender = reset_gender;
+	preview.issues = collect_accommodation_issues();
+	if (!preview.issues.isEmpty())
+		return preview;
+
+	QVector<QPair<int, int>> keys;
+	if (scope == clear_scope::dorm)
+	{
+		if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || get_dorm(building_id, dorm_id) == nullptr)
+		{
+			preview.issues.append({0, building_id, dorm_id, QStringLiteral("指定宿舍不存在。")});
+			return preview;
+		}
+		keys.append(qMakePair(building_id, dorm_id));
+	}
+	else if (scope == clear_scope::building)
+	{
+		if (!check::is_valid_building_id(building_id) || get_building(building_id) == nullptr)
+		{
+			preview.issues.append({0, building_id, 0, QStringLiteral("指定宿舍楼不存在。")});
+			return preview;
+		}
+		keys = get_dorm_keys_of_building(building_id);
+	}
+	else
+		keys = get_all_dorm_keys();
+
+	for (const auto& key : keys)
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d == nullptr)
+			continue;
+		preview.dorm_changes.append({key.first, key.second, d->get_for_gender(), reset_gender ? 0 : d->get_for_gender()});
+		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+		{
+			const int student_id = d->get_student_id(bed_id);
+			if (student_id <= 0)
+				continue;
+			const student* s = get_student(student_id);
+			preview.changes.append({student_id, s == nullptr ? 0 : s->get_gender(), key.first, key.second, bed_id, 0, 0, 0});
+		}
+	}
+	return preview;
+}
+
+int school::apply_batch_clear(const batch_clear_preview& preview)//按固定预览执行批量清退
+{
+	if (!collect_accommodation_issues().isEmpty())
+		return -8;
+	QVector<dorm_accommodation_snapshot> snapshots;
+	QSet<int> affected_students;
+	int current_occupants = 0;
+	for (const dorm_gender_change& dorm_change : preview.dorm_changes)
+	{
+		const dorm* d = get_dorm(dorm_change.building_id, dorm_change.dorm_id);
+		if (d == nullptr || d->get_for_gender() != dorm_change.old_gender
+			|| dorm_change.new_gender != (preview.reset_gender ? 0 : dorm_change.old_gender))
+			return -7;
+		snapshots.append({dorm_change.building_id, dorm_change.dorm_id, d->get_for_gender(), snapshot_dorm(*d)});
+		current_occupants += d->get_current_num();
+		for (int student_id : d->get_student_id_list())
+			affected_students.insert(student_id);
+	}
+	if (current_occupants != preview.changes.size() || affected_students.size() != preview.changes.size())
+		return -7;
+	for (const accommodation_change& change : preview.changes)
+	{
+		const student* s = get_student(change.student_id);
+		const dorm* d = get_dorm(change.old_building_id, change.old_dorm_id);
+		if (s == nullptr || d == nullptr || !affected_students.contains(change.student_id)
+			|| s->get_gender() != change.student_gender || s->get_building_id() != change.old_building_id
+			|| s->get_dorm_id() != change.old_dorm_id || s->get_bed_id() != change.old_bed_id
+			|| d->get_student_id(change.old_bed_id) != change.student_id)
+			return -7;
+	}
+
+	auto restore = [this, &snapshots, &affected_students]()
+	{
+		bool restored = true;
+		for (int student_id : affected_students)
+			restored = studentmanager::instance().clear_dorm_info(student_id) == 1 && restored;
+		for (const dorm_accommodation_snapshot& snapshot : snapshots)
+		{
+			restored = restore_dorm(snapshot.building_id, snapshot.dorm_id, snapshot.beds, snapshot.gender) && restored;
+			const dorm* d = get_dorm(snapshot.building_id, snapshot.dorm_id);
+			if (d == nullptr)
+			{
+				restored = false;
+				continue;
+			}
+			for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+			{
+				const int student_id = d->get_student_id(bed_id);
+				if (student_id > 0)
+					restored = studentmanager::instance().assign_dorm_info(student_id, bed_id, d->get_id(), d->get_building_id(), d->get_floor()) == 1 && restored;
+			}
+		}
+		return restored;
+	};
+
+	for (const dorm_accommodation_snapshot& snapshot : snapshots)
+		if (dormmanager::instance().clear_dorm_students(snapshot.building_id, snapshot.dorm_id, preview.reset_gender) < 0)
+			return restore() ? -5 : -6;
+	for (int student_id : affected_students)
+		if (studentmanager::instance().clear_dorm_info(student_id) != 1)
+			return restore() ? -5 : -6;
+	return affected_students.size();
+}
+
+int school::clear_building_dorms(int building_id)//清退指定楼并保留宿舍性别锁
+{
+	return apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, false));
+}
+
+int school::clear_building_dorms_reset_gender(int building_id)//清退指定楼并解除宿舍性别锁
+{
+	return apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, true));
+}
+
 int school::clear_dorm_impl(int building_id, int dorm_id, bool reset_gender)//清空单间宿舍的共享实现
 {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
