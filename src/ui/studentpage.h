@@ -30,6 +30,7 @@ protected:
 private:
 	void rebuild_class_filter();//根据当前学生目录刷新班级筛选项
 	void apply_filters();//按搜索、班级和入住状态刷新表格
+	void reset_filters();//阻断控件信号后重置筛选并单次刷新
 	void show_student_summary(int student_id);//在详情面板显示学生摘要
 	void clear_student_summary();//清除失效选择并恢复详情空状态
 	void set_detail_panel_visible(bool visible);//展开或收起详情面板并保存状态
@@ -41,6 +42,7 @@ private:
 
 	Ui::StudentPage* ui;
 	int selected_student_id = 0;
+	bool filter_refresh_in_progress = false;
 };
 
 #endif // STUDENTPAGE_H

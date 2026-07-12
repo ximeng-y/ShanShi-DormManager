@@ -14,6 +14,7 @@
 #include <QHeaderView>
 #include <QList>
 #include <QMenu>
+#include <QScopedValueRollback>
 #include <QSet>
 #include <QSettings>
 #include <QShowEvent>
@@ -156,15 +157,7 @@ StudentPage::StudentPage(QWidget* parent)
 	connect(ui->searchLineEdit, &QLineEdit::textChanged, this, [this]() { apply_filters(); });
 	connect(ui->classFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
 	connect(ui->statusFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
-	connect(ui->resetFilterButton, &QPushButton::clicked, this, [this]() {
-		const QSignalBlocker search_blocker(ui->searchLineEdit);
-		const QSignalBlocker class_blocker(ui->classFilterCombo);
-		const QSignalBlocker status_blocker(ui->statusFilterCombo);
-		ui->searchLineEdit->clear();
-		ui->classFilterCombo->setCurrentIndex(0);
-		ui->statusFilterCombo->setCurrentIndex(0);
-		apply_filters();
-	});
+	connect(ui->resetFilterButton, &QPushButton::clicked, this, &StudentPage::reset_filters);
 	connect(ui->studentTable, &QTableWidget::currentCellChanged, this, [this](int row, int, int, int) {
 		QTableWidgetItem* id_item = ui->studentTable->item(row, 0);
 		if (id_item != nullptr) {
@@ -262,6 +255,10 @@ void StudentPage::rebuild_class_filter()
 
 void StudentPage::apply_filters()
 {
+	if (filter_refresh_in_progress) {
+		return;
+	}
+	QScopedValueRollback<bool> refresh_guard(filter_refresh_in_progress, true);
 	const school& current_school = school::instance();
 	const QString search_text = ui->searchLineEdit->text().trimmed();
 	const int selected_class = ui->classFilterCombo->currentData().toInt();
@@ -340,6 +337,19 @@ void StudentPage::apply_filters()
 	} else {
 		clear_student_summary();
 	}
+}
+
+void StudentPage::reset_filters()
+{
+	{
+		const QSignalBlocker search_blocker(ui->searchLineEdit);
+		const QSignalBlocker class_blocker(ui->classFilterCombo);
+		const QSignalBlocker status_blocker(ui->statusFilterCombo);
+		ui->searchLineEdit->clear();
+		ui->classFilterCombo->setCurrentIndex(0);
+		ui->statusFilterCombo->setCurrentIndex(0);
+	}
+	apply_filters();
 }
 
 void StudentPage::show_student_summary(int student_id)
