@@ -7,10 +7,21 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QStyle>
 #include <QTimer>
 #include <QWidget>
 
 namespace {
+void set_button_role(QPushButton* button, const char* property_name)
+{
+	if (button == nullptr) {
+		return;
+	}
+	button->setProperty(property_name, true);
+	button->style()->unpolish(button);
+	button->style()->polish(button);
+}
+
 class success_toast : public QFrame
 {
 public:
@@ -99,6 +110,7 @@ void uifeedback::show_information(QWidget* parent, const QString& title, const Q
 {
 	QMessageBox box(QMessageBox::Information, title, message, QMessageBox::Ok, parent);
 	box.button(QMessageBox::Ok)->setText(QStringLiteral("确定"));
+	set_button_role(qobject_cast<QPushButton*>(box.button(QMessageBox::Ok)), "primaryButton");
 	box.exec();
 }
 
@@ -107,6 +119,7 @@ bool uifeedback::confirm_danger(QWidget* parent, const QString& title, const QSt
 	QMessageBox box(QMessageBox::Warning, title, message, QMessageBox::Cancel, parent);
 	box.button(QMessageBox::Cancel)->setText(QStringLiteral("取消"));
 	QPushButton* confirm_button = box.addButton(confirm_text, QMessageBox::AcceptRole);
+	set_button_role(confirm_button, "dangerButton");
 	box.setDefaultButton(QMessageBox::Cancel);
 	box.exec();
 	return box.clickedButton() == confirm_button;
@@ -117,6 +130,7 @@ bool uifeedback::confirm_action(QWidget* parent, const QString& title, const QSt
 	QMessageBox box(QMessageBox::Question, title, message, QMessageBox::Cancel, parent);
 	box.button(QMessageBox::Cancel)->setText(QStringLiteral("取消"));
 	QPushButton* confirm_button = box.addButton(confirm_text, QMessageBox::AcceptRole);
+	set_button_role(confirm_button, "primaryButton");
 	box.setDefaultButton(confirm_button);
 	box.exec();
 	return box.clickedButton() == confirm_button;
