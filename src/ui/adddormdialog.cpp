@@ -125,10 +125,12 @@ void AddDormDialog::attempt_add()
 				: result == -2 ? QStringLiteral("该宿舍号已被占用。系统没有静默更换编号，请确认新的建议值后再添加。")
 				: result == -3 ? QStringLiteral("房间性别锁与当前楼栋规则冲突。")
 				: result == -9 ? QStringLiteral("该楼层的01～99号宿舍已全部占用。")
-				: result == -5 ? QStringLiteral("新增宿舍未能完成，已恢复扩层前状态。")
+				: result == -5 ? QStringLiteral("新增宿舍未能完成，本次操作造成的状态变化已恢复。")
 				: QStringLiteral("宿舍资料不符合楼栋规则，请检查后重试。");
 			uifeedback::show_error(this, QStringLiteral("无法新增宿舍"), detail);
 		}
+		if (result == -2 || result == -9)
+			refresh_floor_selection();
 		return;
 	}
 	added_id = result;
@@ -152,11 +154,13 @@ void AddDormDialog::refresh_floor_selection()//切换楼层时刷新扩层提示
 		.arg(target_building_id).arg(original_max_floor).arg(floor));
 	const int suggested_id = school::instance().suggest_dorm_id(target_building_id, floor);
 	const bool available = suggested_id > 0;
+	set_dorm_field_error(ui->roomNumEdit, ui->dormIdErrorLabel, false);
 	ui->roomNumEdit->setEnabled(available);
 	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(available);
-	ui->dormIdErrorLabel->setText(available
-		? QStringLiteral("后两位必须为01～99，且当前宿舍号未被占用。")
-		: QStringLiteral("该楼层的宿舍号已全部占用。"));
+	ui->dormIdErrorLabel->setText(available ? QStringLiteral("后两位必须为01～99，且当前宿舍号未被占用。")
+		: suggested_id == -9 ? QStringLiteral("该楼层的宿舍号已全部占用。")
+		: suggested_id == 0 ? QStringLiteral("所选楼栋已经不存在，请刷新后重试。")
+		: QStringLiteral("楼栋或既有宿舍记录异常，暂时无法生成建议号。"));
 	ui->dormIdErrorLabel->setVisible(!available);
 	ui->roomNumEdit->setText(available
 		? QStringLiteral("%1").arg(check::dorm_id_room_num(suggested_id), 2, 10, QLatin1Char('0')) : QString());

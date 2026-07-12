@@ -394,6 +394,11 @@ QLabel[fieldError="true"] {
 	font-size: 12px;
 }
 
+QLabel[warningHint="true"] {
+    color: #9a6a16;
+    font-size: 12px;
+}
+
 QDialog#SampleDataDialog QGroupBox {
 	margin-top: 10px;
 	padding-top: 10px;

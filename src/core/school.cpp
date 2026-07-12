@@ -418,8 +418,11 @@ int school::add_dorm(int building_id, int floor, int room_num, int max_num, int 
 		return -1;
 	if (gender_lock != 0 && !current_building->accepts_gender(gender_lock))
 		return -3;
-	if (suggest_dorm_id(building_id, floor) == -9)
+	const int suggestion_result = suggest_dorm_id(building_id, floor);
+	if (suggestion_result == -9)
 		return -9;
+	if (suggestion_result <= 0)
+		return suggestion_result == 0 ? 0 : -1;
 	const int dorm_id = check::make_dorm_id(floor, room_num);
 	if (dormmanager::instance().get(building_id, dorm_id) != nullptr)
 		return -2;
