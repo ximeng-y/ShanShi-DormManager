@@ -74,6 +74,17 @@ set(PROJECT_SOURCES
         src/ui/accommodationpage.cpp
         src/ui/accommodationpage.h
         src/ui/accommodationpage.ui
+        src/ui/batchassignmentdialog.cpp
+        src/ui/batchassignmentdialog.h
+        src/ui/batchassignmentdialog.ui
+        src/ui/batchcleardialog.cpp
+        src/ui/batchcleardialog.h
+        src/ui/batchcleardialog.ui
+        src/ui/bedpreviewmodel.cpp
+        src/ui/bedpreviewmodel.h
+        src/ui/dormadjustmentdialog.cpp
+        src/ui/dormadjustmentdialog.h
+        src/ui/dormadjustmentdialog.ui
         src/ui/advancedadjustmentpage.cpp
         src/ui/advancedadjustmentpage.h
         src/ui/advancedadjustmentpage.ui

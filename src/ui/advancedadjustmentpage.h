@@ -3,6 +3,8 @@
 
 #include <QWidget>
 
+class QShowEvent;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class AdvancedAdjustmentPage;
@@ -18,7 +20,14 @@ public:
 	explicit AdvancedAdjustmentPage(QWidget* parent = nullptr);
 	~AdvancedAdjustmentPage();
 
+protected:
+	void showEvent(QShowEvent* event) override;
+
 private:
+	void refresh_summary();
+	void open_batch_assignment();
+	void open_dorm_adjustment();
+	void open_batch_clear();
 	Ui::AdvancedAdjustmentPage* ui;
 };
 
