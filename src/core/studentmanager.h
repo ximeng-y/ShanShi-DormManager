@@ -19,8 +19,6 @@ public:
 	//返回值: true=成功  false=字段非法或学号已存在
 	bool add(const student& s);
 	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学号不存在/-1=姓名非法
-	int set_student_class_num(int student_id, int class_num);//修改学生班级, 1=成功/0=学号不存在/-1=班级非法
-	int set_student_grade(int student_id, int grade);//修改学生年级, 1=成功/0=学号不存在/-1=年级非法
 
 	//按学号取本体(只读)。不存在返回 nullptr。
 	//注意: 返回指针指向 QHash 内部, 在后续 add/remove 触发 rehash 后可能失效。

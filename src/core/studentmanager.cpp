@@ -146,26 +146,6 @@ int studentmanager::set_student_name(int student_id, const QString& name)//修�
 	return it.value().set_name(name) ? 1 : -1;
 }
 
-int studentmanager::set_student_class_num(int student_id, int class_num)//修改学生班级
-{
-	if (!check::is_valid_class_num(class_num))
-		return -1;//班级非法
-	auto it = students.find(student_id);
-	if (it == students.end())
-		return 0;//学号不存在
-	return it.value().set_class_num(class_num) ? 1 : -1;
-}
-
-int studentmanager::set_student_grade(int student_id, int grade)//修改学生年级
-{
-	if (!check::is_valid_grade(grade))
-		return -1;//年级非法
-	auto it = students.find(student_id);
-	if (it == students.end())
-		return 0;//学号不存在
-	return it.value().set_grade(grade) ? 1 : -1;
-}
-
 //逻辑判断
 int studentmanager::is_student_have_dorm(int student_id)//检查指定学号的学生是否已入住任意宿舍
 {
