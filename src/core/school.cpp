@@ -1032,6 +1032,8 @@ int school::correct_student_gender(int student_id, int gender)//性别纠错
 
 int school::assign_all_students_random()//为当前未入住学生随机补分宿舍
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	QVector<int> ids = studentmanager::instance().all_ids();
 	for (int i = ids.size() - 1; i > 0; --i)
 	{
@@ -1049,6 +1051,9 @@ int school::assign_all_students_random()//为当前未入住学生随机补分�
 			++failed;
 	}
 	return failed;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 QVector<accommodation_data_issue> school::collect_accommodation_issues() const//逐床核对全校住宿数据
@@ -1754,6 +1759,8 @@ bool school::restore_persistence_snapshot(const schoolsnapshot& snapshot)//整�
 
 int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后生成样例数据
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty() || !validate_sample_data_plan(plan)) return -1;
 	if (!collect_accommodation_issues().isEmpty()) return -8;
 	const school_data_snapshot snapshot = take_school_data_snapshot();
@@ -1761,6 +1768,9 @@ int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后�
 	if (!purge_all_data()) return restore_school_data_snapshot(snapshot) ? -5 : -6;
 	if (write_sample_data_plan(plan)) return 1;
 	return restore_school_data_snapshot(snapshot) ? -5 : -6;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 batch_assignment_preview school::preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const//生成未入住学生补分预览基础信息
@@ -2003,6 +2013,8 @@ reassignment_preview school::preview_reassign_all_students(reassignment_strategy
 
 int school::apply_batch_assignment(const batch_assignment_preview& preview)//按固定预览执行补分
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (preview.changes.isEmpty())
 		return 0;
 	if (!collect_accommodation_issues().isEmpty())
@@ -2078,10 +2090,15 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		return restored ? -5 : -6;
 	}
 	return assigned_ids.size();
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::apply_reassignment(const reassignment_preview& preview)//按固定预览执行全校重新安排
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
 	if (preview.resource_signature != accommodation_resource_signature())
@@ -2150,15 +2167,20 @@ int school::apply_reassignment(const reassignment_preview& preview)//按固定�
 			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
 	}
 	return preview.changes.size() - preview.unassigned_student_ids.size();
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
+	if (!begin_persistent_mutation()) return -102;
 	const reassignment_preview preview = preview_reassign_all_students(reassignment_strategy::random, QRandomGenerator::global()->generate());
 	if (!preview.issues.isEmpty())
-		return -8;
+		return finish_persistent_mutation(-8, false);
 	const int result = apply_reassignment(preview);
-	return result >= 0 ? preview.unassigned_student_ids.size() : result;
+	const int final_result = result >= 0 ? preview.unassigned_student_ids.size() : result;
+	return finish_persistent_mutation(final_result, result >= 0);
 }
 
 batch_clear_preview school::preview_clear_dorms(clear_scope scope, int building_id, int dorm_id, bool reset_gender) const//生成批量清退预览
@@ -2214,6 +2236,8 @@ batch_clear_preview school::preview_clear_dorms(clear_scope scope, int building_
 
 int school::apply_batch_clear(const batch_clear_preview& preview)//按固定预览执行批量清退
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
 	QVector<QPair<int, int>> current_keys;
@@ -2288,16 +2312,23 @@ int school::apply_batch_clear(const batch_clear_preview& preview)//按固定预�
 		if (studentmanager::instance().clear_dorm_info(student_id) != 1)
 			return restore() ? -5 : -6;
 	return affected_students.size();
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_building_dorms(int building_id)//清退指定楼并保留宿舍性别锁
 {
-	return apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, false));
+	if (!begin_persistent_mutation()) return -102;
+	const int result = apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, false));
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_building_dorms_reset_gender(int building_id)//清退指定楼并解除宿舍性别锁
 {
-	return apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, true));
+	if (!begin_persistent_mutation()) return -102;
+	const int result = apply_batch_clear(preview_clear_dorms(clear_scope::building, building_id, 0, true));
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_dorm_impl(int building_id, int dorm_id, bool reset_gender)//清空单间宿舍的共享实现
@@ -2319,16 +2350,22 @@ int school::clear_dorm_impl(int building_id, int dorm_id, bool reset_gender)//�
 
 int school::clear_dorm(int building_id, int dorm_id)//清空指定宿舍并保留房间性别锁
 {
-	return clear_dorm_impl(building_id, dorm_id, false);
+	if (!begin_persistent_mutation()) return -102;
+	const int result = clear_dorm_impl(building_id, dorm_id, false);
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_dorm_reset_gender(int building_id, int dorm_id)//清空指定宿舍并放开房间性别锁
 {
-	return clear_dorm_impl(building_id, dorm_id, true);
+	if (!begin_persistent_mutation()) return -102;
+	const int result = clear_dorm_impl(building_id, dorm_id, true);
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_all_dorms()//清空全部宿舍并保留房间性别锁
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	int cleared = 0;
 	for (const auto& key : dormmanager::instance().all_dorm_keys())
 	{
@@ -2342,10 +2379,15 @@ int school::clear_all_dorms()//清空全部宿舍并保留房间性别锁
 	for (int student_id : studentmanager::instance().all_ids())
 		studentmanager::instance().clear_dorm_info(student_id);//同时修复student指向空床的反向不一致
 	return cleared;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 int school::clear_all_dorms_reset_gender()//清空全部宿舍并放开房间性别锁
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	int cleared = 0;
 	for (const auto& key : dormmanager::instance().all_dorm_keys())
 	{
@@ -2359,6 +2401,9 @@ int school::clear_all_dorms_reset_gender()//清空全部宿舍并放开房间性
 	for (int student_id : studentmanager::instance().all_ids())
 		studentmanager::instance().clear_dorm_info(student_id);//同时修复student指向空床的反向不一致
 	return cleared;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result >= 0);
 }
 
 bool school::fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids)//按顺序向宿舍回填学生
@@ -2582,6 +2627,8 @@ dorm_adjustment_preview school::preview_dorm_adjustment(int b1, int d1, int b2, 
 
 int school::apply_dorm_adjustment(const dorm_adjustment_preview& preview)//核对并执行宿舍整体调整
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	const dorm_adjustment_preview current = preview_dorm_adjustment(
 		preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id, preview.mode);
 	if (!current.issues.isEmpty())
@@ -2601,10 +2648,15 @@ int school::apply_dorm_adjustment(const dorm_adjustment_preview& preview)//核�
 		return swap_gender_dorms(preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id);
 	}
 	return -1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::swap_dorms(int b1, int d1, int b2, int d2)//同锁同人数宿舍整体互换
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
 		return -1;
 	const dorm* A = get_dorm(b1, d1);
@@ -2651,10 +2703,15 @@ int school::swap_dorms(int b1, int d1, int b2, int d2)//同锁同人数宿舍整
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
 	return 1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::swap_dorms_overlap(int b1, int d1, int b2, int d2)//重叠人数互换，多余住客留原处
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
 		return -1;
 	const dorm* A = get_dorm(b1, d1);
@@ -2716,10 +2773,15 @@ int school::swap_dorms_overlap(int b1, int d1, int b2, int d2)//重叠人数互�
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
 	return 1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人数互换，多余住客离宿
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
 		return -1;
 	const dorm* A = get_dorm(b1, d1);
@@ -2773,10 +2835,15 @@ int school::swap_dorms_overlap_evict(int b1, int d1, int b2, int d2)//重叠人�
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
 	return 1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::swap_gender_dorms(int b1, int d1, int b2, int d2)//混宿楼男舍与女舍互换
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
 		return -1;
 	const dorm* A = get_dorm(b1, d1);
@@ -2821,4 +2888,7 @@ int school::swap_gender_dorms(int b1, int d1, int b2, int d2)//混宿楼男舍�
 	original_ids += listB;
 	reset_and_sync_students(original_ids, b1, d1, b2, d2);
 	return 1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
