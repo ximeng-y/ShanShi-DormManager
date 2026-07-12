@@ -4,6 +4,7 @@
 #include "buildingmanager.h"
 #include "system/check.h"
 #include <QRandomGenerator>
+#include <QSet>
 #include <algorithm>
 
 school& school::instance()
@@ -166,12 +167,20 @@ int school::suggest_student_id(int grade, int class_num) const//建议指定年�
 {
 	if (!check::is_valid_grade(grade) || !check::is_valid_class_num(class_num))
 		return -1;
+	QSet<int> existing_sequences;
 	for (int student_id : studentmanager::instance().all_ids())
 	{
 		const student* existing = studentmanager::instance().get(student_id);
 		if (existing != nullptr && existing->get_grade() == grade
-			&& !check::is_student_id_consistent(existing->get_id(), existing->get_grade(), existing->get_class_num()))
-			return -1;
+		{
+			if (student_id != existing->get_id()
+				|| !check::is_student_id_consistent(existing->get_id(), existing->get_grade(), existing->get_class_num()))
+				return -1;
+			const int sequence = check::student_id_sequence(existing->get_id());
+			if (existing_sequences.contains(sequence))
+				return -1;
+			existing_sequences.insert(sequence);
+		}
 	}
 	const int sequence = studentmanager::instance().next_available_sequence(grade);
 	if (sequence < 0)
@@ -225,6 +234,9 @@ int school::change_student_academic_info(int old_student_id, int new_grade, int 
 	if (old_student_id != snapshot.get_id()
 		|| !check::is_student_id_consistent(snapshot.get_id(), snapshot.get_grade(), snapshot.get_class_num()))
 		return -1;
+	const int old_sequence = check::student_id_sequence(old_student_id);
+	if (studentmanager::instance().is_sequence_used(snapshot.get_grade(), old_sequence, old_student_id))
+		return -1;
 	const bool unassigned = snapshot.get_bed_id() == 0 && snapshot.get_dorm_id() == 0
 		&& snapshot.get_building_id() == 0 && snapshot.get_floor() == 0;
 	const bool assigned = snapshot.get_bed_id() > 0 && check::is_valid_dorm_id(snapshot.get_dorm_id())
@@ -256,7 +268,7 @@ int school::change_student_academic_info(int old_student_id, int new_grade, int 
 		if (current_dorm == nullptr || current_dorm->get_student_id(snapshot.get_bed_id()) != old_student_id)
 			return -8;
 	}
-	int sequence = check::student_id_sequence(old_student_id);
+	int sequence = old_sequence;
 	if (new_grade != snapshot.get_grade())
 	{
 		const int suggested_id = suggest_student_id(new_grade, new_class_num);
