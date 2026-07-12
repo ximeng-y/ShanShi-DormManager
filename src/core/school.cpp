@@ -1198,35 +1198,23 @@ reassignment_preview school::preview_reassign_all_students(reassignment_strategy
 		});
 	}
 
-	for (int student_id : candidates)
+	auto plan_student = [this, &dorms, &preview, &random, strategy](int student_id, bool original_building_only)
 	{
 		const student* s = get_student(student_id);
 		if (s == nullptr || (s->get_gender() != 1 && s->get_gender() != 2))
-		{
-			preview.unassigned_student_ids.append(student_id);
-			continue;
-		}
+			return false;
 		QVector<int> compatible;
-		QVector<int> original_building_compatible;
 		for (int i = 0; i < dorms.size(); ++i)
 		{
 			const building* b = get_building(dorms[i].building_id);
 			if (b == nullptr || !b->accepts_gender(s->get_gender())
-				|| (dorms[i].gender != 0 && dorms[i].gender != s->get_gender())
-				|| !dorms[i].beds.contains(0))
+				|| (dorms[i].gender != 0 && dorms[i].gender != s->get_gender()) || !dorms[i].beds.contains(0)
+				|| (original_building_only && dorms[i].building_id != s->get_building_id()))
 				continue;
 			compatible.append(i);
-			if (s->get_building_id() > 0 && dorms[i].building_id == s->get_building_id())
-				original_building_compatible.append(i);
 		}
-		if (strategy == reassignment_strategy::preserve_building_first && !original_building_compatible.isEmpty())
-			compatible = original_building_compatible;
 		if (compatible.isEmpty())
-		{
-			preview.unassigned_student_ids.append(student_id);
-			continue;
-		}
-
+			return false;
 		int selected = compatible.first();
 		if (strategy == reassignment_strategy::random)
 			selected = compatible.at(random.bounded(compatible.size()));
@@ -1246,7 +1234,6 @@ reassignment_preview school::preview_reassign_all_students(reassignment_strategy
 					selected = index;
 			}
 		}
-
 		planned_dorm& target = dorms[selected];
 		QVector<int> empty_beds;
 		for (int i = 0; i < target.beds.size(); ++i)
@@ -1259,8 +1246,45 @@ reassignment_preview school::preview_reassign_all_students(reassignment_strategy
 			target.gender = s->get_gender();
 		preview.changes.append({student_id, s->get_gender(), s->get_building_id(), s->get_dorm_id(), s->get_bed_id(),
 			target.building_id, target.dorm_id, bed_id});
+		return true;
+	};
+
+	QVector<int> deferred;
+	QVector<int> originally_unassigned;
+	if (strategy == reassignment_strategy::preserve_building_first)
+	{
+		for (int student_id : candidates)
+		{
+			const student* s = get_student(student_id);
+			if (s != nullptr && s->get_building_id() > 0)
+			{
+				if (!plan_student(student_id, true))
+					deferred.append(student_id);
+			}
+			else
+				originally_unassigned.append(student_id);
+		}
 	}
-	preview.available_bed_count = preview.changes.size();
+	else
+		deferred = candidates;
+
+	for (int student_id : deferred)
+		if (!plan_student(student_id, false))
+		{
+			const student* s = get_student(student_id);
+			preview.unassigned_student_ids.append(student_id);
+			if (s != nullptr)
+				preview.changes.append({student_id, s->get_gender(), s->get_building_id(), s->get_dorm_id(), s->get_bed_id(), 0, 0, 0});
+		}
+	for (int student_id : originally_unassigned)
+		if (!plan_student(student_id, false))
+		{
+			const student* s = get_student(student_id);
+			preview.unassigned_student_ids.append(student_id);
+			if (s != nullptr)
+				preview.changes.append({student_id, s->get_gender(), 0, 0, 0, 0, 0, 0});
+		}
+	preview.available_bed_count = preview.changes.size() - preview.unassigned_student_ids.size();
 	return preview;
 }
 
@@ -1344,14 +1368,19 @@ int school::apply_reassignment(const reassignment_preview& preview)//按固定�
 	for (const accommodation_change& change : preview.changes)
 	{
 		const student* s = get_student(change.student_id);
-		const dorm* d = get_dorm(change.new_building_id, change.new_dorm_id);
-		const building* b = get_building(change.new_building_id);
-		if (s == nullptr || d == nullptr || b == nullptr || all_preview_students.contains(change.student_id)
+		const bool remains_unassigned = change.new_building_id == 0 && change.new_dorm_id == 0 && change.new_bed_id == 0;
+		const dorm* d = remains_unassigned ? nullptr : get_dorm(change.new_building_id, change.new_dorm_id);
+		const building* b = remains_unassigned ? nullptr : get_building(change.new_building_id);
+		if (s == nullptr || all_preview_students.contains(change.student_id)
 			|| s->get_gender() != change.student_gender
 			|| s->get_building_id() != change.old_building_id || s->get_dorm_id() != change.old_dorm_id
 			|| s->get_bed_id() != change.old_bed_id
 			|| (change.old_dorm_id > 0 && s->get_floor() != change.old_dorm_id / 100)
-			|| (change.old_dorm_id == 0 && s->get_floor() != 0)
+			|| (change.old_dorm_id == 0 && s->get_floor() != 0))
+			return -7;
+		if (remains_unassigned)
+			continue;
+		if (d == nullptr || b == nullptr || change.new_bed_id <= 0
 			|| change.new_bed_id > d->get_max_num() || !b->accepts_gender(s->get_gender()))
 			return -7;
 		const QString bed_key = QStringLiteral("%1/%2/%3").arg(change.new_building_id).arg(change.new_dorm_id).arg(change.new_bed_id);
@@ -1368,7 +1397,14 @@ int school::apply_reassignment(const reassignment_preview& preview)//按固定�
 	for (int student_id : preview.unassigned_student_ids)
 	{
 		const student* s = get_student(student_id);
-		if (s == nullptr || all_preview_students.contains(student_id))
+		auto change_it = std::find_if(preview.changes.cbegin(), preview.changes.cend(), [student_id](const accommodation_change& change)
+		{
+			return change.student_id == student_id;
+		});
+		if (s == nullptr || change_it == preview.changes.cend() || all_preview_students.contains(student_id)
+			|| change_it->new_building_id != 0 || change_it->new_dorm_id != 0 || change_it->new_bed_id != 0
+			|| s->get_gender() != change_it->student_gender || s->get_building_id() != change_it->old_building_id
+			|| s->get_dorm_id() != change_it->old_dorm_id || s->get_bed_id() != change_it->old_bed_id)
 			return -7;
 		all_preview_students.insert(student_id);
 	}
@@ -1384,19 +1420,21 @@ int school::apply_reassignment(const reassignment_preview& preview)//按固定�
 			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
 	for (const accommodation_change& change : preview.changes)
 	{
+		if (change.new_building_id == 0)
+			continue;
 		if (assign_student_to_dorm(change.new_building_id, change.new_dorm_id, change.student_id, change.new_bed_id) != change.new_bed_id)
 			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
 	}
-	return preview.changes.size();
+	return preview.changes.size() - preview.unassigned_student_ids.size();
 }
 
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
-	clear_all_dorms_reset_gender();
-	//再以学生本体表为准统一清零，修复可能存在的“位置字段有值但 beds 无记录”异常状态。
-	for (int student_id : studentmanager::instance().all_ids())
-		studentmanager::instance().clear_dorm_info(student_id);
-	return assign_all_students_random();
+	const reassignment_preview preview = preview_reassign_all_students(reassignment_strategy::random, QRandomGenerator::global()->generate());
+	if (!preview.issues.isEmpty())
+		return -8;
+	const int result = apply_reassignment(preview);
+	return result >= 0 ? preview.unassigned_student_ids.size() : result;
 }
 
 batch_clear_preview school::preview_clear_dorms(clear_scope scope, int building_id, int dorm_id, bool reset_gender) const//生成批量清退预览
