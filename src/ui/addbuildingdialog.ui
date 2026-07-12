@@ -12,7 +12,7 @@
    <item>
     <layout class="QFormLayout" name="formLayout">
      <property name="verticalSpacing"><number>10</number></property>
-     <item row="0" column="0"><widget class="QLabel" name="buildingIdLabel"><property name="text"><string>楼号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="buildingIdSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>99</number></property><property name="specialValueText"><string>请选择楼号</string></property></widget></item>
+     <item row="0" column="0"><widget class="QLabel" name="buildingIdLabel"><property name="text"><string>楼号</string></property></widget></item><item row="0" column="1"><widget class="identifierlineedit" name="buildingIdSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="placeholderText"><string>输入1～99楼号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
      <item row="1" column="1"><widget class="QLabel" name="buildingIdErrorLabel"><property name="text"><string>楼号必须在1～99之间。</string></property><property name="visible"><bool>false</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
      <item row="2" column="0"><widget class="QLabel" name="genderLabel"><property name="text"><string>适用性别</string></property></widget></item><item row="2" column="1"><widget class="QComboBox" name="genderCombo"/></item>
      <item row="3" column="1"><widget class="QLabel" name="genderErrorLabel"><property name="text"><string>请选择有效的楼栋适用性别。</string></property><property name="visible"><bool>false</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
@@ -24,6 +24,7 @@
    <item><widget class="QDialogButtonBox" name="buttonBox"><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set></property></widget></item>
   </layout>
  </widget>
+ <customwidgets><customwidget><class>identifierlineedit</class><extends>QLineEdit</extends><header>ui/identifierlineedit.h</header></customwidget></customwidgets>
  <resources/>
  <connections/>
 </ui>

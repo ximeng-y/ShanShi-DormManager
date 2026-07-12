@@ -14,7 +14,7 @@
    <item>
     <layout class="QFormLayout" name="formLayout">
      <property name="verticalSpacing"><number>12</number></property>
-     <item row="0" column="0"><widget class="QLabel" name="studentIdLabel"><property name="text"><string>学号</string></property></widget></item><item row="0" column="1"><widget class="QSpinBox" name="studentIdSpin"><property name="minimum"><number>9999999</number></property><property name="maximum"><number>99999999</number></property><property name="specialValueText"><string>请输入8位学号</string></property></widget></item>
+     <item row="0" column="0"><widget class="QLabel" name="studentIdLabel"><property name="text"><string>学号</string></property></widget></item><item row="0" column="1"><widget class="identifierlineedit" name="studentIdSpin"><property name="minimum"><number>10000000</number></property><property name="maximum"><number>99999999</number></property><property name="placeholderText"><string>输入8位学号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
      <item row="1" column="1"><widget class="QLabel" name="studentIdErrorLabel"><property name="text"><string>学号必须为8位有效数字。</string></property><property name="visible"><bool>false</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
      <item row="2" column="0"><widget class="QLabel" name="nameLabel"><property name="text"><string>姓名</string></property></widget></item><item row="2" column="1"><widget class="QLineEdit" name="nameLineEdit"><property name="maxLength"><number>20</number></property><property name="placeholderText"><string>输入1～20个字符</string></property></widget></item>
      <item row="3" column="1"><widget class="QLabel" name="nameErrorLabel"><property name="text"><string>姓名应为1～20个字符，且不能包含禁止内容。</string></property><property name="visible"><bool>false</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
@@ -30,6 +30,7 @@
    <item><widget class="QDialogButtonBox" name="buttonBox"><property name="standardButtons"><set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set></property></widget></item>
   </layout>
  </widget>
+ <customwidgets><customwidget><class>identifierlineedit</class><extends>QLineEdit</extends><header>ui/identifierlineedit.h</header></customwidget></customwidgets>
  <resources/>
  <connections/>
 </ui>
