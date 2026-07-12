@@ -23,8 +23,7 @@ void windowtheme::install(QApplication& application)
 bool windowtheme::eventFilter(QObject* watched, QEvent* event)
 {
 	auto* widget = qobject_cast<QWidget*>(watched);
-	if (widget != nullptr && widget->isWindow()
-		&& (event->type() == QEvent::Show || event->type() == QEvent::WinIdChange)) {
+	if (widget != nullptr && widget->isWindow() && event->type() == QEvent::Show) {
 		apply_light_title_bar(widget);
 		QTimer::singleShot(0, widget, [widget]() {
 			apply_light_title_bar(widget);
@@ -46,7 +45,11 @@ void windowtheme::apply_light_title_bar(QWidget* widget)
 	if (set_attribute == nullptr) {
 		return;
 	}
-	const HWND handle = reinterpret_cast<HWND>(widget->winId());
+	const WId window_id = widget->effectiveWinId();
+	if (window_id == 0) {
+		return;
+	}
+	const HWND handle = reinterpret_cast<HWND>(window_id);
 	const BOOL use_dark_mode = FALSE;
 	constexpr DWORD immersive_dark_mode = 20;
 	constexpr DWORD immersive_dark_mode_legacy = 19;

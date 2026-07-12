@@ -24,17 +24,36 @@ QPalette appstyle::light_palette()
 		palette.setColor(group, QPalette::ButtonText, text);
 		palette.setColor(group, QPalette::BrightText, QColor(QStringLiteral("#ffffff")));
 		palette.setColor(group, QPalette::Link, QColor(QStringLiteral("#315f86")));
+		palette.setColor(group, QPalette::LinkVisited, QColor(QStringLiteral("#557f9f")));
 		palette.setColor(group, QPalette::Highlight, highlight);
 		palette.setColor(group, QPalette::HighlightedText, QColor(QStringLiteral("#17324d")));
 		palette.setColor(group, QPalette::PlaceholderText, muted_text);
+		palette.setColor(group, QPalette::Light, QColor(QStringLiteral("#ffffff")));
+		palette.setColor(group, QPalette::Midlight, QColor(QStringLiteral("#eef2f5")));
+		palette.setColor(group, QPalette::Mid, QColor(QStringLiteral("#bdc9d4")));
+		palette.setColor(group, QPalette::Dark, QColor(QStringLiteral("#7890a4")));
+		palette.setColor(group, QPalette::Shadow, QColor(QStringLiteral("#526579")));
 	}
 	palette.setColor(QPalette::Disabled, QPalette::Window, window);
 	palette.setColor(QPalette::Disabled, QPalette::WindowText, disabled_text);
 	palette.setColor(QPalette::Disabled, QPalette::Base, QColor(QStringLiteral("#f2f4f6")));
+	palette.setColor(QPalette::Disabled, QPalette::AlternateBase, QColor(QStringLiteral("#f2f4f6")));
+	palette.setColor(QPalette::Disabled, QPalette::ToolTipBase, base);
+	palette.setColor(QPalette::Disabled, QPalette::ToolTipText, disabled_text);
 	palette.setColor(QPalette::Disabled, QPalette::Text, disabled_text);
 	palette.setColor(QPalette::Disabled, QPalette::Button, QColor(QStringLiteral("#f2f4f6")));
 	palette.setColor(QPalette::Disabled, QPalette::ButtonText, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::BrightText, QColor(QStringLiteral("#ffffff")));
+	palette.setColor(QPalette::Disabled, QPalette::Link, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::LinkVisited, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::Highlight, QColor(QStringLiteral("#e5e9ed")));
+	palette.setColor(QPalette::Disabled, QPalette::HighlightedText, disabled_text);
 	palette.setColor(QPalette::Disabled, QPalette::PlaceholderText, QColor(QStringLiteral("#b3bdc6")));
+	palette.setColor(QPalette::Disabled, QPalette::Light, QColor(QStringLiteral("#f8f9fa")));
+	palette.setColor(QPalette::Disabled, QPalette::Midlight, QColor(QStringLiteral("#eef1f3")));
+	palette.setColor(QPalette::Disabled, QPalette::Mid, QColor(QStringLiteral("#d6dce1")));
+	palette.setColor(QPalette::Disabled, QPalette::Dark, QColor(QStringLiteral("#aeb8c1")));
+	palette.setColor(QPalette::Disabled, QPalette::Shadow, QColor(QStringLiteral("#9ba8b4")));
 	return palette;
 }
 
@@ -224,6 +243,13 @@ QPushButton[dangerButton="true"]:focus {
 	background: #983535;
 }
 
+QPushButton[primaryButton="true"]:disabled,
+QPushButton[dangerButton="true"]:disabled {
+	border-color: #dfe5ea;
+	background: #f2f4f6;
+	color: #9ba8b4;
+}
+
 QFrame[detailPanel="true"] {
 	border: 1px solid #d8e0e7;
 	border-radius: 8px;
@@ -301,6 +327,10 @@ QRadioButton:disabled,
 QCheckBox:disabled,
 QLabel:disabled,
 QGroupBox:disabled {
+	color: #9ba8b4;
+}
+
+QWidget:disabled {
 	color: #9ba8b4;
 }
 
