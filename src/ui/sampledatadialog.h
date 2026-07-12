@@ -13,7 +13,7 @@ QT_END_NAMESPACE
 
 class QShowEvent;
 
-//样例数据参数弹窗。负责收集追加生成参数并展示规模预览。
+//样例数据参数弹窗。负责追加生成或清空后生成的参数、固定预览和风险确认。
 class SampleDataDialog : public QDialog
 {
 	Q_OBJECT
@@ -33,7 +33,7 @@ private:
 	void regenerate_seed();//生成新的32位随机种子
 	void generate_replace_preview();//生成并保存清空后生成的固定计划
 	void invalidate_replace_preview();//参数变化后使旧替换预览失效
-	void attempt_generate();//确认后执行追加生成
+	void attempt_generate();//确认后执行追加或清空后生成
 
 	Ui::SampleDataDialog* ui;
 	sampledataresult generated_result;

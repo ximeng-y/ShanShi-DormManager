@@ -493,6 +493,12 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 		for (int dorm_index : dorm_indexes) if (!unique_dorms.contains(dorm_index)) unique_dorms.append(dorm_index);
 		QVector<int> planned_slots;
 		QHash<int, int> used_beds;
+		int total_capacity = 0;
+		for (int dorm_index : unique_dorms) total_capacity += result.dorms.at(dorm_index).max_num;
+		const int empty_reserved = unique_dorms.size() >= 3
+			&& total_capacity - result.dorms.at(unique_dorms.last()).max_num >= assigned_count ? unique_dorms.last() : -1;
+		const int partial_reserved = unique_dorms.size() >= 2
+			&& total_capacity - (empty_reserved >= 0 ? result.dorms.at(empty_reserved).max_num : 0) - 1 >= assigned_count ? unique_dorms[1] : -1;
 		if (unique_dorms.size() >= 2 && assigned_count >= result.dorms.at(unique_dorms[0]).max_num + 1) {
 			for (int i = 0; i < result.dorms.at(unique_dorms[0]).max_num; ++i) planned_slots.append(unique_dorms[0]);
 			planned_slots.append(unique_dorms[1]);
@@ -501,15 +507,18 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 		}
 		for (int dorm_index : coverage_dorms) {
 			if (planned_slots.size() >= assigned_count) break;
-			if (used_beds.value(dorm_index) == 0) {
+			if (dorm_index != empty_reserved && used_beds.value(dorm_index) == 0) {
 				planned_slots.append(dorm_index);
 				used_beds[dorm_index] = 1;
 			}
 		}
 		QVector<int> remaining_slots;
-		for (int dorm_index : unique_dorms)
-			for (int bed = used_beds.value(dorm_index); bed < result.dorms.at(dorm_index).max_num; ++bed)
+		for (int dorm_index : unique_dorms) {
+			if (dorm_index == empty_reserved) continue;
+			const int limit = result.dorms.at(dorm_index).max_num - (dorm_index == partial_reserved ? 1 : 0);
+			for (int bed = used_beds.value(dorm_index); bed < limit; ++bed)
 				remaining_slots.append(dorm_index);
+		}
 		shuffle_items(remaining_slots, random);
 		while (planned_slots.size() < assigned_count) planned_slots.append(remaining_slots.takeLast());
 		for (int i = 0; i < assigned_count; ++i) {
