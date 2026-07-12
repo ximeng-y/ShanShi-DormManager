@@ -259,11 +259,10 @@ int school::change_student_academic_info(int old_student_id, int new_grade, int 
 	int sequence = check::student_id_sequence(old_student_id);
 	if (new_grade != snapshot.get_grade())
 	{
-		sequence = studentmanager::instance().next_available_sequence(new_grade, old_student_id);
-		if (sequence < 0)
-			return -1;
-		if (sequence == 0)
-			return -9;
+		const int suggested_id = suggest_student_id(new_grade, new_class_num);
+		if (suggested_id < 0)
+			return suggested_id;
+		sequence = check::student_id_sequence(suggested_id);
 	}
 	const int new_student_id = check::make_student_id(new_grade, new_class_num, sequence);
 	if (new_student_id == old_student_id)
