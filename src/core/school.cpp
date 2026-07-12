@@ -1483,6 +1483,26 @@ QString school::persistence_candidate_summary(bool executable_data) const
 		.arg(writable ? QStringLiteral("可正常读写") : QStringLiteral("目录不可写，只读打开"));
 }
 
+int school::ensure_persistence_current()//关闭前执行最后一致性保护
+{
+	if (!persistence_initialized || read_only || storage.data_directory().isEmpty())
+		return 1;
+	const schoolsnapshot current = create_persistence_snapshot();
+	schoolsnapshot saved;
+	QString load_error;
+	if (storage.load_primary(saved, &load_error) == storage_load_status::loaded && saved.data_equals(current))
+		return 1;
+	if (storage.save_snapshot(current, &persistence_error))
+	{
+		persistence_error_code = 0;
+		return 1;
+	}
+	persistence_error_code = -100;
+	persistence_error = QStringLiteral("程序关闭前发现未保存变化，但最后一次保存失败。请检查数据目录权限或磁盘空间后重试。\n%1")
+		.arg(persistence_error);
+	return -100;
+}
+
 bool school::load_storage_directory(const QString& directory, bool writable, bool fallback_directory,
 	persistence_start_status normal_status)
 {

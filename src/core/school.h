@@ -161,6 +161,7 @@ public:
 	QString take_persistence_error(int* error_code = nullptr);//读取并清除待显示的持久化错误
 	persistence_start_status persistence_status() const;
 	QString persistence_candidate_summary(bool executable_data) const;//返回冲突候选的目录、保存时间及对象数量
+	int ensure_persistence_current();//关闭前核对内存与正式文件，不一致时执行最后一次保存
 
 	//基础只读查询入口。返回指针均指向对应 manager 容器内部本体，后续删除对应对象后会失效；
 	//student 指针还可能在 studentmanager 后续 add/remove 触发 QHash rehash 后失效。

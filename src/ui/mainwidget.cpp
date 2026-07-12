@@ -82,6 +82,12 @@ MainWidget::~MainWidget()
 
 void MainWidget::closeEvent(QCloseEvent* event)
 {
+	if (school::instance().ensure_persistence_current() != 1)
+	{
+		uifeedback::show_error(this, QStringLiteral("暂时无法退出"), QStringLiteral("数据尚未安全保存。"));
+		event->ignore();
+		return;
+	}
 	save_window_state();
 	QWidget::closeEvent(event);
 }
