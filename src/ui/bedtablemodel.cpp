@@ -63,10 +63,26 @@ QVariant bedtablemodel::data(const QModelIndex& index, int role) const
 	if (role == Qt::ToolTipRole) {
 		return data(index, Qt::DisplayRole).toString().replace(QLatin1Char('\n'), QStringLiteral("："));
 	}
-	if (role == Qt::UserRole) {
+	if (role == bed_id_role) {
 		return bed_id;
 	}
+	if (role == student_id_role) {
+		return occupied ? student_id : 0;
+	}
+	if (role == occupied_role) {
+		return occupied;
+	}
+	if (role == record_valid_role) {
+		return !occupied || school::instance().get_student(student_id) != nullptr;
+	}
 	return QVariant();
+}
+
+Qt::ItemFlags bedtablemodel::flags(const QModelIndex& index) const
+{
+	return data(index, bed_id_role).toInt() > 0
+		? Qt::ItemIsEnabled | Qt::ItemIsSelectable
+		: Qt::NoItemFlags;
 }
 
 void bedtablemodel::set_dorm(int building_id, int dorm_id)

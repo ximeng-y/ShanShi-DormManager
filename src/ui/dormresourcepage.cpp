@@ -12,6 +12,7 @@
 #include "core/school.h"
 
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QListWidgetItem>
 #include <QMenu>
 #include <QShowEvent>
@@ -58,10 +59,18 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 	ui->bedTableView->verticalHeader()->setVisible(false);
 	ui->bedTableView->verticalHeader()->setDefaultSectionSize(70);
+	connect(ui->bedTableView->selectionModel(), &QItemSelectionModel::currentChanged,
+		this, &DormResourcePage::update_bed_action_state);
 	ui->buildingList->setAccessibleName(QStringLiteral("楼栋目录"));
 	ui->dormTable->setAccessibleName(QStringLiteral("宿舍目录"));
 	ui->bedTableView->setAccessibleName(QStringLiteral("床位与住客"));
 	ui->bedAreaInfoButton->set_information(ui->bedAreaInfoButton->toolTip());
+	ui->bedSelectionLabel->setAccessibleName(QStringLiteral("当前选中床位"));
+	ui->assignSelectedBedButton->setAccessibleName(QStringLiteral("安排学生入住当前空床"));
+	ui->removeSelectedBedButton->setAccessibleName(QStringLiteral("办理当前床位住客退宿"));
+	ui->moveWithinDormButton->setAccessibleName(QStringLiteral("将当前住客换到本宿舍空床"));
+	ui->moveToOtherDormButton->setAccessibleName(QStringLiteral("将当前住客调往其他宿舍"));
+	update_bed_action_state(QModelIndex());
 	ui->resourceSplitter->setStretchFactor(0, 0);
 	ui->resourceSplitter->setStretchFactor(1, 1);
 	ui->resourceSplitter->setStretchFactor(2, 0);
@@ -324,6 +333,7 @@ void DormResourcePage::clear_dorm_detail()
 	ui->editDormButton->setEnabled(false);
 	ui->removeDormButton->setEnabled(false);
 	bed_model->set_dorm(0, 0);
+	update_bed_action_state(QModelIndex());
 }
 
 void DormResourcePage::show_dorm_detail(int dorm_id)
@@ -346,4 +356,35 @@ void DormResourcePage::show_dorm_detail(int dorm_id)
 	ui->removeDormButton->setEnabled(true);
 
 	bed_model->set_dorm(selected_building_id, selected_dorm_id);
+	ui->bedTableView->clearSelection();
+	ui->bedTableView->setCurrentIndex(QModelIndex());
+	update_bed_action_state(QModelIndex());
+}
+
+void DormResourcePage::update_bed_action_state(const QModelIndex& index)
+{
+	selected_bed_id = index.data(bedtablemodel::bed_id_role).toInt();
+	selected_student_id = index.data(bedtablemodel::student_id_role).toInt();
+	const bool occupied = index.data(bedtablemodel::occupied_role).toBool();
+	const bool record_valid = index.data(bedtablemodel::record_valid_role).toBool();
+	if (selected_bed_id <= 0) {
+		ui->bedSelectionLabel->setText(QStringLiteral("选择一个床位后显示可用操作。"));
+	} else if (!record_valid) {
+		ui->bedSelectionLabel->setText(QStringLiteral("%1号床记录异常，已暂停床位操作。").arg(selected_bed_id));
+	} else if (occupied) {
+		ui->bedSelectionLabel->setText(QStringLiteral("已选择 %1号床 · 学号 %2").arg(selected_bed_id).arg(selected_student_id));
+	} else {
+		ui->bedSelectionLabel->setText(QStringLiteral("已选择 %1号床 · 当前空闲").arg(selected_bed_id));
+	}
+
+	const bool available_empty_bed = selected_bed_id > 0 && record_valid && !occupied;
+	const bool available_occupant = selected_bed_id > 0 && record_valid && occupied;
+	ui->assignSelectedBedButton->setVisible(available_empty_bed);
+	ui->assignSelectedBedButton->setEnabled(available_empty_bed);
+	ui->removeSelectedBedButton->setVisible(available_occupant);
+	ui->removeSelectedBedButton->setEnabled(available_occupant);
+	ui->moveWithinDormButton->setVisible(available_occupant);
+	ui->moveWithinDormButton->setEnabled(available_occupant);
+	ui->moveToOtherDormButton->setVisible(available_occupant);
+	ui->moveToOtherDormButton->setEnabled(available_occupant);
 }

@@ -7,11 +7,20 @@
 class bedtablemodel : public QAbstractTableModel
 {
 public:
+	enum datarole
+	{
+		bed_id_role = Qt::UserRole,
+		student_id_role,
+		occupied_role,
+		record_valid_role
+	};
+
 	explicit bedtablemodel(QObject* parent = nullptr);
 
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 	int columnCount(const QModelIndex& parent = QModelIndex()) const override;
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+	Qt::ItemFlags flags(const QModelIndex& index) const override;//有效床位可被单独选择
 	void set_dorm(int building_id, int dorm_id);//切换当前展示的宿舍
 
 private:
