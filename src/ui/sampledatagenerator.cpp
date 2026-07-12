@@ -144,12 +144,12 @@ void rollback_created_data(school& current_school, const QVector<int>& student_i
 	}
 	for (auto iterator = dorm_keys.crbegin(); iterator != dorm_keys.crend(); ++iterator) {
 		if (current_school.get_dorm(iterator->first, iterator->second) != nullptr
-			&& !current_school.remove_dorm(iterator->first, iterator->second)) {
+			&& current_school.remove_dorm(iterator->first, iterator->second) != 1) {
 			result.rollback_complete = false;
 		}
 	}
 	for (auto iterator = building_ids.crbegin(); iterator != building_ids.crend(); ++iterator) {
-		if (current_school.get_building(*iterator) != nullptr && !current_school.remove_building(*iterator)) {
+		if (current_school.get_building(*iterator) != nullptr && current_school.remove_building(*iterator) != 1) {
 			result.rollback_complete = false;
 		}
 	}

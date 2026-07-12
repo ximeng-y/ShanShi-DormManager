@@ -189,7 +189,7 @@ public:
 	int suggest_dorm_id(int building_id, int floor) const;//建议指定楼层最小缺号宿舍，0=楼不存在/-1=参数非法/-9=本层用尽
 
 	//学生基础资料管理
-	bool add_student(const student& student_to_add);//添加学生，字段非法、携带住宿位置或学号重复时返回false
+	int add_student(const student& student_to_add);//添加学生，1=成功/0=业务失败/负数=持久化错误
 	int suggest_student_id(int grade, int class_num) const;//建议最小缺号完整学号，-1=参数或年级既有记录异常/-9=序号耗尽
 	int add_student(const QString& name, int gender, int grade, int class_num, int sequence = 0);//成功返回实际学号，-1=参数非法/-2=序号占用/-3=学号冲突/-9=耗尽
 	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学生不存在/-1=参数非法
@@ -201,14 +201,14 @@ public:
 	int get_empty_bed_count_of_building(int building_id, int gender) const;//获取指定楼指定性别可用空床数, -1=参数非法
 	//返回值: 1=成功  0=楼号已存在  -1=参数非法
 	int add_building(int building_id, int gender, int max_floor);//添加宿舍楼
-	bool add_dorm(const dorm& dorm_to_add);//添加宿舍，false=字段非法/楼不存在/楼层或性别冲突/携带住客/复合键重复
+	int add_dorm(const dorm& dorm_to_add);//添加宿舍，1=成功/0=业务失败/负数=持久化错误
 	int add_dorm(int building_id, int floor, int room_num, int max_num, int gender_lock);//统一新增，成功返回宿舍号，0=楼不存在/-1=参数非法/-2=已存在/-3=性别冲突/-5=失败已恢复/-6=恢复不完整/-9=本层用尽
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=缩容会丢弃已有住客
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大床位数
-	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客，false=参数非法/宿舍不存在/住宿记录不一致/删除失败
+	int remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客，1=成功/0=业务失败/负数=持久化错误
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=楼不存在或不接纳该性别  -3=住客性别冲突
 	int set_dorm_gender(int building_id, int dorm_id, int gender);//设置房间性别锁
-	bool remove_building(int building_id);//删除宿舍楼并级联清退，false=参数非法/楼不存在/楼内记录不一致/级联删除失败
+	int remove_building(int building_id);//删除宿舍楼并级联清退，1=成功/0=业务失败/负数=持久化错误
 	int set_building_gender(int building_id, int gender);//修改楼性别, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍或住客冲突
 	int set_building_max_floor(int building_id, int max_floor);//修改最大楼层, 1=成功/0=楼不存在/-1=参数非法/-2=既有宿舍楼层越界
 

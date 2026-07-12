@@ -142,7 +142,13 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		if (!uifeedback::confirm_danger(this, QStringLiteral("确认删除楼栋"), impact, QStringLiteral("确认删除"))) {
 			return;
 		}
-		if (!school::instance().remove_building(selected_building_id)) {
+		const int remove_result = school::instance().remove_building(selected_building_id);
+		if (remove_result != 1) {
+			if (remove_result < 0) {
+				uifeedback::show_error(this, QStringLiteral("楼栋删除失败"), QString());
+				refresh_data();
+				return;
+			}
 			uifeedback::show_critical(this, QStringLiteral("楼栋删除失败"), QStringLiteral("楼内住宿记录可能存在不一致，系统未能完成级联删除。请暂停相关操作并核查数据。"));
 			return;
 		}
@@ -247,7 +253,13 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 		if (!uifeedback::confirm_danger(this, QStringLiteral("确认删除宿舍"), impact, QStringLiteral("确认删除"))) {
 			return;
 		}
-		if (!school::instance().remove_dorm(selected_building_id, selected_dorm_id)) {
+		const int remove_result = school::instance().remove_dorm(selected_building_id, selected_dorm_id);
+		if (remove_result != 1) {
+			if (remove_result < 0) {
+				uifeedback::show_error(this, QStringLiteral("宿舍删除失败"), QString());
+				refresh_data();
+				return;
+			}
 			uifeedback::show_critical(this, QStringLiteral("宿舍删除失败"), QStringLiteral("宿舍床位与学生位置记录可能不一致，系统未执行删除。请暂停相关操作并核查数据。"));
 			return;
 		}
