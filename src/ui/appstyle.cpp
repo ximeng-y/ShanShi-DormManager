@@ -121,7 +121,7 @@ QProgressBar {
 	border: 0;
 	border-radius: 5px;
 	background: #e6edf3;
-	color: #315066;
+	color: #f4f8fb;
 	text-align: center;
 }
 
