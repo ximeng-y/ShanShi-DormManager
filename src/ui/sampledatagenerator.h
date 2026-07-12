@@ -56,6 +56,7 @@ struct sampledatapreview
 struct sampledataresult
 {
 	bool success = false;
+	bool replaced_existing_data = false;
 	bool rollback_complete = true;
 	QString error_message;
 	quint32 random_seed = 0;

@@ -86,9 +86,11 @@ void OverviewPage::open_sample_data_dialog()
 		return;
 	}
 	refresh_data();
-	uifeedback::show_information(this, QStringLiteral("样例数据生成完成"),
-		QStringLiteral("已新增 %1 栋楼、%2 间宿舍和 %3 名学生，其中 %4 人已入住。\n"
-			"当前保留 %5 间未锁定空宿舍；随机种子为 %6。")
+	const QString action_text = result.replaced_existing_data ? QStringLiteral("已替换现有数据并生成") : QStringLiteral("已新增");
+	uifeedback::show_information(this, result.replaced_existing_data ? QStringLiteral("样例数据替换完成") : QStringLiteral("样例数据生成完成"),
+		QStringLiteral("%1 %2 栋楼、%3 间宿舍和 %4 名学生，其中 %5 人已入住。\n"
+			"当前保留 %6 间宿舍性别锁未设置的空宿舍；随机种子为 %7。")
+			.arg(action_text)
 			.arg(result.added_building_count)
 			.arg(result.added_dorm_count)
 			.arg(result.added_student_count)

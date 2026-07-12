@@ -13,6 +13,7 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QScreen>
+#include <QSet>
 #include <QShowEvent>
 #include <QSpinBox>
 #include <QStyle>
@@ -243,13 +244,18 @@ void SampleDataDialog::attempt_generate()
 		QApplication::restoreOverrideCursor();
 		if (result == 1) {
 			generated_result.success = true;
+			generated_result.replaced_existing_data = true;
 			generated_result.random_seed = config.random_seed;
 			generated_result.added_building_count = scale.building_count;
 			generated_result.added_dorm_count = scale.dorm_count;
 			generated_result.added_student_count = scale.student_count;
 			generated_result.assigned_student_count = scale.assigned_student_count;
-			uifeedback::show_information(this, QStringLiteral("样例数据替换完成"), QStringLiteral("已生成 %1 栋宿舍楼、%2 间宿舍和 %3 名学生，其中 %4 人已入住。")
-				.arg(scale.building_count).arg(scale.dorm_count).arg(scale.student_count).arg(scale.assigned_student_count));
+			QSet<QString> occupied_dorms;
+			for (const samplestudentplan& student_plan : plan.students)
+				if (student_plan.building_id > 0) occupied_dorms.insert(QStringLiteral("%1/%2").arg(student_plan.building_id).arg(student_plan.dorm_id));
+			for (const sampledormplan& dorm_plan : plan.dorms)
+				if (dorm_plan.gender_lock == 0 && !occupied_dorms.contains(QStringLiteral("%1/%2").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id)))
+					++generated_result.remaining_unlocked_dorm_count;
 			accept();
 			return;
 		}
