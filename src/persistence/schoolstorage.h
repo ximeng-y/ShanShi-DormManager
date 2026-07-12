@@ -30,6 +30,8 @@ public:
 	storage_load_status load_primary(schoolsnapshot& snapshot, QString* error = nullptr) const;
 	storage_load_status load_backup(schoolsnapshot& snapshot, QString* error = nullptr) const;
 	bool create_initial_file(const schoolsnapshot& empty_snapshot, QString* error = nullptr);//首次启动创建正式空文件
+	bool save_snapshot(const schoolsnapshot& snapshot, QString* error = nullptr);//备份当前正式文件后原子保存新快照
+	bool rebuild_primary(const schoolsnapshot& snapshot, QString* error = nullptr);//从已验证备份重建正式文件，不轮换备份
 	bool archive_invalid_file(const QString& source_path, QString* archived_path = nullptr, QString* error = nullptr) const;
 
 	static QByteArray encode_snapshot(const schoolsnapshot& snapshot, QString* error = nullptr);//编码并自检版本化JSON

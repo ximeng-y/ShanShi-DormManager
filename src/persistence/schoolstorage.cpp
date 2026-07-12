@@ -131,6 +131,42 @@ bool schoolstorage::create_initial_file(const schoolsnapshot& empty_snapshot, QS
 	return !data.isEmpty() && write_atomic(primary_file_path(), data, error);
 }
 
+bool schoolstorage::save_snapshot(const schoolsnapshot& snapshot, QString* error)
+{
+	const QByteArray new_data = encode_snapshot(snapshot, error);
+	if (new_data.isEmpty())
+		return false;
+	const QString primary_path = primary_file_path();
+	if (QFileInfo::exists(primary_path))
+	{
+		QFile primary(primary_path);
+		if (!primary.open(QIODevice::ReadOnly))
+		{
+			set_error(error, QStringLiteral("无法读取当前正式数据，未执行覆盖。"));
+			return false;
+		}
+		const QByteArray previous_data = primary.readAll();
+		schoolsnapshot previous_snapshot;
+		QString validation_error;
+		bool newer_version = false;
+		if (!decode_snapshot(previous_data, previous_snapshot, &validation_error, &newer_version))
+		{
+			set_error(error, newer_version ? QStringLiteral("当前正式数据来自更高版本，拒绝覆盖。")
+				: QStringLiteral("当前正式数据无效，拒绝覆盖：%1").arg(validation_error));
+			return false;
+		}
+		if (!write_atomic(backup_file_path(), previous_data, error))
+			return false;
+	}
+	return write_atomic(primary_path, new_data, error);
+}
+
+bool schoolstorage::rebuild_primary(const schoolsnapshot& snapshot, QString* error)
+{
+	const QByteArray data = encode_snapshot(snapshot, error);
+	return !data.isEmpty() && write_atomic(primary_file_path(), data, error);
+}
+
 bool schoolstorage::archive_invalid_file(const QString& source_path, QString* archived_path, QString* error) const
 {
 	if (!QFileInfo::exists(source_path))
