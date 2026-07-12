@@ -322,6 +322,7 @@ private:
 	bool fallback_candidate_valid = false;
 	bool executable_directory_writable = false;
 	bool fallback_directory_writable = false;
+	bool persistence_restore_rollback_failed = false;
 };
 
 #endif // SCHOOL_H

@@ -14,6 +14,7 @@
 #include <QSet>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QUuid>
 
 #include <algorithm>
 #include <cmath>
@@ -45,7 +46,8 @@ bool schoolstorage::directory_is_writable(const QString& directory, QString* err
 		set_error(error, QStringLiteral("无法创建数据目录：%1").arg(directory));
 		return false;
 	}
-	const QString probe_path = QDir(directory).filePath(QStringLiteral(".write-probe"));
+	const QString probe_path = QDir(directory).filePath(
+		QStringLiteral(".write-probe-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)));
 	QSaveFile probe(probe_path);
 	if (!probe.open(QIODevice::WriteOnly) || probe.write("ok") != 2 || !probe.commit())
 	{
@@ -155,7 +157,37 @@ bool schoolstorage::save_snapshot(const schoolsnapshot& snapshot, QString* error
 				: QStringLiteral("当前正式数据无效，拒绝覆盖：%1").arg(validation_error));
 			return false;
 		}
-		if (!write_atomic(backup_file_path(), previous_data, error))
+		const QString backup_path = backup_file_path();
+		if (QFileInfo::exists(backup_path))
+		{
+			QFile existing_backup(backup_path);
+			if (!existing_backup.open(QIODevice::ReadOnly))
+			{
+				set_error(error, QStringLiteral("现有备份无法读取，拒绝覆盖。"));
+				return false;
+			}
+			const qint64 backup_size = existing_backup.size();
+			const QByteArray backup_data = existing_backup.readAll();
+			if (backup_data.size() != backup_size)
+			{
+				set_error(error, QStringLiteral("现有备份读取不完整，拒绝覆盖。"));
+				return false;
+			}
+			schoolsnapshot backup_snapshot;
+			bool backup_newer = false;
+			QString backup_error;
+			if (!decode_snapshot(backup_data, backup_snapshot, &backup_error, &backup_newer))
+			{
+				if (backup_newer)
+				{
+					set_error(error, QStringLiteral("现有备份来自更高版本，拒绝覆盖。"));
+					return false;
+				}
+				if (!archive_invalid_file(backup_path, nullptr, error))
+					return false;
+			}
+		}
+		if (!write_atomic(backup_path, previous_data, error))
 			return false;
 	}
 	return write_atomic(primary_path, new_data, error);
@@ -187,7 +219,14 @@ bool schoolstorage::archive_invalid_file(const QString& source_path, QString* ar
 		set_error(error, QStringLiteral("无法读取待保留的损坏文件。"));
 		return false;
 	}
-	if (!write_atomic(destination, source.readAll(), error))
+	const qint64 source_size = source.size();
+	const QByteArray source_data = source.readAll();
+	if (source_data.size() != source_size)
+	{
+		set_error(error, QStringLiteral("损坏文件读取不完整，无法安全保留。"));
+		return false;
+	}
+	if (!write_atomic(destination, source_data, error))
 		return false;
 	if (archived_path != nullptr)
 		*archived_path = destination;
