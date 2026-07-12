@@ -175,7 +175,12 @@ int school::suggest_dorm_id(int building_id, int floor) const//建议指定楼�
 	QSet<int> used_room_numbers;
 	for (const auto& key : dormmanager::instance().all_dorm_keys())
 	{
-		if (key.first != building_id || check::dorm_id_floor(key.second) != floor)
+		if (key.first != building_id)
+			continue;
+		const dorm* existing_dorm = dormmanager::instance().get(key.first, key.second);
+		if (!check::is_valid_dorm_id(key.second) || existing_dorm == nullptr || existing_dorm->get_id() != key.second)
+			return -1;
+		if (check::dorm_id_floor(key.second) != floor)
 			continue;
 		const int room_num = check::dorm_id_room_num(key.second);
 		if (!check::is_valid_dorm_room_num(room_num))
