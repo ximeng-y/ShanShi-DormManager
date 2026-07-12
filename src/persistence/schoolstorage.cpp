@@ -9,6 +9,7 @@
 #include <QJsonParseError>
 #include <QSet>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -79,8 +80,14 @@ QByteArray schoolstorage::encode_snapshot(const schoolsnapshot& snapshot, QStrin
 
 bool schoolstorage::decode_snapshot(const QByteArray& data, schoolsnapshot& snapshot, QString* error, bool* newer_version)
 {
+	constexpr qsizetype maximum_json_bytes = 32 * 1024 * 1024;
 	if (newer_version != nullptr)
 		*newer_version = false;
+	if (data.isEmpty() || data.size() > maximum_json_bytes)
+	{
+		set_error(error, QStringLiteral("数据文件为空或超过32 MiB安全上限。"));
+		return false;
+	}
 	QJsonParseError parse_error;
 	const QJsonDocument document = QJsonDocument::fromJson(data, &parse_error);
 	if (parse_error.error != QJsonParseError::NoError || !document.isObject())
@@ -89,11 +96,9 @@ bool schoolstorage::decode_snapshot(const QByteArray& data, schoolsnapshot& snap
 		return false;
 	}
 	const QJsonObject root = document.object();
-	if (!root.value(QStringLiteral("format")).isString() || !root.value(QStringLiteral("version")).isDouble()
-		|| !root.value(QStringLiteral("savedAt")).isString() || !root.value(QStringLiteral("buildings")).isArray()
-		|| !root.value(QStringLiteral("dorms")).isArray() || !root.value(QStringLiteral("students")).isArray())
+	if (!root.value(QStringLiteral("format")).isString() || !root.value(QStringLiteral("version")).isDouble())
 	{
-		set_error(error, QStringLiteral("数据文件缺少必要字段或字段类型错误。"));
+		set_error(error, QStringLiteral("数据文件缺少格式标识或版本号。"));
 		return false;
 	}
 	schoolsnapshot parsed;
@@ -103,8 +108,29 @@ bool schoolstorage::decode_snapshot(const QByteArray& data, schoolsnapshot& snap
 		set_error(error, QStringLiteral("数据文件版本号无效。"));
 		return false;
 	}
-	if (parsed.version > schoolsnapshot::current_version && newer_version != nullptr)
-		*newer_version = true;
+	if (parsed.format != QStringLiteral("DormManagerData"))
+	{
+		set_error(error, QStringLiteral("数据文件格式标识不受支持。"));
+		return false;
+	}
+	if (parsed.version > schoolsnapshot::current_version)
+	{
+		if (newer_version != nullptr)
+			*newer_version = true;
+		set_error(error, QStringLiteral("数据文件由更高版本程序创建。"));
+		return false;
+	}
+	if (parsed.version != schoolsnapshot::current_version)
+	{
+		set_error(error, QStringLiteral("数据文件版本不受支持。"));
+		return false;
+	}
+	if (!root.value(QStringLiteral("savedAt")).isString() || !root.value(QStringLiteral("buildings")).isArray()
+		|| !root.value(QStringLiteral("dorms")).isArray() || !root.value(QStringLiteral("students")).isArray())
+	{
+		set_error(error, QStringLiteral("数据文件缺少必要字段或字段类型错误。"));
+		return false;
+	}
 	parsed.saved_at = QDateTime::fromString(root.value(QStringLiteral("savedAt")).toString(), Qt::ISODateWithMs);
 	for (const QJsonValue& value : root.value(QStringLiteral("buildings")).toArray())
 	{
@@ -151,6 +177,15 @@ bool schoolstorage::decode_snapshot(const QByteArray& data, schoolsnapshot& snap
 		item.name = object.value(QStringLiteral("name")).toString();
 		parsed.students.append(item);
 	}
+	std::sort(parsed.buildings.begin(), parsed.buildings.end(), [](const building_snapshot& left, const building_snapshot& right) {
+		return left.id < right.id;
+	});
+	std::sort(parsed.dorms.begin(), parsed.dorms.end(), [](const dorm_snapshot& left, const dorm_snapshot& right) {
+		return left.building_id == right.building_id ? left.dorm_id < right.dorm_id : left.building_id < right.building_id;
+	});
+	std::sort(parsed.students.begin(), parsed.students.end(), [](const student_snapshot& left, const student_snapshot& right) {
+		return left.id < right.id;
+	});
 	if (!validate_snapshot(parsed, error))
 		return false;
 	snapshot = parsed;

@@ -2,6 +2,7 @@
 #include "studentmanager.h"
 #include "dormmanager.h"
 #include "buildingmanager.h"
+#include "persistence/schoolstorage.h"
 #include "system/check.h"
 #include <QRandomGenerator>
 #include <QHash>
@@ -1226,7 +1227,8 @@ schoolsnapshot school::create_persistence_snapshot() const//导出完整学校�
 
 bool school::restore_persistence_snapshot(const schoolsnapshot& snapshot)//整体恢复持久化快照并核对结果
 {
-	if (snapshot.format != QStringLiteral("DormManagerData") || snapshot.version != schoolsnapshot::current_version)
+	QString validation_error;
+	if (schoolstorage::encode_snapshot(snapshot, &validation_error).isEmpty())
 		return false;
 	sampledataplan plan;
 	for (const building_snapshot& item : snapshot.buildings)
@@ -1277,15 +1279,20 @@ bool school::restore_persistence_snapshot(const schoolsnapshot& snapshot)//整�
 	if (!validate_sample_data_plan(plan, true))
 		return false;
 	const school_data_snapshot before = take_school_data_snapshot();
+	const schoolsnapshot before_persistence = create_persistence_snapshot();
+	if (schoolstorage::encode_snapshot(before_persistence, &validation_error).isEmpty())
+		return false;
 	if (!restore_school_data_snapshot({plan}))
 	{
-		restore_school_data_snapshot(before);
+		if (!restore_school_data_snapshot(before) || !create_persistence_snapshot().data_equals(before_persistence))
+			return false;
 		return false;
 	}
 	const schoolsnapshot restored = create_persistence_snapshot();
 	if (!restored.data_equals(snapshot))
 	{
-		restore_school_data_snapshot(before);
+		if (!restore_school_data_snapshot(before) || !create_persistence_snapshot().data_equals(before_persistence))
+			return false;
 		return false;
 	}
 	return true;
