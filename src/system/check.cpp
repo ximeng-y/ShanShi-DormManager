@@ -64,13 +64,31 @@ bool check::is_valid_grade(int grade)//检查年级是否合法(2010~2099)
 
 bool check::is_valid_dorm_id(int dorm_id)//检查宿舍号是否合法(101~9999 且末两位非00)
 {
-	//编码规则: 末两位=房间号(01~99), 百位及以上=楼层(1~99). floor=dorm_id/100.
-	//3位(101~999)对应1~9楼, 4位(1001~9999)对应10~99楼. 末两位00(房间号缺失)非法.
 	if (dorm_id < 101 || dorm_id > 9999)
 		return false;
-	if (dorm_id % 100 == 0)//末两位为00, 房间号缺失
-		return false;
-	return true;
+	return is_valid_floor(dorm_id / 100, 99) && is_valid_dorm_room_num(dorm_id % 100);
+}
+
+bool check::is_valid_dorm_room_num(int room_num)//检查宿舍房间号是否合法(1~99)
+{
+	return room_num >= 1 && room_num <= 99;
+}
+
+int check::make_dorm_id(int floor, int room_num)//按楼层和房间号生成宿舍号
+{
+	if (!is_valid_floor(floor, 99) || !is_valid_dorm_room_num(room_num))
+		return 0;
+	return floor * 100 + room_num;
+}
+
+int check::dorm_id_floor(int dorm_id)//解析宿舍号楼层
+{
+	return is_valid_dorm_id(dorm_id) ? dorm_id / 100 : -1;
+}
+
+int check::dorm_id_room_num(int dorm_id)//解析宿舍号后两位房间号
+{
+	return is_valid_dorm_id(dorm_id) ? dorm_id % 100 : -1;
 }
 
 bool check::is_valid_building_id(int building_id)//检查宿舍楼号是否合法(1~99)
@@ -98,8 +116,7 @@ bool check::is_valid_dorm_floor(int dorm_id, int max_floor)//检查宿舍号派�
 {
 	//floor 从 dorm_id 派生(dorm_id/100), 复用 is_valid_floor 校验 ∈[1,max_floor].
 	//纯数值边界，不依赖聚合，与is_valid_bed_id(bed_id,max_num)同构；楼级校验由school::add_dorm调用。
-	int floor = dorm_id / 100;
-	return is_valid_floor(floor, max_floor);
+	return is_valid_dorm_id(dorm_id) && is_valid_floor(dorm_id_floor(dorm_id), max_floor);
 }
 
 bool check::is_valid_student_name(const QString& name)//检查学生姓名是否合法(1~20个字符,禁止error)
