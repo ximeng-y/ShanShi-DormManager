@@ -147,17 +147,24 @@ void DormAdjustmentDialog::refresh_modes()
 {
 	const int ba = ui->buildingACombo->currentData().toInt(), da = ui->dormACombo->currentData().toInt();
 	const int bb = ui->buildingBCombo->currentData().toInt(), db = ui->dormBCombo->currentData().toInt();
-	const QList<QPair<QRadioButton*, dorm_adjustment_mode>> modes = {{ui->fullSwapRadio,dorm_adjustment_mode::full_swap},{ui->overlapRadio,dorm_adjustment_mode::overlap_swap},{ui->evictRadio,dorm_adjustment_mode::overlap_swap_and_evict},{ui->genderSwapRadio,dorm_adjustment_mode::gender_dorm_swap}};
-	QStringList unavailable;
+	struct mode_item { QRadioButton* radio; QLabel* reason; dorm_adjustment_mode mode; QString available_text; };
+	const QList<mode_item> modes = {
+		{ui->fullSwapRadio, ui->fullSwapReasonLabel, dorm_adjustment_mode::full_swap, QStringLiteral("两间宿舍的全部住客互换。")},
+		{ui->overlapRadio, ui->overlapReasonLabel, dorm_adjustment_mode::overlap_swap, QStringLiteral("对应人数互换，多出的住客留在原宿舍。")},
+		{ui->evictRadio, ui->evictReasonLabel, dorm_adjustment_mode::overlap_swap_and_evict, QStringLiteral("对应人数互换，多出的住客变为未入住。")},
+		{ui->genderSwapRadio, ui->genderSwapReasonLabel, dorm_adjustment_mode::gender_dorm_swap, QStringLiteral("交换男生宿舍与女生宿舍住客，并同步调整宿舍性别锁。")}
+	};
 	for (const auto& item : modes)
 	{
-		const dorm_adjustment_preview test = school::instance().preview_dorm_adjustment(ba, da, bb, db, item.second);
-		item.first->setEnabled(test.available);
-		item.first->setToolTip(test.available ? QStringLiteral("此方式适用于当前两间宿舍。") : test.unavailable_reason);
-		if (!test.available && item.first->isChecked()) item.first->setChecked(false);
-		if (!test.available && !test.unavailable_reason.isEmpty()) unavailable.append(item.first->text() + QStringLiteral("：") + test.unavailable_reason);
+		const dorm_adjustment_preview test = school::instance().preview_dorm_adjustment(ba, da, bb, db, item.mode);
+		item.radio->setEnabled(test.available);
+		item.radio->setToolTip(test.available ? QStringLiteral("此方式适用于当前两间宿舍。") : test.unavailable_reason);
+		item.reason->setText(test.available ? item.available_text : test.unavailable_reason);
+		item.reason->setProperty("fieldError", !test.available);
+		item.reason->style()->unpolish(item.reason);
+		item.reason->style()->polish(item.reason);
+		if (!test.available && item.radio->isChecked()) item.radio->setChecked(false);
 	}
-	ui->modeDescriptionLabel->setText(unavailable.isEmpty() ? QStringLiteral("请选择调整方式，然后生成调整前后预览。") : unavailable.join(QLatin1Char('\n')));
 }
 
 void DormAdjustmentDialog::invalidate_preview()
