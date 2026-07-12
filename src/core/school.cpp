@@ -165,7 +165,8 @@ QVector<QPair<int, int>> school::get_available_dorm_keys(int gender) const//列�
 
 bool school::add_student(const student& student_to_add)//添加学生
 {
-	return studentmanager::instance().add(student_to_add);
+	if (!begin_persistent_mutation()) return false;
+	return finish_persistent_mutation(studentmanager::instance().add(student_to_add));
 }
 
 int school::suggest_dorm_id(int building_id, int floor) const//建议指定楼层最小缺号宿舍
@@ -229,6 +230,8 @@ int school::suggest_student_id(int grade, int class_num) const//建议指定年�
 
 int school::add_student(const QString& name, int gender, int grade, int class_num, int sequence)//按统一学号规则添加学生
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_student_name(name) || !check::is_valid_gender(gender)
 		|| !check::is_valid_grade(grade) || !check::is_valid_class_num(class_num) || sequence < 0)
 		return -1;
@@ -250,13 +253,21 @@ int school::add_student(const QString& name, int gender, int grade, int class_nu
 	const bool initialized = new_student.set_id(student_id) && new_student.set_name(name)
 		&& new_student.set_gender(gender) && new_student.set_grade(grade) && new_student.set_class_num(class_num);
 	return initialized && studentmanager::instance().add(new_student) ? student_id : -1;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result > 0);
 }
 
 int school::set_student_name(int student_id, const QString& name)//修改学生姓名
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_student_id(student_id))
 		return -1;//student_id非法
 	return studentmanager::instance().set_student_name(student_id, name);
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::change_student_academic_info(int old_student_id, int new_grade, int new_class_num)//原子迁移学生学号与学籍信息
@@ -394,11 +405,15 @@ int school::get_empty_bed_count_of_building(int building_id, int gender) const//
 
 int school::add_building(int building_id, int gender, int max_floor)//添加宿舍楼
 {
-	return buildingmanager::instance().add_building(building_id, gender, max_floor);
+	if (!begin_persistent_mutation()) return -102;
+	const int result = buildingmanager::instance().add_building(building_id, gender, max_floor);
+	return finish_persistent_mutation(result, result == 1);
 }
 
 bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约束
 {
+	if (!begin_persistent_mutation()) return false;
+	const auto operation = [&]() -> bool {
 	if (!dorm_to_add.is_empty())
 		return false;//禁止携带预填住客入库，所有入住必须经过school闭环
 	const building* b = buildingmanager::instance().get(dorm_to_add.get_building_id());
@@ -407,6 +422,8 @@ bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约�
 	if (dorm_to_add.get_for_gender() != 0 && !b->accepts_gender(dorm_to_add.get_for_gender()))
 		return false;//空宿舍预设性别锁必须被所在楼接纳
 	return dormmanager::instance().add_dorm(dorm_to_add);
+	};
+	return finish_persistent_mutation(operation());
 }
 
 int school::add_dorm(int building_id, int floor, int room_num, int max_num, int gender_lock)//扩层与新增宿舍统一事务
@@ -466,7 +483,9 @@ int school::add_dorm(int building_id, int floor, int room_num, int max_num, int 
 
 int school::set_dorm_max_num(int building_id, int dorm_id, int max_num)//修改宿舍最大床位数
 {
-	return dormmanager::instance().set_dorm_max_num(building_id, dorm_id, max_num);
+	if (!begin_persistent_mutation()) return -102;
+	const int result = dormmanager::instance().set_dorm_max_num(building_id, dorm_id, max_num);
+	return finish_persistent_mutation(result, result == 1);
 }
 
 bool school::is_dorm_consistent(int building_id, int dorm_id) const//双向核对床位与学生位置字段
@@ -494,6 +513,8 @@ bool school::is_dorm_consistent(int building_id, int dorm_id) const//双向核�
 
 bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清退住客
 {
+	if (!begin_persistent_mutation()) return false;
+	const auto operation = [&]() -> bool {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id))
 		return false;
 	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
@@ -514,10 +535,14 @@ bool school::remove_dorm(int building_id, int dorm_id)//删除宿舍并同步清
 	for (int student_id : student_ids)
 		studentmanager::instance().clear_dorm_info(student_id);
 	return true;
+	};
+	return finish_persistent_mutation(operation());
 }
 
 bool school::remove_building(int building_id)//删除宿舍楼并级联处理楼内宿舍
 {
+	if (!begin_persistent_mutation()) return false;
+	const auto operation = [&]() -> bool {
 	if (!check::is_valid_building_id(building_id) || buildingmanager::instance().get(building_id) == nullptr)
 		return false;
 	QVector<QPair<int, int>> keys = dormmanager::instance().all_dorm_keys();
@@ -528,10 +553,14 @@ bool school::remove_building(int building_id)//删除宿舍楼并级联处理楼
 		if (key.first == building_id && !remove_dorm(key.first, key.second))
 			return false;
 	return buildingmanager::instance().remove_building(building_id);
+	};
+	return finish_persistent_mutation(operation());
 }
 
 int school::set_building_gender(int building_id, int gender)//修改楼适用性别
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_building_gender(gender))
 		return -1;
 	if (buildingmanager::instance().get(building_id) == nullptr)
@@ -553,10 +582,15 @@ int school::set_building_gender(int building_id, int gender)//修改楼适用性
 		}
 	}
 	return buildingmanager::instance().set_building_gender(building_id, gender);
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::set_building_max_floor(int building_id, int max_floor)//修改楼最大楼层
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_max_floor(max_floor))
 		return -1;
 	if (buildingmanager::instance().get(building_id) == nullptr)
@@ -565,10 +599,15 @@ int school::set_building_max_floor(int building_id, int max_floor)//修改楼最
 		if (key.first == building_id && !check::is_valid_dorm_floor(key.second, max_floor))
 			return -2;//既有宿舍派生楼层超出新上限
 	return buildingmanager::instance().set_building_max_floor(building_id, max_floor);
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::set_dorm_gender(int building_id, int dorm_id, int gender)//设置房间性别锁
 {
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
 	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id) || !check::is_valid_gender(gender))
 		return -1;
 	const dorm* d = dormmanager::instance().get(building_id, dorm_id);
@@ -589,6 +628,9 @@ int school::set_dorm_gender(int building_id, int dorm_id, int gender)//设置房
 		}
 	}
 	return dormmanager::instance().set_dorm_gender(building_id, dorm_id, gender);
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
 }
 
 int school::assign_student_to_dorm(int building_id, int dorm_id, int student_id)//入住指定宿舍并自动分配最小空床位
@@ -1346,6 +1388,8 @@ bool school::resolve_persistence_conflict(bool use_executable_data)//确认双�
 		? (writable ? persistence_start_status::ready : persistence_start_status::read_only_unwritable)
 		: (writable ? persistence_start_status::fallback_ready : persistence_start_status::read_only_unwritable);
 	return true;
+	};
+	return finish_persistent_mutation(operation());
 }
 
 bool school::is_persistence_ready() const
