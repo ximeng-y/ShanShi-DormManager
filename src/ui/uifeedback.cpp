@@ -4,6 +4,7 @@
 #include "core/school.h"
 
 #include <QAbstractButton>
+#include <QDialog>
 #include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -37,6 +38,16 @@ bool show_persistence_error(QWidget* parent)
 	const QString message = school::instance().take_persistence_error(&error_code);
 	if (error_code != -100 && error_code != -101 && error_code != -102)
 		return false;
+	QDialog* active_business_dialog = nullptr;
+	if (error_code == -101 || error_code == -102)
+	{
+		QWidget* current = parent;
+		while (current != nullptr && active_business_dialog == nullptr)
+		{
+			active_business_dialog = qobject_cast<QDialog*>(current);
+			current = current->parentWidget();
+		}
+	}
 	lock_main_window_if_needed(parent, error_code);
 	const QMessageBox::Icon icon = error_code == -101 ? QMessageBox::Critical : QMessageBox::Warning;
 	const QString title = error_code == -100 ? QStringLiteral("操作未保存")
@@ -44,6 +55,8 @@ bool show_persistence_error(QWidget* parent)
 	QMessageBox box(icon, title, message, QMessageBox::Ok, parent);
 	box.button(QMessageBox::Ok)->setText(QStringLiteral("关闭"));
 	box.exec();
+	if (active_business_dialog != nullptr)
+		active_business_dialog->reject();
 	return true;
 }
 

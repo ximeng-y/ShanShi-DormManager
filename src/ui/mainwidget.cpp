@@ -128,15 +128,11 @@ void MainWidget::show_persistence_startup_notice()
 		if (dialog.clickedButton() != executable_button && dialog.clickedButton() != fallback_button)
 		{
 			enter_read_only_mode();
-			uifeedback::show_critical(this, QStringLiteral("尚未选择数据"),
-				QStringLiteral("未选择本次使用的数据，系统将保持只读状态，不会执行任何修改。"));
 			return;
 		}
 		if (!current_school.resolve_persistence_conflict(use_executable))
 		{
 			enter_read_only_mode();
-			uifeedback::show_critical(this, QStringLiteral("无法加载所选数据"),
-				QStringLiteral("所选数据未能完整恢复，系统不会执行后续修改。"), current_school.last_persistence_error());
 			return;
 		}
 		conflict_resolved = true;
@@ -177,7 +173,7 @@ bool MainWidget::eventFilter(QObject* watched, QEvent* event)
 	{
 		QWidget* widget = qobject_cast<QWidget*>(watched);
 		if (widget != nullptr && widget->isEnabled())
-			QTimer::singleShot(0, widget, [widget]() { widget->setEnabled(false); });
+			widget->setEnabled(false);
 	}
 	return QWidget::eventFilter(watched, event);
 }
