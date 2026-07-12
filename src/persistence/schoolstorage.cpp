@@ -2,12 +2,18 @@
 
 #include "system/check.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QSet>
+#include <QSaveFile>
+#include <QStandardPaths>
 
 #include <algorithm>
 #include <cmath>
@@ -19,7 +25,162 @@ void set_error(QString* error, const QString& message)
 	if (error != nullptr)
 		*error = message;
 }
+}
 
+QString schoolstorage::executable_data_directory()
+{
+	return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("userdata"));
+}
+
+QString schoolstorage::fallback_data_directory()
+{
+	return QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(QStringLiteral("userdata"));
+}
+
+bool schoolstorage::directory_is_writable(const QString& directory, QString* error)
+{
+	QDir target;
+	if (!target.mkpath(directory))
+	{
+		set_error(error, QStringLiteral("无法创建数据目录：%1").arg(directory));
+		return false;
+	}
+	const QString probe_path = QDir(directory).filePath(QStringLiteral(".write-probe"));
+	QSaveFile probe(probe_path);
+	if (!probe.open(QIODevice::WriteOnly) || probe.write("ok") != 2 || !probe.commit())
+	{
+		set_error(error, QStringLiteral("数据目录不可写：%1").arg(directory));
+		probe.cancelWriting();
+		return false;
+	}
+	QFile::remove(probe_path);
+	return true;
+}
+
+void schoolstorage::set_data_directory(const QString& directory)
+{
+	current_directory = QDir::cleanPath(directory);
+}
+
+QString schoolstorage::data_directory() const
+{
+	return current_directory;
+}
+
+QString schoolstorage::primary_file_path() const
+{
+	return QDir(current_directory).filePath(QStringLiteral("school-data.json"));
+}
+
+QString schoolstorage::backup_file_path() const
+{
+	return QDir(current_directory).filePath(QStringLiteral("school-data.backup.json"));
+}
+
+storage_load_status schoolstorage::load_primary(schoolsnapshot& snapshot, QString* error) const
+{
+	return load_file(primary_file_path(), snapshot, error);
+}
+
+storage_load_status schoolstorage::load_backup(schoolsnapshot& snapshot, QString* error) const
+{
+	return load_file(backup_file_path(), snapshot, error);
+}
+
+storage_load_status schoolstorage::load_file(const QString& path, schoolsnapshot& snapshot, QString* error) const
+{
+	QFile file(path);
+	if (!file.exists())
+		return storage_load_status::not_found;
+	if (!file.open(QIODevice::ReadOnly))
+	{
+		set_error(error, QStringLiteral("无法读取数据文件：%1").arg(path));
+		return storage_load_status::io_error;
+	}
+	constexpr qint64 maximum_json_bytes = 32 * 1024 * 1024;
+	if (file.size() <= 0 || file.size() > maximum_json_bytes)
+	{
+		set_error(error, QStringLiteral("数据文件为空或超过32 MiB安全上限：%1").arg(path));
+		return storage_load_status::invalid;
+	}
+	const QByteArray data = file.readAll();
+	if (data.size() != file.size())
+	{
+		set_error(error, QStringLiteral("数据文件读取不完整：%1").arg(path));
+		return storage_load_status::io_error;
+	}
+	bool newer_version = false;
+	if (!decode_snapshot(data, snapshot, error, &newer_version))
+		return newer_version ? storage_load_status::newer_version : storage_load_status::invalid;
+	return storage_load_status::loaded;
+}
+
+bool schoolstorage::create_initial_file(const schoolsnapshot& empty_snapshot, QString* error)
+{
+	if (!QDir().mkpath(current_directory))
+	{
+		set_error(error, QStringLiteral("无法创建数据目录：%1").arg(current_directory));
+		return false;
+	}
+	if (QFileInfo::exists(primary_file_path()))
+	{
+		set_error(error, QStringLiteral("正式数据文件已经存在，拒绝覆盖。"));
+		return false;
+	}
+	const QByteArray data = encode_snapshot(empty_snapshot, error);
+	return !data.isEmpty() && write_atomic(primary_file_path(), data, error);
+}
+
+bool schoolstorage::archive_invalid_file(const QString& source_path, QString* archived_path, QString* error) const
+{
+	if (!QFileInfo::exists(source_path))
+		return true;
+	const QString recovery_directory = QDir(current_directory).filePath(QStringLiteral("recovery"));
+	if (!QDir().mkpath(recovery_directory))
+	{
+		set_error(error, QStringLiteral("无法创建损坏文件保留目录。"));
+		return false;
+	}
+	const QFileInfo source_info(source_path);
+	const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz"));
+	const QString destination = QDir(recovery_directory).filePath(
+		QStringLiteral("%1.corrupt-%2.%3").arg(source_info.completeBaseName(), timestamp, source_info.suffix()));
+	QFile source(source_path);
+	if (!source.open(QIODevice::ReadOnly))
+	{
+		set_error(error, QStringLiteral("无法读取待保留的损坏文件。"));
+		return false;
+	}
+	if (!write_atomic(destination, source.readAll(), error))
+		return false;
+	if (archived_path != nullptr)
+		*archived_path = destination;
+	return true;
+}
+
+bool schoolstorage::write_atomic(const QString& path, const QByteArray& data, QString* error)
+{
+	QSaveFile file(path);
+	if (!file.open(QIODevice::WriteOnly))
+	{
+		set_error(error, QStringLiteral("无法打开文件进行写入：%1").arg(path));
+		return false;
+	}
+	if (file.write(data) != data.size())
+	{
+		file.cancelWriting();
+		set_error(error, QStringLiteral("文件写入不完整：%1").arg(path));
+		return false;
+	}
+	if (!file.commit())
+	{
+		set_error(error, QStringLiteral("无法原子提交文件：%1").arg(path));
+		return false;
+	}
+	return true;
+}
+
+namespace {
 bool read_int(const QJsonObject& object, const QString& key, int& value)
 {
 	const QJsonValue json_value = object.value(key);
