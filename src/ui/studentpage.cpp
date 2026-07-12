@@ -287,8 +287,6 @@ void StudentPage::apply_filters()
 
 	{
 		const QSignalBlocker table_blocker(ui->studentTable);
-		const bool updates_were_enabled = ui->studentTable->updatesEnabled();
-		ui->studentTable->setUpdatesEnabled(false);
 		ui->studentTable->clearSelection();
 		ui->studentTable->setCurrentCell(-1, -1);
 		ui->studentTable->setRowCount(matched_ids.size());
@@ -322,7 +320,6 @@ void StudentPage::apply_filters()
 		}
 		ui->studentTable->resizeColumnsToContents();
 		ui->studentTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
-		ui->studentTable->setUpdatesEnabled(updates_were_enabled);
 	}
 
 	ui->resultCountLabel->setText(matched_ids.isEmpty()
