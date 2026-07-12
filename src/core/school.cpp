@@ -950,6 +950,80 @@ int school::assign_all_students_random()//为当前未入住学生随机补分�
 	return failed;
 }
 
+QVector<accommodation_data_issue> school::collect_accommodation_issues() const//逐床核对全校住宿数据
+{
+	QVector<accommodation_data_issue> issues;
+	QSet<int> students_in_beds;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* d = dormmanager::instance().get(key.first, key.second);
+		const building* b = buildingmanager::instance().get(key.first);
+		if (d == nullptr || b == nullptr)
+		{
+			issues.append({0, key.first, key.second, QStringLiteral("宿舍或所属宿舍楼不存在。")});
+			continue;
+		}
+		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+		{
+			const int student_id = d->get_student_id(bed_id);
+			if (student_id <= 0)
+				continue;
+			if (students_in_beds.contains(student_id))
+			{
+				issues.append({student_id, key.first, key.second, QStringLiteral("同一名学生出现在多个床位中。")});
+				continue;
+			}
+			students_in_beds.insert(student_id);
+			const student* s = studentmanager::instance().get(student_id);
+			if (s == nullptr)
+			{
+				issues.append({student_id, key.first, key.second, QStringLiteral("床位中的学生档案不存在。")});
+				continue;
+			}
+			if (s->get_building_id() != key.first || s->get_dorm_id() != key.second
+				|| s->get_bed_id() != bed_id || s->get_floor() != d->get_floor())
+				issues.append({student_id, key.first, key.second, QStringLiteral("学生登记的住宿位置与实际床位不一致。")});
+			if (!b->accepts_gender(s->get_gender()) || !d->accepts_gender(s->get_gender()))
+				issues.append({student_id, key.first, key.second, QStringLiteral("学生性别不符合宿舍楼或宿舍性别锁要求。")});
+		}
+	}
+
+	for (int student_id : studentmanager::instance().all_ids())
+	{
+		const student* s = studentmanager::instance().get(student_id);
+		if (s == nullptr)
+			continue;
+		const bool all_empty = s->get_building_id() == 0 && s->get_dorm_id() == 0
+			&& s->get_bed_id() == 0 && s->get_floor() == 0;
+		const bool all_assigned = s->get_building_id() > 0 && s->get_dorm_id() > 0
+			&& s->get_bed_id() > 0 && s->get_floor() > 0;
+		if (!all_empty && !all_assigned)
+		{
+			issues.append({student_id, s->get_building_id(), s->get_dorm_id(), QStringLiteral("学生住宿位置字段不完整。")});
+			continue;
+		}
+		if (all_empty && students_in_beds.contains(student_id))
+			issues.append({student_id, 0, 0, QStringLiteral("学生登记为未入住，但实际床位仍有记录。")});
+		else if (all_assigned && !students_in_beds.contains(student_id))
+			issues.append({student_id, s->get_building_id(), s->get_dorm_id(), QStringLiteral("学生登记为已入住，但对应床位没有该学生。")});
+	}
+	return issues;
+}
+
+batch_assignment_preview school::preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const//生成未入住学生补分预览基础信息
+{
+	batch_assignment_preview preview;
+	preview.strategy = strategy;
+	preview.random_seed = random_seed;
+	preview.issues = collect_accommodation_issues();
+	if (!preview.issues.isEmpty())
+		return preview;
+	preview.unassigned_student_ids = get_unassigned_student_ids();
+	preview.candidate_count = preview.unassigned_student_ids.size();
+	preview.available_bed_count = get_empty_bed_count();
+	return preview;
+}
+
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
 	clear_all_dorms_reset_gender();

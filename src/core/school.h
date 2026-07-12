@@ -3,11 +3,49 @@
 
 #include <QVector>
 #include <QPair>
+#include <QString>
 
 class student;
 class dorm;
 class building;
-class QString;
+
+enum class assignment_strategy
+{
+	random,
+	fill_occupied_first
+};
+
+struct accommodation_change
+{
+	int student_id = 0;
+	int old_building_id = 0;
+	int old_dorm_id = 0;
+	int old_bed_id = 0;
+	int new_building_id = 0;
+	int new_dorm_id = 0;
+	int new_bed_id = 0;
+};
+
+struct accommodation_data_issue
+{
+	int student_id = 0;
+	int building_id = 0;
+	int dorm_id = 0;
+	QString message;
+};
+
+struct batch_assignment_preview
+{
+	assignment_strategy strategy = assignment_strategy::fill_occupied_first;
+	quint32 random_seed = 0;
+	int candidate_count = 0;
+	int available_bed_count = 0;
+	QVector<accommodation_change> changes;
+	QVector<int> unassigned_student_ids;
+	QVector<accommodation_data_issue> issues;
+
+	bool can_apply() const { return issues.isEmpty() && !changes.isEmpty(); }
+};
 
 //学校顶层协调类。负责组合 studentmanager、dormmanager、buildingmanager
 //完成涉及两个及以上同级 manager 的跨聚合业务，并向 UI 提供统一入口。
@@ -92,6 +130,7 @@ public:
 	//全校住宿分配。返回未能成功分配的人数(>=0, 0=全部安置)。
 	int assign_all_students_random();//补分，只处理当前未入住学生
 	int reassign_all_students_random();//重排，先清空全部宿舍并放开性别锁
+	batch_assignment_preview preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const;//生成未入住学生补分预览；发现住宿异常时只返回 issues
 
 	//宿舍集合协调
 	//单间清退返回值: >=0=成功(清退人数)  -1=参数非法  -8=宿舍不存在或住宿记录不一致
@@ -111,6 +150,7 @@ private:
 	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed);//调宿与换床共享实现
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
 	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
+	QVector<accommodation_data_issue> collect_accommodation_issues() const;//逐床核对全校住宿数据并返回面向UI的异常信息
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置
