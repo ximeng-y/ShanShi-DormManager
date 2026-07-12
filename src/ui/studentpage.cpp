@@ -357,7 +357,7 @@ void StudentPage::apply_filters()
 			};
 			for (int column = 0; column < values.size(); ++column) {
 				auto* item = new QTableWidgetItem(values.at(column));
-				item->setTextAlignment(column == 1 || column == 6 ? Qt::AlignVCenter | Qt::AlignLeft : Qt::AlignCenter);
+				item->setTextAlignment(column == 1 ? Qt::AlignVCenter | Qt::AlignLeft : Qt::AlignCenter);
 				if (column == 0) {
 					item->setData(Qt::UserRole, current_student->get_id());
 				}
