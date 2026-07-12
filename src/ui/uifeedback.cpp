@@ -1,5 +1,7 @@
 #include "uifeedback.h"
 
+#include "core/school.h"
+
 #include <QAbstractButton>
 #include <QEvent>
 #include <QFrame>
@@ -12,6 +14,21 @@
 #include <QWidget>
 
 namespace {
+bool show_persistence_error(QWidget* parent)
+{
+	int error_code = 0;
+	const QString message = school::instance().take_persistence_error(&error_code);
+	if (error_code != -100 && error_code != -101 && error_code != -102)
+		return false;
+	const QMessageBox::Icon icon = error_code == -101 ? QMessageBox::Critical : QMessageBox::Warning;
+	const QString title = error_code == -100 ? QStringLiteral("操作未保存")
+		: (error_code == -101 ? QStringLiteral("数据恢复失败") : QStringLiteral("当前为只读模式"));
+	QMessageBox box(icon, title, message, QMessageBox::Ok, parent);
+	box.button(QMessageBox::Ok)->setText(QStringLiteral("关闭"));
+	box.exec();
+	return true;
+}
+
 void set_button_role(QPushButton* button, const char* property_name)
 {
 	if (button == nullptr) {
@@ -88,6 +105,8 @@ private:
 
 void uifeedback::show_error(QWidget* parent, const QString& title, const QString& message, const QString& details)
 {
+	if (show_persistence_error(parent))
+		return;
 	QMessageBox box(QMessageBox::Warning, title, message, QMessageBox::Ok, parent);
 	box.button(QMessageBox::Ok)->setText(QStringLiteral("关闭"));
 	if (!details.isEmpty()) {
@@ -98,6 +117,8 @@ void uifeedback::show_error(QWidget* parent, const QString& title, const QString
 
 void uifeedback::show_critical(QWidget* parent, const QString& title, const QString& message, const QString& details)
 {
+	if (show_persistence_error(parent))
+		return;
 	QMessageBox box(QMessageBox::Critical, title, message, QMessageBox::Ok, parent);
 	box.button(QMessageBox::Ok)->setText(QStringLiteral("关闭"));
 	if (!details.isEmpty()) {

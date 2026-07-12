@@ -1460,6 +1460,16 @@ bool school::is_read_only() const { return read_only; }
 QString school::active_data_directory() const { return storage.data_directory(); }
 QString school::last_persistence_error() const { return persistence_error; }
 int school::last_persistence_error_code() const { return persistence_error_code; }
+QString school::take_persistence_error(int* error_code)
+{
+	if (error_code != nullptr)
+		*error_code = persistence_error_code;
+	if (persistence_error_code == 0)
+		return {};
+	const QString message = persistence_error;
+	persistence_error_code = 0;
+	return message;
+}
 persistence_start_status school::persistence_status() const { return current_persistence_status; }
 
 QString school::persistence_candidate_summary(bool executable_data) const

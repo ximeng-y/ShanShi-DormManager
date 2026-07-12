@@ -1,17 +1,25 @@
 #include "mainwidget.h"
 #include "./ui_mainwidget.h"
+#include "uifeedback.h"
+
+#include "core/school.h"
 
 #include <QButtonGroup>
+#include <QAbstractButton>
 #include <QCloseEvent>
+#include <QEvent>
 #include <QGuiApplication>
 #include <QList>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QSettings>
+#include <QShowEvent>
 #include <QStyle>
 #include <QStringList>
 #include <QWindow>
+#include <QTimer>
 
 MainWidget::MainWidget(QWidget *parent)
     : QWidget(parent)
@@ -84,6 +92,109 @@ void MainWidget::resizeEvent(QResizeEvent* event)
 	if (width() < 1180 && !sidebar_collapsed) {
 		set_sidebar_collapsed(true);
 	}
+}
+
+void MainWidget::showEvent(QShowEvent* event)
+{
+	QWidget::showEvent(event);
+	if (persistence_notice_shown)
+		return;
+	persistence_notice_shown = true;
+	QTimer::singleShot(0, this, &MainWidget::show_persistence_startup_notice);
+}
+
+void MainWidget::show_persistence_startup_notice()
+{
+	school& current_school = school::instance();
+	if (current_school.persistence_status() == persistence_start_status::data_conflict)
+	{
+		QMessageBox dialog(this);
+		dialog.setWindowTitle(QStringLiteral("选择宿舍数据"));
+		dialog.setIcon(QMessageBox::Question);
+		dialog.setText(QStringLiteral("程序目录和用户目录均存在有效宿舍数据，请选择本次使用的数据。"));
+		dialog.setInformativeText(QStringLiteral("程序目录数据\n%1\n\n用户目录数据\n%2")
+			.arg(current_school.persistence_candidate_summary(true), current_school.persistence_candidate_summary(false)));
+		QAbstractButton* executable_button = dialog.addButton(QStringLiteral("使用程序目录数据"), QMessageBox::AcceptRole);
+		QAbstractButton* fallback_button = dialog.addButton(QStringLiteral("使用用户目录数据"), QMessageBox::AcceptRole);
+		dialog.exec();
+		const bool use_executable = dialog.clickedButton() == executable_button;
+		if (dialog.clickedButton() != executable_button && dialog.clickedButton() != fallback_button)
+			return;
+		if (!current_school.resolve_persistence_conflict(use_executable))
+		{
+			uifeedback::show_critical(this, QStringLiteral("无法加载所选数据"),
+				QStringLiteral("所选数据未能完整恢复，系统不会执行后续修改。"), current_school.last_persistence_error());
+			return;
+		}
+		refresh_all_pages();
+	}
+
+	switch (current_school.persistence_status())
+	{
+	case persistence_start_status::fallback_ready:
+		uifeedback::show_information(this, QStringLiteral("数据目录已切换"),
+			QStringLiteral("程序目录不可写，本次将自动保存到用户数据目录：\n%1").arg(current_school.active_data_directory()));
+		break;
+	case persistence_start_status::backup_restored:
+		uifeedback::show_information(this, QStringLiteral("已从备份恢复"),
+			QStringLiteral("检测到正式数据文件无法使用，系统已恢复上一次成功保存的数据。损坏文件已保留在 recovery 文件夹中。"));
+		break;
+	case persistence_start_status::read_only_corrupt:
+	case persistence_start_status::read_only_unwritable:
+	case persistence_start_status::read_only_newer_version:
+		lock_read_only_controls();
+		uifeedback::show_critical(this, QStringLiteral("已进入只读安全模式"),
+			QStringLiteral("当前数据无法安全保存，系统不会允许修改数据。"), current_school.last_persistence_error());
+		break;
+	default:
+		break;
+	}
+}
+
+bool MainWidget::eventFilter(QObject* watched, QEvent* event)
+{
+	if (event->type() == QEvent::EnabledChange && school::instance().is_read_only())
+	{
+		QWidget* widget = qobject_cast<QWidget*>(watched);
+		if (widget != nullptr && widget->isEnabled())
+			QTimer::singleShot(0, widget, [widget]() { widget->setEnabled(false); });
+	}
+	return QWidget::eventFilter(watched, event);
+}
+
+void MainWidget::lock_read_only_controls()
+{
+	static const QStringList write_control_names = {
+		QStringLiteral("generateSampleDataButton"), QStringLiteral("addStudentButton"),
+		QStringLiteral("editStudentButton"), QStringLiteral("saveEditButton"),
+		QStringLiteral("accommodationActionButton"), QStringLiteral("moreActionButton"),
+		QStringLiteral("addBuildingButton"), QStringLiteral("addDormButton"),
+		QStringLiteral("buildingActionButton"), QStringLiteral("editDormButton"),
+		QStringLiteral("removeDormButton"), QStringLiteral("clearDormButton"),
+		QStringLiteral("assignSelectedBedButton"), QStringLiteral("removeSelectedBedButton"),
+		QStringLiteral("moveWithinDormButton"), QStringLiteral("moveToOtherDormButton"),
+		QStringLiteral("assignSubmitButton"), QStringLiteral("removeSubmitButton"),
+		QStringLiteral("moveSubmitButton"), QStringLiteral("swapSubmitButton"),
+		QStringLiteral("batchAssignmentButton"), QStringLiteral("dormAdjustmentButton"),
+		QStringLiteral("batchClearButton")
+	};
+	for (const QString& name : write_control_names)
+	{
+		QWidget* control = findChild<QWidget*>(name);
+		if (control == nullptr)
+			continue;
+		control->setEnabled(false);
+		control->installEventFilter(this);
+		control->setToolTip(QStringLiteral("当前处于只读安全模式，不能修改数据。"));
+	}
+}
+
+void MainWidget::refresh_all_pages()
+{
+	ui->overviewPage->refresh_data();
+	ui->studentPage->refresh_data();
+	ui->dormResourcePage->refresh_data();
+	ui->accommodationPage->refresh_data();
 }
 
 void MainWidget::switch_page(int index)

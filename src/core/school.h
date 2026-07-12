@@ -158,6 +158,7 @@ public:
 	QString active_data_directory() const;
 	QString last_persistence_error() const;
 	int last_persistence_error_code() const;
+	QString take_persistence_error(int* error_code = nullptr);//读取并清除待显示的持久化错误
 	persistence_start_status persistence_status() const;
 	QString persistence_candidate_summary(bool executable_data) const;//返回冲突候选的目录、保存时间及对象数量
 
