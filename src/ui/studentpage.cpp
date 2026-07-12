@@ -191,6 +191,8 @@ StudentPage::StudentPage(QWidget* parent)
 	});
 	connect(ui->cancelEditButton, &QPushButton::clicked, this, &StudentPage::cancel_edit_student);
 	connect(ui->saveEditButton, &QPushButton::clicked, this, &StudentPage::save_student_changes);
+	connect(ui->editClassSpin, &QSpinBox::valueChanged, this, [this]() { refresh_edit_student_id_preview(); });
+	connect(ui->editGradeSpin, &QSpinBox::valueChanged, this, [this]() { refresh_edit_student_id_preview(); });
 	ui->detailPanel->show();
 	clear_student_summary();
 	setTabOrder(ui->addStudentButton, ui->searchLineEdit);
@@ -437,6 +439,7 @@ void StudentPage::start_edit_student()
 	ui->editNameLineEdit->setText(current_student->get_name());
 	ui->editClassSpin->setValue(current_student->get_class_num());
 	ui->editGradeSpin->setValue(current_student->get_grade());
+	refresh_edit_student_id_preview();
 	ui->detailContent->hide();
 	ui->detailHintLabel->hide();
 	ui->editContent->show();
@@ -498,7 +501,6 @@ void StudentPage::save_student_changes()
 
 	school& current_school = school::instance();
 	bool name_changed = false;
-	bool class_changed = false;
 	if (change_name) {
 		name_changed = current_school.set_student_name(selected_student_id, new_name) == 1;
 		if (!name_changed) {
@@ -506,36 +508,53 @@ void StudentPage::save_student_changes()
 			return;
 		}
 	}
-	if (change_class) {
-		class_changed = current_school.set_student_class_num(selected_student_id, new_class_num) == 1;
-		if (!class_changed) {
-			const bool restored = !name_changed || current_school.set_student_name(selected_student_id, old_name) == 1;
-			if (!restored) {
-				uifeedback::show_critical(this, QStringLiteral("资料恢复失败"), QStringLiteral("班级修改失败，且姓名未能恢复。请暂停后续操作并核查学生资料。"));
+	if (change_class || change_grade) {
+		const int academic_result = current_school.change_student_academic_info(selected_student_id, new_grade, new_class_num);
+		if (academic_result <= 0) {
+			const bool name_restored = !name_changed || current_school.set_student_name(selected_student_id, old_name) == 1;
+			if (academic_result == -6 || !name_restored) {
+				uifeedback::show_critical(this, QStringLiteral("资料恢复失败"), QStringLiteral("学号与学籍迁移失败，且原资料未能完整恢复。请暂停后续操作并核查学生与床位记录。"));
 			} else {
-				uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生班级未能保存，已恢复原资料。"));
+				const QString detail = academic_result == -8 ? QStringLiteral("学生位置与宿舍床位记录不一致。")
+					: academic_result == -9 ? QStringLiteral("目标年级的学号序号已经耗尽。")
+					: academic_result == -2 ? QStringLiteral("目标学号或同年级序号发生冲突。")
+					: QStringLiteral("原学生编码异常或迁移未能完成，姓名修改已恢复。");
+				uifeedback::show_error(this, QStringLiteral("无法修改资料"), detail);
 			}
 			set_student_directory_enabled(true);
 			refresh_data();
 			return;
 		}
-	}
-	if (change_grade && current_school.set_student_grade(selected_student_id, new_grade) != 1) {
-		const bool class_restored = !class_changed || current_school.set_student_class_num(selected_student_id, old_class_num) == 1;
-		const bool name_restored = !name_changed || current_school.set_student_name(selected_student_id, old_name) == 1;
-		if (!class_restored || !name_restored) {
-			uifeedback::show_critical(this, QStringLiteral("资料恢复失败"), QStringLiteral("年级修改失败，且原资料未能完整恢复。请暂停后续操作并核查学生资料。"));
-		} else {
-			uifeedback::show_error(this, QStringLiteral("无法修改资料"), QStringLiteral("学生年级未能保存，已恢复原资料。"));
-		}
-		set_student_directory_enabled(true);
-		refresh_data();
-		return;
+		selected_student_id = academic_result;
 	}
 
 	set_student_directory_enabled(true);
 	refresh_data();
 	uifeedback::show_success(this, QStringLiteral("学生基础资料已更新。"));
+}
+
+void StudentPage::refresh_edit_student_id_preview()//预览年级班级变化后的新学号
+{
+	const student* current_student = school::instance().get_student(selected_student_id);
+	if (current_student == nullptr) {
+		ui->editStudentIdPreviewLabel->setText(QStringLiteral("—"));
+		return;
+	}
+	const int new_grade = ui->editGradeSpin->value();
+	const int new_class_num = ui->editClassSpin->value();
+	int preview_id = 0;
+	QString explanation;
+	if (new_grade == current_student->get_grade()) {
+		preview_id = check::make_student_id(new_grade, new_class_num,
+			check::student_id_sequence(current_student->get_id()));
+		explanation = QStringLiteral("后四位保持不变");
+	} else {
+		preview_id = school::instance().suggest_student_id(new_grade, new_class_num);
+		explanation = QStringLiteral("进入目标年级并分配最小可用序号");
+	}
+	ui->editStudentIdPreviewLabel->setText(preview_id > 0
+		? QStringLiteral("%1（%2）").arg(preview_id).arg(explanation)
+		: QStringLiteral("暂无法生成：目标年级序号耗尽或存在异常记录"));
 }
 
 void StudentPage::set_student_directory_enabled(bool enabled)
