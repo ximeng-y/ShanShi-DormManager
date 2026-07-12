@@ -80,12 +80,10 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->verticalHeader()->setVisible(false);
 	ui->studentTable->verticalHeader()->setDefaultSectionSize(42);
 	ui->studentTable->horizontalHeader()->setStretchLastSection(true);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-	ui->studentTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+	for (int column = 0; column < 6; ++column) {
+		ui->studentTable->horizontalHeader()->setSectionResizeMode(column, QHeaderView::Interactive);
+	}
+	ui->studentTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
 	ui->studentTable->setAccessibleName(QStringLiteral("学生目录"));
 	ui->studentTable->setAccessibleDescription(QStringLiteral("使用方向键选择学生，按回车打开完整只读详情。"));
 	ui->hideDetailButton->setAccessibleName(QStringLiteral("收起学生详情面板"));
@@ -287,36 +285,44 @@ void StudentPage::apply_filters()
 		}
 	}
 
-	ui->studentTable->clearSelection();
-	ui->studentTable->setCurrentCell(-1, -1);
-	ui->studentTable->setRowCount(matched_ids.size());
-	for (int row = 0; row < matched_ids.size(); ++row) {
-		const student* current_student = current_school.get_student(matched_ids.at(row));
-		if (current_student == nullptr) {
-			continue;
-		}
-		const bool assigned = assigned_ids.contains(current_student->get_id());
-		const QStringList values = {
-			QString::number(current_student->get_id()),
-			current_student->get_name(),
-			student_gender_text(current_student->get_gender()),
-			QStringLiteral("%1班").arg(current_student->get_class_num()),
-			QString::number(current_student->get_grade()),
-			assigned ? QStringLiteral("已入住") : QStringLiteral("未入住"),
-			student_accommodation_text(*current_student, assigned)
-		};
-		for (int column = 0; column < values.size(); ++column) {
-			auto* item = new QTableWidgetItem(values.at(column));
-			item->setTextAlignment(column == 1 || column == 6 ? Qt::AlignVCenter | Qt::AlignLeft : Qt::AlignCenter);
-			if (column == 0) {
-				item->setData(Qt::UserRole, current_student->get_id());
+	{
+		const QSignalBlocker table_blocker(ui->studentTable);
+		const bool updates_were_enabled = ui->studentTable->updatesEnabled();
+		ui->studentTable->setUpdatesEnabled(false);
+		ui->studentTable->clearSelection();
+		ui->studentTable->setCurrentCell(-1, -1);
+		ui->studentTable->setRowCount(matched_ids.size());
+		for (int row = 0; row < matched_ids.size(); ++row) {
+			const student* current_student = current_school.get_student(matched_ids.at(row));
+			if (current_student == nullptr) {
+				continue;
 			}
-			if (column == 6 && values.at(column) == QStringLiteral("住宿记录异常")) {
-				item->setForeground(QBrush(QColor(QStringLiteral("#a23333"))));
-				item->setToolTip(QStringLiteral("学生位置字段与公开入住状态不一致，请核查数据。"));
+			const bool assigned = assigned_ids.contains(current_student->get_id());
+			const QStringList values = {
+				QString::number(current_student->get_id()),
+				current_student->get_name(),
+				student_gender_text(current_student->get_gender()),
+				QStringLiteral("%1班").arg(current_student->get_class_num()),
+				QString::number(current_student->get_grade()),
+				assigned ? QStringLiteral("已入住") : QStringLiteral("未入住"),
+				student_accommodation_text(*current_student, assigned)
+			};
+			for (int column = 0; column < values.size(); ++column) {
+				auto* item = new QTableWidgetItem(values.at(column));
+				item->setTextAlignment(column == 1 || column == 6 ? Qt::AlignVCenter | Qt::AlignLeft : Qt::AlignCenter);
+				if (column == 0) {
+					item->setData(Qt::UserRole, current_student->get_id());
+				}
+				if (column == 6 && values.at(column) == QStringLiteral("住宿记录异常")) {
+					item->setForeground(QBrush(QColor(QStringLiteral("#a23333"))));
+					item->setToolTip(QStringLiteral("学生位置字段与公开入住状态不一致，请核查数据。"));
+				}
+				ui->studentTable->setItem(row, column, item);
 			}
-			ui->studentTable->setItem(row, column, item);
 		}
+		ui->studentTable->resizeColumnsToContents();
+		ui->studentTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
+		ui->studentTable->setUpdatesEnabled(updates_were_enabled);
 	}
 
 	ui->resultCountLabel->setText(matched_ids.isEmpty()
