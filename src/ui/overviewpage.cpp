@@ -39,6 +39,8 @@ OverviewPage::OverviewPage(QWidget* parent)
 	ui->setupUi(this);
 	ui->emptyBedInfoButton->set_information(ui->emptyBedInfoButton->toolTip());
 	ui->sampleDataInfoButton->set_information(ui->sampleDataInfoButton->toolTip());
+	ui->persistenceInfoButton->set_information(QStringLiteral("数据将在每次成功操作后自动保存。\n当前目录：%1\n文件：school-data.json")
+		.arg(school::instance().active_data_directory().isEmpty() ? QStringLiteral("尚未选择") : school::instance().active_data_directory()));
 	ui->generateSampleDataButton->setAccessibleName(QStringLiteral("生成随机样例数据"));
 	ui->buildingCapacityTable->setAccessibleName(QStringLiteral("宿舍楼容量概况"));
 	ui->buildingCapacityTable->setAccessibleDescription(QStringLiteral("双击某行可在宿舍资源页打开对应楼栋。"));

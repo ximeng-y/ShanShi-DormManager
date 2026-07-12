@@ -47,6 +47,7 @@
        </item>
       </layout>
      </item>
+     <item><widget class="infobutton" name="persistenceInfoButton"><property name="toolTip"><string>数据将在每次成功操作后自动保存。</string></property></widget></item>
      <item>
       <spacer name="headingSpacer">
        <property name="orientation">
