@@ -404,6 +404,58 @@ bool school::add_dorm(const dorm& dorm_to_add)//添加宿舍并校验楼级约�
 	return dormmanager::instance().add_dorm(dorm_to_add);
 }
 
+int school::add_dorm(int building_id, int floor, int room_num, int max_num, int gender_lock)//扩层与新增宿舍统一事务
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_floor(floor, 99)
+		|| !check::is_valid_dorm_room_num(room_num) || max_num < 1 || max_num > 99
+		|| !check::is_valid_gender(gender_lock))
+		return -1;
+	const building* current_building = buildingmanager::instance().get(building_id);
+	if (current_building == nullptr)
+		return 0;
+	const int original_max_floor = current_building->get_max_floor();
+	if (floor > original_max_floor + 1)
+		return -1;
+	if (gender_lock != 0 && !current_building->accepts_gender(gender_lock))
+		return -3;
+	if (suggest_dorm_id(building_id, floor) == -9)
+		return -9;
+	const int dorm_id = check::make_dorm_id(floor, room_num);
+	if (dormmanager::instance().get(building_id, dorm_id) != nullptr)
+		return -2;
+	const bool expands_building = floor == original_max_floor + 1;
+	if (expands_building && set_building_max_floor(building_id, floor) != 1)
+		return -5;
+
+	dorm new_dorm;
+	const bool initialized = new_dorm.set_building_id(building_id)
+		&& new_dorm.set_id(dorm_id) && new_dorm.set_max_num(max_num);
+	bool dorm_added = initialized && add_dorm(new_dorm);
+	bool gender_set = dorm_added && (gender_lock == 0 || set_dorm_gender(building_id, dorm_id, gender_lock) == 1);
+	if (gender_set)
+	{
+		const building* updated_building = buildingmanager::instance().get(building_id);
+		const dorm* added_dorm = dormmanager::instance().get(building_id, dorm_id);
+		if (updated_building != nullptr && updated_building->get_max_floor() == (expands_building ? floor : original_max_floor)
+			&& added_dorm != nullptr && added_dorm->get_building_id() == building_id
+			&& added_dorm->get_id() == dorm_id && added_dorm->get_max_num() == max_num
+			&& added_dorm->get_for_gender() == gender_lock)
+			return dorm_id;
+	}
+
+	bool dorm_removed = true;
+	if (dorm_added)
+		dorm_removed = remove_dorm(building_id, dorm_id);
+	bool floor_restored = true;
+	if (expands_building)
+		floor_restored = set_building_max_floor(building_id, original_max_floor) == 1;
+	const building* restored_building = buildingmanager::instance().get(building_id);
+	const bool restored = dorm_removed && floor_restored && restored_building != nullptr
+		&& restored_building->get_max_floor() == original_max_floor
+		&& dormmanager::instance().get(building_id, dorm_id) == nullptr;
+	return restored ? -5 : -6;
+}
+
 int school::set_dorm_max_num(int building_id, int dorm_id, int max_num)//修改宿舍最大床位数
 {
 	return dormmanager::instance().set_dorm_max_num(building_id, dorm_id, max_num);

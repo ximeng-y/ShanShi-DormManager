@@ -57,6 +57,7 @@ public:
 	//返回值: 1=成功  0=楼号已存在  -1=参数非法
 	int add_building(int building_id, int gender, int max_floor);//添加宿舍楼
 	bool add_dorm(const dorm& dorm_to_add);//添加宿舍，false=字段非法/楼不存在/楼层或性别冲突/携带住客/复合键重复
+	int add_dorm(int building_id, int floor, int room_num, int max_num, int gender_lock);//统一新增，成功返回宿舍号，0=楼不存在/-1=参数非法/-2=已存在/-3=性别冲突/-5=失败已恢复/-6=恢复不完整/-9=本层用尽
 	//返回值: 1=成功  0=宿舍不存在  -1=参数非法  -2=缩容会丢弃已有住客
 	int set_dorm_max_num(int building_id, int dorm_id, int max_num);//修改宿舍最大床位数
 	bool remove_dorm(int building_id, int dorm_id);//删除宿舍并同步清退住客，false=参数非法/宿舍不存在/住宿记录不一致/删除失败
