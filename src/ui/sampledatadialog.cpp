@@ -5,14 +5,17 @@
 #include "uifeedback.h"
 
 #include <QApplication>
+#include <QCheckBox>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 #include <QScreen>
 #include <QShowEvent>
 #include <QSpinBox>
+#include <QStyle>
 
 #include <limits>
 
@@ -24,7 +27,7 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	ui->replaceInfoButton->set_information(ui->replaceInfoButton->toolTip());
 	ui->validationInfoButton->set_information(QStringLiteral("查看全部参数问题。"));
 	ui->appendRadio->setAccessibleName(QStringLiteral("追加到当前数据"));
-	ui->replaceRadio->setAccessibleName(QStringLiteral("清空后生成，前端Phase 2预留"));
+	ui->replaceRadio->setAccessibleName(QStringLiteral("清空现有数据后生成样例数据"));
 	ui->maleBuildingSpin->setAccessibleName(QStringLiteral("男生楼数量"));
 	ui->femaleBuildingSpin->setAccessibleName(QStringLiteral("女生楼数量"));
 	ui->mixedBuildingSpin->setAccessibleName(QStringLiteral("混合宿舍楼数量"));
@@ -57,6 +60,9 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 		connect(spin, &QSpinBox::valueChanged, this, &SampleDataDialog::refresh_preview_and_validation);
 	}
 	connect(ui->mixedBuildingSpin, &QSpinBox::valueChanged, this, &SampleDataDialog::update_mixed_controls);
+	connect(ui->appendRadio, &QRadioButton::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
+	connect(ui->replaceRadio, &QRadioButton::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
+	connect(ui->replaceRiskCheckBox, &QCheckBox::toggled, this, &SampleDataDialog::refresh_preview_and_validation);
 	connect(ui->seedLineEdit, &QLineEdit::textChanged, this, &SampleDataDialog::refresh_preview_and_validation);
 	connect(ui->regenerateSeedButton, &QPushButton::clicked, this, &SampleDataDialog::regenerate_seed);
 	connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &SampleDataDialog::attempt_generate);
@@ -118,7 +124,7 @@ void SampleDataDialog::showEvent(QShowEvent* event)
 sampledataconfig SampleDataDialog::current_config(bool* seed_valid) const
 {
 	sampledataconfig config;
-	config.mode = sampledatamode::append;
+	config.mode = ui->replaceRadio->isChecked() ? sampledatamode::replace_reserved : sampledatamode::append;
 	config.male_building_count = ui->maleBuildingSpin->value();
 	config.female_building_count = ui->femaleBuildingSpin->value();
 	config.mixed_building_count = ui->mixedBuildingSpin->value();
@@ -169,7 +175,7 @@ void SampleDataDialog::refresh_preview_and_validation()
 		.arg(config.floors_per_building * config.dorms_per_floor));
 	ui->previewValueLabel->setText(QStringLiteral("%1 栋楼 / %2 间宿舍 / %3 张床 / %4 名学生")
 		.arg(scale.building_count).arg(scale.dorm_count).arg(scale.bed_count).arg(scale.student_count));
-	ui->previewDetailLabel->setText(QStringLiteral("其中 %1 人入住，保留 %2 名未入住学生和至少 %3 间未锁定空宿舍。")
+	ui->previewDetailLabel->setText(QStringLiteral("其中 %1 人入住，保留 %2 名未入住学生和至少 %3 间宿舍性别锁未设置的空宿舍。")
 		.arg(scale.assigned_student_count).arg(scale.unassigned_student_count)
 		.arg(scale.reserved_unlocked_dorm_count));
 
@@ -190,7 +196,16 @@ void SampleDataDialog::refresh_preview_and_validation()
 	if (errors.size() > 1) {
 		ui->validationInfoButton->set_information(errors.join(QLatin1Char('\n')));
 	}
-	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(errors.isEmpty());
+	const bool replace_mode = config.mode == sampledatamode::replace_reserved;
+	ui->replaceImpactLabel->setVisible(replace_mode);
+	ui->replaceRiskCheckBox->setVisible(replace_mode);
+	ui->replaceImpactLabel->setText(QStringLiteral("将删除当前 %1 名学生、%2 间宿舍和 %3 栋宿舍楼，再生成新的样例数据。")
+		.arg(school::instance().get_student_count()).arg(school::instance().get_dorm_count()).arg(school::instance().get_building_count()));
+	ui->buttonBox->button(QDialogButtonBox::Ok)->setText(replace_mode ? QStringLiteral("清空并生成") : QStringLiteral("开始生成"));
+	ui->buttonBox->button(QDialogButtonBox::Ok)->setProperty("dangerButton", replace_mode);
+	ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(errors.isEmpty() && (!replace_mode || ui->replaceRiskCheckBox->isChecked()));
+	ui->buttonBox->button(QDialogButtonBox::Ok)->style()->unpolish(ui->buttonBox->button(QDialogButtonBox::Ok));
+	ui->buttonBox->button(QDialogButtonBox::Ok)->style()->polish(ui->buttonBox->button(QDialogButtonBox::Ok));
 }
 
 void SampleDataDialog::regenerate_seed()
@@ -212,6 +227,37 @@ void SampleDataDialog::attempt_generate()
 	}
 
 	const sampledatapreview scale = sampledatagenerator::preview(config);
+	if (config.mode == sampledatamode::replace_reserved) {
+		if (!ui->replaceRiskCheckBox->isChecked()) {
+			uifeedback::show_error(this, QStringLiteral("请确认数据替换风险"), QStringLiteral("请先勾选“我已了解现有数据将被全部删除并替换”。"));
+			return;
+		}
+		QString plan_error;
+		const sampledataplan plan = sampledatagenerator::create_replace_plan(config, school::instance(), &plan_error);
+		if (!plan_error.isEmpty()) {
+			uifeedback::show_error(this, QStringLiteral("无法生成样例数据计划"), plan_error);
+			return;
+		}
+		QApplication::setOverrideCursor(Qt::WaitCursor);
+		const int result = school::instance().replace_all_with_sample_data(plan);
+		QApplication::restoreOverrideCursor();
+		if (result == 1) {
+			generated_result.success = true;
+			generated_result.random_seed = config.random_seed;
+			generated_result.added_building_count = scale.building_count;
+			generated_result.added_dorm_count = scale.dorm_count;
+			generated_result.added_student_count = scale.student_count;
+			generated_result.assigned_student_count = scale.assigned_student_count;
+			uifeedback::show_information(this, QStringLiteral("样例数据替换完成"), QStringLiteral("已生成 %1 栋宿舍楼、%2 间宿舍和 %3 名学生，其中 %4 人已入住。")
+				.arg(scale.building_count).arg(scale.dorm_count).arg(scale.student_count).arg(scale.assigned_student_count));
+			accept();
+			return;
+		}
+		if (result == -6) uifeedback::show_critical(this, QStringLiteral("原数据恢复不完整"), QStringLiteral("样例数据生成失败，且未能完整恢复原数据。请暂停后续操作并核查学生、宿舍和床位。"));
+		else uifeedback::show_error(this, QStringLiteral("样例数据替换失败"), result == -8 ? QStringLiteral("现有住宿数据存在不一致，请先修复后再重试。") : QStringLiteral("新数据未能完整写入，原数据已恢复。"), QStringLiteral("业务返回值：%1").arg(result));
+		refresh_preview_and_validation();
+		return;
+	}
 	const QString confirmation = QStringLiteral(
 		"将向当前系统追加 %1 栋楼、%2 间宿舍和 %3 名学生，其中 %4 人将被安排入住。\n\n"
 		"现有数据不会被删除，随机种子为 %5。")
