@@ -25,6 +25,9 @@ public:
 	void select_building(int building_id);//定位指定楼栋并重置宿舍号与状态筛选
 	void select_dorm(int building_id, int dorm_id);//重置筛选并定位指定宿舍
 
+signals:
+	void student_open_requested(int student_id);//请求学生管理页定位当前床位住客
+
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新资源目录
 

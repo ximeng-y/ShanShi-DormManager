@@ -77,12 +77,28 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedTableView->setAccessibleName(QStringLiteral("床位与住客"));
 	ui->bedAreaInfoButton->set_information(ui->bedAreaInfoButton->toolTip());
 	ui->bedSelectionLabel->setAccessibleName(QStringLiteral("当前选中床位"));
+	ui->openStudentButton->setAccessibleName(QStringLiteral("跳转到当前床位住客页面"));
 	ui->assignSelectedBedButton->setAccessibleName(QStringLiteral("安排学生入住当前空床"));
 	ui->removeSelectedBedButton->setAccessibleName(QStringLiteral("办理当前床位住客退宿"));
 	ui->moveWithinDormButton->setAccessibleName(QStringLiteral("为当前住客选择本宿舍目标床位"));
 	ui->moveToOtherDormButton->setAccessibleName(QStringLiteral("将当前住客调往其他宿舍"));
 	ui->cancelBedActionButton->setAccessibleName(QStringLiteral("取消换床"));
 	update_bed_action_state(QModelIndex());
+	connect(ui->openStudentButton, &QPushButton::clicked, this, [this]() {
+		const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
+		const student* current_student = school::instance().get_student(selected_student_id);
+		if (current_dorm == nullptr || current_student == nullptr || selected_bed_id <= 0
+			|| current_dorm->get_student_id(selected_bed_id) != selected_student_id
+			|| current_student->get_building_id() != selected_building_id
+			|| current_student->get_dorm_id() != selected_dorm_id
+			|| current_student->get_bed_id() != selected_bed_id) {
+			uifeedback::show_error(this, QStringLiteral("无法跳转到学生页面"),
+				QStringLiteral("当前床位与学生住宿记录已经变化，请刷新后重试。"));
+			refresh_data();
+			return;
+		}
+		emit student_open_requested(selected_student_id);
+	});
 	connect(ui->assignSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::assign_selected_bed);
 	connect(ui->removeSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::remove_selected_occupant);
 	connect(ui->moveWithinDormButton, &QPushButton::clicked, this, &DormResourcePage::begin_within_dorm_bed_change);
@@ -470,6 +486,7 @@ void DormResourcePage::update_bed_action_state(const QModelIndex& index)
 	const bool occupied = index.data(bedtablemodel::occupied_role).toBool();
 	const bool record_valid = index.data(bedtablemodel::record_valid_role).toBool();
 	if (pending_move_student_id > 0) {
+		ui->openStudentButton->hide();
 		ui->assignSelectedBedButton->hide();
 		ui->removeSelectedBedButton->hide();
 		ui->moveWithinDormButton->hide();
@@ -507,6 +524,8 @@ void DormResourcePage::update_bed_action_state(const QModelIndex& index)
 
 	const bool available_empty_bed = selected_bed_id > 0 && record_valid && !occupied;
 	const bool available_occupant = selected_bed_id > 0 && record_valid && occupied;
+	ui->openStudentButton->setVisible(available_occupant);
+	ui->openStudentButton->setEnabled(available_occupant);
 	ui->assignSelectedBedButton->setVisible(available_empty_bed);
 	ui->assignSelectedBedButton->setEnabled(available_empty_bed);
 	ui->removeSelectedBedButton->setVisible(available_occupant);
