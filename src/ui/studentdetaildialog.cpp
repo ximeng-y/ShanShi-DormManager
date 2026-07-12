@@ -4,6 +4,8 @@
 #include "core/school.h"
 #include "core/student.h"
 
+#include <QLabel>
+
 namespace {
 QString detail_gender_text(int gender)
 {
@@ -22,6 +24,22 @@ StudentDetailDialog::StudentDetailDialog(int student_id, QWidget* parent)
 	, ui(new Ui::StudentDetailDialog)
 {
 	ui->setupUi(this);
+	const auto make_copyable = [](QLabel* label) {
+		label->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		label->setFocusPolicy(Qt::ClickFocus);
+		label->setCursor(Qt::IBeamCursor);
+		label->setToolTip(QStringLiteral("可选中文本并复制"));
+	};
+	make_copyable(ui->nameLabel);
+	make_copyable(ui->studentIdValueLabel);
+	make_copyable(ui->genderValueLabel);
+	make_copyable(ui->gradeValueLabel);
+	make_copyable(ui->classValueLabel);
+	make_copyable(ui->statusValueLabel);
+	make_copyable(ui->buildingValueLabel);
+	make_copyable(ui->dormValueLabel);
+	make_copyable(ui->floorValueLabel);
+	make_copyable(ui->bedValueLabel);
 	connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 	load_student(student_id);
 }
