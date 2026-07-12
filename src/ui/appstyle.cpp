@@ -144,6 +144,10 @@ QToolButton#sidebarToggleButton:hover {
 	background: #e9f0f6;
 }
 
+QToolButton#sidebarToggleButton:focus {
+	border: 2px solid #315f86;
+}
+
 QToolButton[infoButton="true"] {
 	padding: 0;
 	border: 1px solid #7890a4;
@@ -178,6 +182,10 @@ QFrame#sidebar QPushButton {
 QFrame#sidebar QPushButton:hover {
 	background: #274861;
 	color: #ffffff;
+}
+
+QFrame#sidebar QPushButton:focus {
+	border: 2px solid #8fb2cc;
 }
 
 QFrame#sidebar QPushButton:checked {
@@ -373,6 +381,17 @@ QComboBox QAbstractItemView {
 	color: #243447;
 	selection-background-color: #dceaf5;
 	selection-color: #17324d;
+}
+
+QTableView:disabled,
+QTreeView:disabled,
+QListView:disabled {
+	border-color: #e1e6eb;
+	background: #f2f4f6;
+	alternate-background-color: #eef1f4;
+	color: #9ba8b4;
+	selection-background-color: #e1e6eb;
+	selection-color: #8795a2;
 }
 
 QHeaderView::section {
