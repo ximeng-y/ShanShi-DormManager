@@ -416,11 +416,12 @@ void AccommodationPage::refresh_assign_dorms()
 			if (candidate == nullptr || !candidate->accepts_gender(current_student->get_gender()) || candidate->is_full()) {
 				continue;
 			}
-			ui->assignDormSpin->addItem(QStringLiteral("%1室 · %2 · %3个空床")
+			ui->assignDormSpin->addItem(QStringLiteral("%1室 · %2 · 空床 %3/%4")
 				.arg(candidate->get_id())
 				.arg(candidate->get_for_gender() == 1 ? QStringLiteral("男舍")
 					: (candidate->get_for_gender() == 2 ? QStringLiteral("女舍") : QStringLiteral("性别锁未设置")))
-				.arg(candidate->get_empty_count()), candidate->get_id());
+				.arg(candidate->get_empty_count())
+				.arg(candidate->get_max_num()), candidate->get_id());
 		}
 	}
 	ui->assignDormSpin->setEnabled(strategy == 2 && ui->assignDormSpin->count() > 0);
