@@ -14,31 +14,9 @@
 #include <limits>
 
 namespace {
-struct plannedbuilding
-{
-	int id = 0;
-	int gender = 0;
-	int max_floor = 0;
-};
-
-struct planneddorm
-{
-	int building_id = 0;
-	int dorm_id = 0;
-	int max_num = 0;
-	int gender_lock = 0;
-};
-
-struct plannedstudent
-{
-	int id = 0;
-	QString name;
-	int gender = 0;
-	int class_num = 0;
-	int grade = 0;
-	int building_id = 0;
-	int dorm_id = 0;
-};
+using plannedbuilding = samplebuildingplan;
+using planneddorm = sampledormplan;
+using plannedstudent = samplestudentplan;
 
 template<typename T>
 void shuffle_items(QVector<T>& items, QRandomGenerator& random)
@@ -224,10 +202,6 @@ sampledatapreview sampledatagenerator::preview(const sampledataconfig& config)//
 QStringList sampledatagenerator::validate_config(const sampledataconfig& config, const school& current_school)//校验生成参数
 {
 	QStringList errors;
-	if (config.mode != sampledatamode::append) {
-		errors.append(QStringLiteral("清空后生成将在前端 Phase 2 收尾后实现，当前只能追加样例数据。"));
-	}
-
 	const sampledatapreview scale = preview(config);
 	if (config.male_building_count < 0 || config.female_building_count < 0 || config.mixed_building_count < 0
 		|| scale.building_count <= 0) {
@@ -236,7 +210,7 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 	if (scale.building_count > maximum_building_count) {
 		errors.append(QStringLiteral("单次生成的宿舍楼不能超过%1栋。").arg(maximum_building_count));
 	}
-	if (scale.building_count > 99 - current_school.get_building_count()) {
+	if (scale.building_count > 99 - (config.mode == sampledatamode::append ? current_school.get_building_count() : 0)) {
 		errors.append(QStringLiteral("剩余楼号不足，无法追加指定数量的宿舍楼。"));
 	}
 	if (config.floors_per_building < 1 || config.floors_per_building > 99
@@ -307,9 +281,8 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	QRandomGenerator random(config.random_seed);
 
 	QSet<int> used_building_ids;
-	for (int building_id : current_school.get_all_building_ids()) {
-		used_building_ids.insert(building_id);
-	}
+	if (config.mode == sampledatamode::append)
+		for (int building_id : current_school.get_all_building_ids()) used_building_ids.insert(building_id);
 	QVector<int> available_building_ids;
 	for (int building_id = 1; building_id <= 99; ++building_id) {
 		if (!used_building_ids.contains(building_id)) {
@@ -364,7 +337,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 
 	QHash<int, QSet<int>> used_sequences_by_grade;
 	QSet<int> used_student_ids;
-	for (int student_id : current_school.get_all_student_ids()) {
+	if (config.mode == sampledatamode::append) for (int student_id : current_school.get_all_student_ids()) {
 		used_student_ids.insert(student_id);
 		const student* existing_student = current_school.get_student(student_id);
 		if (existing_student == nullptr || existing_student->get_id() != student_id
@@ -544,6 +517,13 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	};
 	assign_students(male_student_indexes, config.male_assigned_count, male_dorm_indexes, male_coverage_dorms);
 	assign_students(female_student_indexes, config.female_assigned_count, female_dorm_indexes, female_coverage_dorms);
+	QHash<QString, int> next_bed_by_dorm;
+	for (plannedstudent& student_plan : result.students) {
+		if (student_plan.building_id == 0) continue;
+		const QString key = QStringLiteral("%1/%2").arg(student_plan.building_id).arg(student_plan.dorm_id);
+		student_plan.bed_id = next_bed_by_dorm.value(key, 0) + 1;
+		next_bed_by_dorm[key] = student_plan.bed_id;
+	}
 
 	for (int dorm_index : shared_dorm_indexes) {
 		if (!occupied_dorm_indexes.contains(dorm_index)) {
@@ -553,6 +533,25 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	if (result.remaining_unlocked_dorm_count < config.minimum_unlocked_empty_dorm_count) {
 		result.error_message = QStringLiteral("计划未能保留指定数量的未锁定空宿舍。");
 	}
+	return result;
+}
+
+sampledataplan sampledatagenerator::create_replace_plan(const sampledataconfig& config, const school& current_school, QString* error_message)//创建清空后生成固定计划
+{
+	sampledataconfig replace_config = config;
+	replace_config.mode = sampledatamode::replace_reserved;
+	const QStringList errors = validate_config(replace_config, current_school);
+	if (!errors.isEmpty()) {
+		if (error_message != nullptr) *error_message = errors.join(QLatin1Char('\n'));
+		return {};
+	}
+	const plan generated = create_plan(replace_config, current_school);
+	if (error_message != nullptr) *error_message = generated.error_message;
+	if (!generated.error_message.isEmpty()) return {};
+	sampledataplan result;
+	result.buildings = generated.buildings;
+	result.dorms = generated.dorms;
+	result.students = generated.students;
 	return result;
 }
 

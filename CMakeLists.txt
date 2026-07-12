@@ -104,6 +104,7 @@ set(PROJECT_SOURCES
         src/core/buildingmanager.h
         src/core/school.cpp
         src/core/school.h
+        src/core/sampledataplan.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

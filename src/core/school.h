@@ -4,6 +4,7 @@
 #include <QVector>
 #include <QPair>
 #include <QString>
+#include "sampledataplan.h"
 
 class student;
 class dorm;
@@ -235,6 +236,8 @@ public:
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿；一方为空时无操作成功
 	dorm_adjustment_preview preview_dorm_adjustment(int b1, int d1, int b2, int d2, dorm_adjustment_mode mode) const;//生成两间宿舍整体调整的固定预览
 	int apply_dorm_adjustment(const dorm_adjustment_preview& preview);//重新核对预览后分发至对应宿舍调整事务
+	//返回值: 1=成功  -1=样例计划非法  -5=写入失败且原数据已恢复  -6=原数据恢复不完整  -8=替换前住宿数据异常
+	int replace_all_with_sample_data(const sampledataplan& plan);//清空全部现有数据后按固定计划生成样例数据
 
 private:
 	struct dorm_accommodation_snapshot
@@ -248,6 +251,10 @@ private:
 	{
 		QVector<dorm_accommodation_snapshot> dorms;
 	};
+	struct school_data_snapshot
+	{
+		sampledataplan data;
+	};
 	school() = default;//构造函数，单例模式禁止外部实例化
 	int clear_dorm_impl(int building_id, int dorm_id, bool reset_gender);//清空单间宿舍的共享实现
 	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed);//调宿与换床共享实现
@@ -256,6 +263,11 @@ private:
 	QVector<accommodation_data_issue> collect_accommodation_issues() const;//逐床核对全校住宿数据并返回面向UI的异常信息
 	accommodation_snapshot take_accommodation_snapshot() const;//保存全校床位与宿舍性别锁，调用前应完成一致性检查
 	bool restore_accommodation_snapshot(const accommodation_snapshot& snapshot);//清空当前住宿后按原床位恢复快照
+	school_data_snapshot take_school_data_snapshot() const;//保存楼栋、宿舍、学生档案和具体床位
+	bool validate_sample_data_plan(const sampledataplan& plan) const;//校验样例计划内部引用、容量、学号和性别约束
+	bool purge_all_data();//事务内部清除三个manager当前全部对象
+	bool write_sample_data_plan(const sampledataplan& plan);//按楼栋、空宿舍、学生、指定床位顺序写入
+	bool restore_school_data_snapshot(const school_data_snapshot& snapshot);//清除残留后恢复完整原数据
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置

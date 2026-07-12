@@ -4,6 +4,7 @@
 #include <QString>
 #include <QStringList>
 #include <QtGlobal>
+#include "core/sampledataplan.h"
 
 class school;
 
@@ -79,6 +80,7 @@ public:
 	static sampledatapreview preview(const sampledataconfig& config);//计算预计新增规模
 	static QStringList validate_config(const sampledataconfig& config, const school& current_school);//返回全部参数问题，空表表示可继续规划
 	static sampledataresult generate(const sampledataconfig& config, school& current_school);//生成并追加样例数据，失败时补偿本次写入
+	static sampledataplan create_replace_plan(const sampledataconfig& config, const school& current_school, QString* error_message = nullptr);//为清空后生成建立固定计划
 
 private:
 	struct plan;

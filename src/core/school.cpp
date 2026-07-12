@@ -1052,6 +1052,128 @@ bool school::restore_accommodation_snapshot(const accommodation_snapshot& snapsh
 	return collect_accommodation_issues().isEmpty();
 }
 
+school::school_data_snapshot school::take_school_data_snapshot() const//保存全校完整数据快照
+{
+	school_data_snapshot snapshot;
+	for (int building_id : get_all_building_ids())
+	{
+		const building* b = get_building(building_id);
+		if (b != nullptr) snapshot.data.buildings.append({b->get_id(), b->get_for_gender(), b->get_max_floor()});
+	}
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d != nullptr) snapshot.data.dorms.append({key.first, key.second, d->get_max_num(), d->get_for_gender()});
+	}
+	for (int student_id : get_all_student_ids())
+	{
+		const student* s = get_student(student_id);
+		if (s != nullptr) snapshot.data.students.append({s->get_id(), s->get_name(), s->get_gender(), s->get_class_num(), s->get_grade(),
+			s->get_building_id(), s->get_dorm_id(), s->get_bed_id()});
+	}
+	return snapshot;
+}
+
+bool school::validate_sample_data_plan(const sampledataplan& plan) const//校验样例数据计划
+{
+	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty()) return false;
+	QHash<int, samplebuildingplan> buildings;
+	for (const samplebuildingplan& item : plan.buildings)
+	{
+		if (!check::is_valid_building_id(item.id) || !check::is_valid_building_gender(item.gender)
+			|| !check::is_valid_max_floor(item.max_floor) || buildings.contains(item.id)) return false;
+		buildings.insert(item.id, item);
+	}
+	QHash<QString, sampledormplan> dorms;
+	QHash<QString, QSet<int>> occupied_beds;
+	for (const sampledormplan& item : plan.dorms)
+	{
+		const QString key = QStringLiteral("%1/%2").arg(item.building_id).arg(item.dorm_id);
+		if (!buildings.contains(item.building_id) || !check::is_valid_dorm_id(item.dorm_id)
+			|| item.dorm_id / 100 > buildings.value(item.building_id).max_floor || item.max_num < 1 || item.max_num > 99
+			|| item.gender_lock < 0 || item.gender_lock > 2 || dorms.contains(key)
+			|| (item.gender_lock != 0 && buildings.value(item.building_id).gender != 3
+				&& buildings.value(item.building_id).gender != item.gender_lock)) return false;
+		dorms.insert(key, item);
+	}
+	QSet<int> student_ids;
+	QHash<int, QSet<int>> sequences;
+	for (const samplestudentplan& item : plan.students)
+	{
+		if (!check::is_valid_student_id(item.id) || !check::is_valid_student_name(item.name)
+			|| (item.gender != 1 && item.gender != 2) || !check::is_valid_grade(item.grade)
+			|| !check::is_valid_class_num(item.class_num) || !check::is_student_id_consistent(item.id, item.grade, item.class_num)
+			|| student_ids.contains(item.id)) return false;
+		const int sequence = check::student_id_sequence(item.id);
+		if (sequences[item.grade].contains(sequence)) return false;
+		sequences[item.grade].insert(sequence);
+		student_ids.insert(item.id);
+		const bool unassigned = item.building_id == 0 && item.dorm_id == 0 && item.bed_id == 0;
+		if (unassigned) continue;
+		const QString dorm_key = QStringLiteral("%1/%2").arg(item.building_id).arg(item.dorm_id);
+		if (!dorms.contains(dorm_key) || item.bed_id < 1 || item.bed_id > dorms.value(dorm_key).max_num
+			|| occupied_beds[dorm_key].contains(item.bed_id)
+			|| (buildings.value(item.building_id).gender != 3 && buildings.value(item.building_id).gender != item.gender)
+			|| (dorms.value(dorm_key).gender_lock != 0 && dorms.value(dorm_key).gender_lock != item.gender)) return false;
+		occupied_beds[dorm_key].insert(item.bed_id);
+	}
+	return true;
+}
+
+bool school::purge_all_data()//事务内部清除全部对象
+{
+	bool success = true;
+	for (const auto& key : get_all_dorm_keys())
+		success = dormmanager::instance().clear_dorm_students(key.first, key.second, true) >= 0 && success;
+	for (int student_id : get_all_student_ids())
+	{
+		studentmanager::instance().clear_dorm_info(student_id);
+		success = studentmanager::instance().remove(student_id) && success;
+	}
+	for (const auto& key : get_all_dorm_keys())
+		success = dormmanager::instance().remove_dorm(key.first, key.second) && success;
+	for (int building_id : get_all_building_ids())
+		success = buildingmanager::instance().remove_building(building_id) && success;
+	return success && get_student_count() == 0 && get_dorm_count() == 0 && get_building_count() == 0;
+}
+
+bool school::write_sample_data_plan(const sampledataplan& plan)//按固定计划写入全校数据
+{
+	for (const samplebuildingplan& item : plan.buildings)
+		if (add_building(item.id, item.gender, item.max_floor) != 1) return false;
+	for (const sampledormplan& item : plan.dorms)
+	{
+		dorm new_dorm;
+		if (!new_dorm.set_building_id(item.building_id) || !new_dorm.set_id(item.dorm_id)
+			|| !new_dorm.set_max_num(item.max_num) || !add_dorm(new_dorm)) return false;
+		if (item.gender_lock != 0 && set_dorm_gender(item.building_id, item.dorm_id, item.gender_lock) != 1) return false;
+	}
+	for (const samplestudentplan& item : plan.students)
+	{
+		student new_student;
+		if (!new_student.set_id(item.id) || !new_student.set_name(item.name) || !new_student.set_gender(item.gender)
+			|| !new_student.set_grade(item.grade) || !new_student.set_class_num(item.class_num) || !add_student(new_student)) return false;
+	}
+	for (const samplestudentplan& item : plan.students)
+		if (item.building_id > 0 && assign_student_to_dorm(item.building_id, item.dorm_id, item.id, item.bed_id) != item.bed_id) return false;
+	return collect_accommodation_issues().isEmpty();
+}
+
+bool school::restore_school_data_snapshot(const school_data_snapshot& snapshot)//恢复完整全校数据
+{
+	return purge_all_data() && write_sample_data_plan(snapshot.data);
+}
+
+int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后生成样例数据
+{
+	if (!validate_sample_data_plan(plan)) return -1;
+	if (!collect_accommodation_issues().isEmpty()) return -8;
+	const school_data_snapshot snapshot = take_school_data_snapshot();
+	if (!purge_all_data()) return restore_school_data_snapshot(snapshot) ? -5 : -6;
+	if (write_sample_data_plan(plan)) return 1;
+	return restore_school_data_snapshot(snapshot) ? -5 : -6;
+}
+
 batch_assignment_preview school::preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const//生成未入住学生补分预览基础信息
 {
 	batch_assignment_preview preview;
