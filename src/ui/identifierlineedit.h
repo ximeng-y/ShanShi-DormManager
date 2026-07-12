@@ -3,7 +3,7 @@
 
 #include <QLineEdit>
 
-class QIntValidator;
+class QValidator;
 
 //标识符输入控件。使用真实占位提示并将空输入统一解释为0。
 class identifierlineedit : public QLineEdit
@@ -33,7 +33,7 @@ private:
 
 	int minimum_value = 0;
 	int maximum_value = 99999999;
-	QIntValidator* validator = nullptr;
+	QValidator* validator = nullptr;
 };
 
 #endif // IDENTIFIERLINEEDIT_H

@@ -69,7 +69,6 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	ui->moveBuildingSpin->setAccessibleName(QStringLiteral("调宿目标楼栋"));
 	ui->moveDormSpin->setAccessibleName(QStringLiteral("调宿目标宿舍"));
 	ui->moveBedSpin->setAccessibleName(QStringLiteral("调宿目标床位"));
-	ui->assignSubmitButton->setEnabled(true);
 	connect(ui->assignStrategyCombo, &QComboBox::currentIndexChanged, this, [this]() {
 		update_assign_controls();
 		update_assign_preview();
@@ -79,16 +78,13 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	connect(ui->assignDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBedSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
-	ui->removeSubmitButton->setEnabled(true);
 	connect(ui->removeStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
-	ui->moveSubmitButton->setEnabled(true);
 	connect(ui->moveStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveBuildingSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveBedSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
-	ui->swapSubmitButton->setEnabled(true);
 	connect(ui->swapStudent1Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapStudent2Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
@@ -145,20 +141,24 @@ void AccommodationPage::update_assign_controls()
 	ui->assignBuildingSpin->setEnabled(specified_dorm);
 	ui->assignDormSpin->setEnabled(specified_dorm);
 	ui->assignBedSpin->setEnabled(specified_bed);
+	ui->assignBedSpin->setMinimum(specified_bed ? 1 : 0);
 	if (!specified_dorm) {
 		ui->assignBuildingSpin->setValue(0);
 		ui->assignDormSpin->setValue(0);
 	}
 	if (!specified_bed) {
 		ui->assignBedSpin->setValue(0);
+	} else if (ui->assignBedSpin->value() == 0) {
+		ui->assignBedSpin->setValue(1);
 	}
 }
 
 void AccommodationPage::update_assign_preview()
 {
-	ui->assignSubmitButton->setEnabled(true);
+	ui->assignSubmitButton->setEnabled(false);
 	const int student_id = ui->assignStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
+	bool student_ready = false;
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号。"));
 	} else if (school::instance().get_assigned_student_ids().contains(student_id) && has_consistent_accommodation(*current_student)) {
@@ -171,6 +171,7 @@ void AccommodationPage::update_assign_preview()
 	} else {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("%1\n当前未入住，可办理入住。")
 			.arg(accommodation_student_text(*current_student)));
+		student_ready = current_student->get_gender() == 1 || current_student->get_gender() == 2;
 	}
 
 	const int strategy = ui->assignStrategyCombo->currentIndex();
@@ -192,10 +193,15 @@ void AccommodationPage::update_assign_preview()
 			? QStringLiteral("当前没有接纳该性别的可用宿舍。")
 			: QStringLiteral("系统推荐：%1号楼 · %2室 · 自动选择最小空床位。")
 				.arg(target->get_building_id()).arg(target->get_id()));
+		ui->assignSubmitButton->setEnabled(student_ready && target != nullptr);
 		return;
 	}
 	if (strategy == 1) {
-		ui->assignTargetPreviewLabel->setText(QStringLiteral("系统将在所有接纳该学生性别的可用宿舍中随机选择。"));
+		const dorm* available = student_ready ? school::instance().get_available_dorm(current_student->get_gender()) : nullptr;
+		ui->assignTargetPreviewLabel->setText(available == nullptr
+			? QStringLiteral("当前没有接纳该学生性别的可用宿舍。")
+			: QStringLiteral("系统将在所有接纳该学生性别的可用宿舍中随机选择。"));
+		ui->assignSubmitButton->setEnabled(student_ready && available != nullptr);
 		return;
 	}
 	if (strategy >= 2) {
@@ -206,9 +212,18 @@ void AccommodationPage::update_assign_preview()
 			return;
 		}
 		ui->assignBedSpin->setMaximum(qMax(1, target->get_max_num()));
+		const building* target_building = school::instance().get_building(target->get_building_id());
+		const bool accepts_gender = student_ready && target_building != nullptr
+			&& target_building->accepts_gender(current_student->get_gender())
+			&& target->accepts_gender(current_student->get_gender());
+		const int target_bed = ui->assignBedSpin->value();
+		const bool bed_available = strategy != 3
+			? !target->is_full()
+			: target_bed > 0 && target->is_bed_occupied(target_bed) == 0;
 		ui->assignTargetPreviewLabel->setText(strategy == 3
 			? QStringLiteral("目标：%1号楼 · %2室 · %3号床。").arg(target->get_building_id()).arg(target->get_id()).arg(ui->assignBedSpin->value())
 			: QStringLiteral("目标：%1号楼 · %2室 · 自动选择最小空床位。").arg(target->get_building_id()).arg(target->get_id()));
+		ui->assignSubmitButton->setEnabled(accepts_gender && bed_available);
 	}
 }
 
@@ -314,7 +329,7 @@ void AccommodationPage::show_assignment_error(int result)
 
 void AccommodationPage::update_remove_preview()
 {
-	ui->removeSubmitButton->setEnabled(true);
+	ui->removeSubmitButton->setEnabled(false);
 	const int student_id = ui->removeStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
@@ -325,6 +340,7 @@ void AccommodationPage::update_remove_preview()
 	if (assigned && has_consistent_accommodation(*current_student)) {
 		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n当前住宿：%2\n退宿后学生档案将继续保留。")
 			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
+		ui->removeSubmitButton->setEnabled(true);
 	} else if (has_any_accommodation(*current_student)) {
 		ui->removePreviewLabel->setText(QStringLiteral("%1\n\n住宿位置字段不完整，不能办理退宿。")
 			.arg(accommodation_student_text(*current_student)));
@@ -380,7 +396,7 @@ void AccommodationPage::submit_remove()
 
 void AccommodationPage::update_move_preview()
 {
-	ui->moveSubmitButton->setEnabled(true);
+	ui->moveSubmitButton->setEnabled(false);
 	const int student_id = ui->moveStudentSpin->value();
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
@@ -410,6 +426,19 @@ void AccommodationPage::update_move_preview()
 		: QStringLiteral("%1号楼 · %2室 · 自动选择最小空床位").arg(target->get_building_id()).arg(target->get_id());
 	ui->movePreviewLabel->setText(QStringLiteral("%1\n\n当前位置：%2\n目标位置：%3")
 		.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student), target_text));
+	const building* target_building = school::instance().get_building(target->get_building_id());
+	const int target_bed_id = ui->moveBedSpin->value();
+	const bool same_dorm = target->get_building_id() == current_student->get_building_id()
+		&& target->get_id() == current_student->get_dorm_id();
+	const bool valid_same_dorm_target = !same_dorm
+		|| (target_bed_id > 0 && target_bed_id != current_student->get_bed_id());
+	const bool accepts_gender = target_building != nullptr
+		&& target_building->accepts_gender(current_student->get_gender())
+		&& target->accepts_gender(current_student->get_gender());
+	const bool bed_available = target_bed_id > 0
+		? target->is_bed_occupied(target_bed_id) == 0
+		: !target->is_full();
+	ui->moveSubmitButton->setEnabled(valid_same_dorm_target && accepts_gender && bed_available);
 }
 
 void AccommodationPage::submit_move()
@@ -515,7 +544,7 @@ void AccommodationPage::show_move_error(int result)
 
 void AccommodationPage::update_swap_preview()
 {
-	ui->swapSubmitButton->setEnabled(true);
+	ui->swapSubmitButton->setEnabled(false);
 	const int student_id1 = ui->swapStudent1Spin->value();
 	const int student_id2 = ui->swapStudent2Spin->value();
 	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2)) {
@@ -554,6 +583,7 @@ void AccommodationPage::update_swap_preview()
 	ui->swapPreviewLabel->setText(QStringLiteral("学生一：%1\n当前位置：%2\n\n学生二：%3\n当前位置：%4")
 		.arg(accommodation_student_text(*student1), accommodation_position_text(*student1),
 			accommodation_student_text(*student2), accommodation_position_text(*student2)));
+	ui->swapSubmitButton->setEnabled(true);
 }
 
 void AccommodationPage::submit_swap()
