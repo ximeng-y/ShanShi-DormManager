@@ -21,6 +21,8 @@
 #include <limits>
 
 namespace {
+constexpr qint64 maximum_json_bytes = 32 * 1024 * 1024;
+
 void set_error(QString* error, const QString& message)
 {
 	if (error != nullptr)
@@ -99,7 +101,6 @@ storage_load_status schoolstorage::load_file(const QString& path, schoolsnapshot
 		set_error(error, QStringLiteral("无法读取数据文件：%1").arg(path));
 		return storage_load_status::io_error;
 	}
-	constexpr qint64 maximum_json_bytes = 32 * 1024 * 1024;
 	if (file.size() <= 0 || file.size() > maximum_json_bytes)
 	{
 		set_error(error, QStringLiteral("数据文件为空或超过32 MiB安全上限：%1").arg(path));
@@ -147,7 +148,18 @@ bool schoolstorage::save_snapshot(const schoolsnapshot& snapshot, QString* error
 			set_error(error, QStringLiteral("无法读取当前正式数据，未执行覆盖。"));
 			return false;
 		}
+		if (primary.size() <= 0 || primary.size() > maximum_json_bytes)
+		{
+			set_error(error, QStringLiteral("当前正式数据为空或超过32 MiB安全上限，拒绝覆盖。"));
+			return false;
+		}
+		const qint64 primary_size = primary.size();
 		const QByteArray previous_data = primary.readAll();
+		if (previous_data.size() != primary_size)
+		{
+			set_error(error, QStringLiteral("当前正式数据读取不完整，拒绝覆盖。"));
+			return false;
+		}
 		schoolsnapshot previous_snapshot;
 		QString validation_error;
 		bool newer_version = false;
@@ -167,24 +179,34 @@ bool schoolstorage::save_snapshot(const schoolsnapshot& snapshot, QString* error
 				return false;
 			}
 			const qint64 backup_size = existing_backup.size();
-			const QByteArray backup_data = existing_backup.readAll();
-			if (backup_data.size() != backup_size)
+			if (backup_size <= 0 || backup_size > maximum_json_bytes)
 			{
-				set_error(error, QStringLiteral("现有备份读取不完整，拒绝覆盖。"));
-				return false;
-			}
-			schoolsnapshot backup_snapshot;
-			bool backup_newer = false;
-			QString backup_error;
-			if (!decode_snapshot(backup_data, backup_snapshot, &backup_error, &backup_newer))
-			{
-				if (backup_newer)
-				{
-					set_error(error, QStringLiteral("现有备份来自更高版本，拒绝覆盖。"));
-					return false;
-				}
+				existing_backup.close();
 				if (!archive_invalid_file(backup_path, nullptr, error))
 					return false;
+			}
+			else
+			{
+				const QByteArray backup_data = existing_backup.readAll();
+				if (backup_data.size() != backup_size)
+				{
+					set_error(error, QStringLiteral("现有备份读取不完整，拒绝覆盖。"));
+					return false;
+				}
+				schoolsnapshot backup_snapshot;
+				bool backup_newer = false;
+				QString backup_error;
+				if (!decode_snapshot(backup_data, backup_snapshot, &backup_error, &backup_newer))
+				{
+					if (backup_newer)
+					{
+						set_error(error, QStringLiteral("现有备份来自更高版本，拒绝覆盖。"));
+						return false;
+					}
+					existing_backup.close();
+					if (!archive_invalid_file(backup_path, nullptr, error))
+						return false;
+				}
 			}
 		}
 		if (!write_atomic(backup_path, previous_data, error))
@@ -211,8 +233,10 @@ bool schoolstorage::archive_invalid_file(const QString& source_path, QString* ar
 	}
 	const QFileInfo source_info(source_path);
 	const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss-zzz"));
+	const QString unique_suffix = QUuid::createUuid().toString(QUuid::WithoutBraces);
 	const QString destination = QDir(recovery_directory).filePath(
-		QStringLiteral("%1.corrupt-%2.%3").arg(source_info.completeBaseName(), timestamp, source_info.suffix()));
+		QStringLiteral("%1.corrupt-%2-%3.%4")
+			.arg(source_info.completeBaseName(), timestamp, unique_suffix, source_info.suffix()));
 	QFile source(source_path);
 	if (!source.open(QIODevice::ReadOnly))
 	{
@@ -220,14 +244,36 @@ bool schoolstorage::archive_invalid_file(const QString& source_path, QString* ar
 		return false;
 	}
 	const qint64 source_size = source.size();
-	const QByteArray source_data = source.readAll();
-	if (source_data.size() != source_size)
+	QSaveFile destination_file(destination);
+	if (!destination_file.open(QIODevice::WriteOnly))
 	{
-		set_error(error, QStringLiteral("损坏文件读取不完整，无法安全保留。"));
+		set_error(error, QStringLiteral("无法打开损坏文件的保留目标。"));
 		return false;
 	}
-	if (!write_atomic(destination, source_data, error))
+	qint64 copied = 0;
+	while (!source.atEnd())
+	{
+		const QByteArray chunk = source.read(1024 * 1024);
+		if (chunk.isEmpty() && source.error() != QFileDevice::NoError)
+		{
+			destination_file.cancelWriting();
+			set_error(error, QStringLiteral("损坏文件读取失败，无法安全保留。"));
+			return false;
+		}
+		if (destination_file.write(chunk) != chunk.size())
+		{
+			destination_file.cancelWriting();
+			set_error(error, QStringLiteral("损坏文件保留写入不完整。"));
+			return false;
+		}
+		copied += chunk.size();
+	}
+	if (copied != source_size || !destination_file.commit())
+	{
+		destination_file.cancelWriting();
+		set_error(error, QStringLiteral("损坏文件未能完整原子保留。"));
 		return false;
+	}
 	if (archived_path != nullptr)
 		*archived_path = destination;
 	return true;
