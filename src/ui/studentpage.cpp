@@ -16,7 +16,6 @@
 #include <QMenu>
 #include <QScopedValueRollback>
 #include <QSet>
-#include <QSettings>
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStyle>
@@ -86,8 +85,6 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Stretch);
 	ui->studentTable->setAccessibleName(QStringLiteral("学生目录"));
 	ui->studentTable->setAccessibleDescription(QStringLiteral("使用方向键选择学生，按回车打开完整只读详情。"));
-	ui->hideDetailButton->setAccessibleName(QStringLiteral("收起学生详情面板"));
-	ui->showDetailButton->setAccessibleName(QStringLiteral("展开学生详情面板"));
 	ui->searchLineEdit->setAccessibleName(QStringLiteral("搜索学生学号或姓名"));
 	ui->classFilterCombo->setAccessibleName(QStringLiteral("按班级筛选学生"));
 	ui->statusFilterCombo->setAccessibleName(QStringLiteral("按入住状态筛选学生"));
@@ -189,15 +186,8 @@ StudentPage::StudentPage(QWidget* parent)
 	});
 	connect(ui->cancelEditButton, &QPushButton::clicked, this, &StudentPage::cancel_edit_student);
 	connect(ui->saveEditButton, &QPushButton::clicked, this, &StudentPage::save_student_changes);
-	connect(ui->hideDetailButton, &QToolButton::clicked, this, [this]() {
-		set_detail_panel_visible(false);
-	});
-	connect(ui->showDetailButton, &QToolButton::clicked, this, [this]() {
-		set_detail_panel_visible(true);
-	});
-
-	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
-	set_detail_panel_visible(settings.value(QStringLiteral("student/detailPanelVisible"), true).toBool());
+	ui->detailPanel->show();
+	clear_student_summary();
 	setTabOrder(ui->addStudentButton, ui->searchLineEdit);
 	setTabOrder(ui->searchLineEdit, ui->classFilterCombo);
 	setTabOrder(ui->classFilterCombo, ui->statusFilterCombo);
@@ -365,6 +355,7 @@ void StudentPage::show_student_summary(int student_id)
 
 	selected_student_id = student_id;
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
+	ui->detailNameLabel->show();
 	ui->detailNameLabel->setText(current_student->get_name());
 	ui->studentIdValueLabel->setText(QString::number(current_student->get_id()));
 	ui->genderValueLabel->setText(student_gender_text(current_student->get_gender()));
@@ -385,24 +376,13 @@ void StudentPage::show_student_summary(int student_id)
 void StudentPage::clear_student_summary()
 {
 	selected_student_id = 0;
-	ui->detailNameLabel->setText(QStringLiteral("学生详情"));
+	ui->detailNameLabel->hide();
 	ui->detailHintLabel->show();
 	ui->detailContent->hide();
 	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(false);
 	ui->accommodationActionButton->setEnabled(false);
 	ui->moreActionButton->setEnabled(false);
-}
-
-void StudentPage::set_detail_panel_visible(bool visible)
-{
-	ui->detailPanel->setVisible(visible);
-	ui->showDetailButton->setVisible(!visible);
-	if (visible) {
-		ui->studentSplitter->setSizes({700, 360});
-	}
-	QSettings settings(QStringLiteral("DormManager"), QStringLiteral("DormManager"));
-	settings.setValue(QStringLiteral("student/detailPanelVisible"), visible);
 }
 
 void StudentPage::start_edit_student()
@@ -528,7 +508,6 @@ void StudentPage::set_student_directory_enabled(bool enabled)
 	ui->statusFilterCombo->setEnabled(enabled);
 	ui->resetFilterButton->setEnabled(enabled);
 	ui->addStudentButton->setEnabled(enabled);
-	ui->hideDetailButton->setEnabled(enabled);
 }
 
 void StudentPage::clear_edit_validation()

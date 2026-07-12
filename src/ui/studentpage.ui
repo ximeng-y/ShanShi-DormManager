@@ -28,7 +28,6 @@
      <item><widget class="QComboBox" name="classFilterCombo"><item><property name="text"><string>全部班级</string></property></item></widget></item>
      <item><widget class="QComboBox" name="statusFilterCombo"><item><property name="text"><string>全部入住状态</string></property></item><item><property name="text"><string>已入住</string></property></item><item><property name="text"><string>未入住</string></property></item></widget></item>
      <item><widget class="QPushButton" name="resetFilterButton"><property name="text"><string>重置筛选</string></property></widget></item>
-     <item><widget class="QToolButton" name="showDetailButton"><property name="text"><string>显示详情</string></property><property name="toolButtonStyle"><enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum></property><property name="visible"><bool>false</bool></property></widget></item>
     </layout>
    </item>
    <item>
@@ -69,8 +68,6 @@
        <item>
         <layout class="QHBoxLayout" name="detailHeadingLayout">
          <item><widget class="QLabel" name="detailNameLabel"><property name="text"><string>学生详情</string></property><property name="detailHeading" stdset="0"><bool>true</bool></property></widget></item>
-         <item><spacer name="detailHeadingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
-         <item><widget class="QToolButton" name="hideDetailButton"><property name="text"><string>×</string></property><property name="toolTip"><string>收起详情面板</string></property></widget></item>
         </layout>
        </item>
        <item><widget class="QLabel" name="detailHintLabel"><property name="text"><string>从左侧选择一名学生查看资料。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>

@@ -33,7 +33,6 @@ private:
 	void reset_filters();//阻断控件信号后重置筛选并单次刷新
 	void show_student_summary(int student_id);//在详情面板显示学生摘要
 	void clear_student_summary();//清除失效选择并恢复详情空状态
-	void set_detail_panel_visible(bool visible);//展开或收起详情面板并保存状态
 	void start_edit_student();//在详情面板进入基础资料编辑状态
 	void cancel_edit_student();//退出编辑并恢复学生摘要
 	void save_student_changes();//校验并保存姓名、班级与年级
