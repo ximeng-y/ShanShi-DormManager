@@ -199,6 +199,23 @@ StudentPage::StudentPage(QWidget* parent)
 		}
 	});
 	connect(ui->editStudentButton, &QPushButton::clicked, this, &StudentPage::start_edit_student);
+	connect(ui->openDormButton, &QPushButton::clicked, this, [this]() {
+		const student* current_student = school::instance().get_student(selected_student_id);
+		if (current_student == nullptr) {
+			uifeedback::show_error(this, QStringLiteral("无法跳转到所在宿舍"), QStringLiteral("所选学生已经不存在，请刷新后重试。"));
+			refresh_data();
+			return;
+		}
+		const bool assigned = school::instance().get_assigned_student_ids().contains(selected_student_id);
+		if (!assigned || !student_has_consistent_position(*current_student)) {
+			uifeedback::show_error(this, QStringLiteral("无法跳转到所在宿舍"), assigned
+				? QStringLiteral("该学生的住宿位置记录异常，请先核查数据。")
+				: QStringLiteral("该学生当前未入住。"));
+			refresh_data();
+			return;
+		}
+		emit dorm_open_requested(current_student->get_building_id(), current_student->get_dorm_id());
+	});
 	connect(ui->accommodationActionButton, &QPushButton::clicked, this, [this]() {
 		const student* current_student = school::instance().get_student(selected_student_id);
 		if (current_student == nullptr) {
@@ -220,7 +237,8 @@ StudentPage::StudentPage(QWidget* parent)
 	setTabOrder(ui->classFilterCombo, ui->statusFilterCombo);
 	setTabOrder(ui->statusFilterCombo, ui->resetFilterButton);
 	setTabOrder(ui->resetFilterButton, ui->studentTable);
-	setTabOrder(ui->studentTable, ui->editStudentButton);
+	setTabOrder(ui->studentTable, ui->openDormButton);
+	setTabOrder(ui->openDormButton, ui->editStudentButton);
 	setTabOrder(ui->editStudentButton, ui->accommodationActionButton);
 	setTabOrder(ui->accommodationActionButton, ui->moreActionButton);
 }
@@ -443,6 +461,10 @@ void StudentPage::show_student_summary(int student_id)
 	ui->detailContent->show();
 	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(true);
+	ui->openDormButton->setEnabled(assigned && !abnormal_position);
+	ui->openDormButton->setToolTip(!assigned ? QStringLiteral("该学生当前未入住。")
+		: (abnormal_position ? QStringLiteral("住宿位置记录异常，不能定位所在宿舍。")
+			: QStringLiteral("在宿舍资源页面中定位该学生当前所在的宿舍。")));
 	ui->accommodationActionButton->setEnabled(!abnormal_position);
 	ui->moreActionButton->setEnabled(true);
 }
@@ -455,6 +477,7 @@ void StudentPage::clear_student_summary()
 	ui->detailContent->hide();
 	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(false);
+	ui->openDormButton->setEnabled(false);
 	ui->accommodationActionButton->setEnabled(false);
 	ui->moreActionButton->setEnabled(false);
 }

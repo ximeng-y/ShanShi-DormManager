@@ -24,6 +24,7 @@ public:
 
 signals:
 	void accommodation_requested(int student_id, bool assigned);//请求住宿任务页预填当前学生
+	void dorm_open_requested(int building_id, int dorm_id);//请求宿舍资源页定位学生所在宿舍
 
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新学生目录

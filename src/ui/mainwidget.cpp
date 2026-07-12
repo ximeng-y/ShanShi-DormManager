@@ -44,6 +44,10 @@ MainWidget::MainWidget(QWidget *parent)
 		switch_page(3);
 		ui->accommodationPage->prepare_student_task(student_id, assigned);
 	});
+	connect(ui->studentPage, &StudentPage::dorm_open_requested, this, [this](int building_id, int dorm_id) {
+		ui->dormResourcePage->select_dorm(building_id, dorm_id);
+		switch_page(2);
+	});
 	connect(ui->overviewPage, &OverviewPage::building_open_requested, this, [this](int building_id) {
 		ui->dormResourcePage->select_building(building_id);
 		switch_page(2);
