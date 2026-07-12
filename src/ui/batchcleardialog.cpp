@@ -16,6 +16,7 @@
 #include <QRadioButton>
 #include <QScreen>
 #include <QShowEvent>
+#include <QSignalBlocker>
 #include <QStyle>
 #include <QTableWidget>
 
@@ -172,6 +173,21 @@ void BatchClearDialog::refresh_summary()
 	const clear_scope scope = selected_scope();
 	const int building_id = ui->buildingCombo->currentData().toInt();
 	const int dorm_id = ui->dormCombo->currentData().toInt();
+	const building* selected_building = school::instance().get_building(building_id);
+	const bool fixed_gender_dorm = scope == clear_scope::dorm && selected_building != nullptr
+		&& (selected_building->get_for_gender() == 1 || selected_building->get_for_gender() == 2);
+	if (fixed_gender_dorm) {
+		const QSignalBlocker keep_blocker(ui->keepGenderRadio);
+		const QSignalBlocker reset_blocker(ui->resetGenderRadio);
+		ui->keepGenderRadio->setChecked(true);
+	}
+	ui->resetGenderRadio->setEnabled(!fixed_gender_dorm);
+	ui->resetGenderRadio->setToolTip(fixed_gender_dorm
+		? QStringLiteral("该宿舍位于明确性别的宿舍楼内，不能解除宿舍性别锁。")
+		: QStringLiteral("清退后将宿舍恢复为未设置宿舍性别锁。"));
+	ui->genderLockHintLabel->setText(fixed_gender_dorm
+		? QStringLiteral("该宿舍位于明确性别的宿舍楼内，清退后将保留宿舍性别锁。")
+		: QStringLiteral("默认保留宿舍性别锁，避免后续安排时改变宿舍原有用途。"));
 	const batch_clear_preview preview = school::instance().preview_clear_dorms(scope, building_id, dorm_id, reset_gender());
 
 	ui->summaryScopeValue->setText(scope_text());
