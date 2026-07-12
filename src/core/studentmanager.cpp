@@ -117,6 +117,25 @@ int studentmanager::set_student_gender(int student_id, int gender)//修改学生
 	return it.value().set_gender(gender) ? 1 : -1;
 }
 
+int studentmanager::rekey_student(int old_student_id, int new_student_id, int new_grade, int new_class_num)//替换学生主键和学籍身份字段
+{
+	if (!check::is_valid_student_id(old_student_id)
+		|| !check::is_student_id_consistent(new_student_id, new_grade, new_class_num))
+		return -1;
+	auto old_it = students.constFind(old_student_id);
+	if (old_it == students.constEnd())
+		return 0;
+	if (old_student_id != new_student_id && students.contains(new_student_id))
+		return -2;
+	if (is_sequence_used(new_grade, check::student_id_sequence(new_student_id), old_student_id))
+		return -2;
+	student updated = old_it.value();
+	updated.assign_academic_identity(new_student_id, new_grade, new_class_num);
+	students.remove(old_student_id);
+	students.insert(new_student_id, updated);
+	return 1;
+}
+
 int studentmanager::set_student_name(int student_id, const QString& name)//修改学生姓名
 {
 	if (!check::is_valid_student_name(name))

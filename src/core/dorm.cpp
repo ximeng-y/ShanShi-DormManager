@@ -238,6 +238,14 @@ void dorm::clear_students_reset_gender()//清空住客并重置房间性别为�
 	for_gender = 0;//再彻底放开房间性别锁定
 }
 
+bool dorm::replace_student_id_at_bed(int bed_id, int expected_old_student_id, int new_student_id)//精确原位替换指定床位学号
+{
+	if (!check::is_valid_bed_id(bed_id, max_num) || beds[bed_id - 1] != expected_old_student_id)
+		return false;
+	beds[bed_id - 1] = new_student_id;
+	return true;
+}
+
 //随机打乱本宿舍内学生与床位的对应关系(Fisher-Yates 洗牌整个 beds 数组, 含空床)
 int dorm::shuffle_beds()
 {

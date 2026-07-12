@@ -118,3 +118,10 @@ void student::assign_dorm_info(int bed_id, int dorm_id, int building_id, int flo
 	this->building_id = building_id;
 	this->floor = floor;
 }
+
+void student::assign_academic_identity(int id, int grade, int class_num)//主键迁移后门：调用方已完成编码与唯一性校验
+{
+	this->id = id;
+	this->grade = grade;
+	this->class_num = class_num;
+}

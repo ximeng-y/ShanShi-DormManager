@@ -50,6 +50,7 @@ private:
 	//在同一宿舍内移动或交换床位，不同步学生本体。
 	//返回值: 1=成功  0=源床位为空  -1=楼号/宿舍号/床位号非法  -2=源与目标为同一床位  -8=宿舍不存在
 	int move_student_bed(int building_id, int dorm_id, int from_bed_id, int to_bed_id);
+	int replace_student_id_at_bed(int building_id, int dorm_id, int bed_id, int expected_old_student_id, int new_student_id);//精确原位替换床位学号引用
 	int clear_dorm_students(int building_id, int dorm_id, bool reset_gender);//清空指定宿舍住客，可选放开性别锁，返回清空人数/-8不存在
 	friend class school;
 	//内部定位: 按楼号、宿舍号返回可写本体指针(供内部搬迁改写用), 不存在返回 nullptr。

@@ -62,6 +62,7 @@ public:
 	//clear_students 保留房间性别锁定(空男舍仍是男舍); clear_students_reset_gender 额外把 for_gender 归 0(彻底放开)。
 	void clear_students();//清空住客, 保留性别锁定
 	void clear_students_reset_gender();//清空住客并重置房间性别为未锁定
+	bool replace_student_id_at_bed(int bed_id, int expected_old_student_id, int new_student_id);//精确原位替换指定床位学号
 
 private:
 	//set_for_gender 收 private: 钦定房间性别须由 school 校验所在 building 的 for_gender(楼-房一致性 G2)

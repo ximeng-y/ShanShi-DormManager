@@ -44,6 +44,7 @@ private:
 	int clear_dorm_info(int student_id);//清零住宿位置四字段，仅供 school 协调
 	int assign_dorm_info(int student_id, int bed_id, int dorm_id, int building_id, int floor);//写入住宿位置四字段，仅供 school 协调
 	int set_student_gender(int student_id, int gender);//修改学生性别，仅供 school 完成住宿一致性校验后调用
+	int rekey_student(int old_student_id, int new_student_id, int new_grade, int new_class_num);//只替换学生主键和学籍身份字段
 	friend class school;
 	QHash<int, student> students;
 };

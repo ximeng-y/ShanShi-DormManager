@@ -152,6 +152,19 @@ int dormmanager::move_student_bed(int building_id, int dorm_id, int from_bed_id,
 	return target->swap_student(from_bed_id, to_bed_id);
 }
 
+int dormmanager::replace_student_id_at_bed(int building_id, int dorm_id, int bed_id, int expected_old_student_id, int new_student_id)//精确原位替换床位学号引用
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_dorm_id(dorm_id)
+		|| !check::is_valid_student_id(expected_old_student_id) || !check::is_valid_student_id(new_student_id))
+		return -1;
+	dorm* target = find_dorm(building_id, dorm_id);
+	if (target == nullptr)
+		return 0;
+	if (!check::is_valid_bed_id(bed_id, target->get_max_num()))
+		return -1;
+	return target->replace_student_id_at_bed(bed_id, expected_old_student_id, new_student_id) ? 1 : -2;
+}
+
 //高级信息查询
 int dormmanager::count() const//获取当前宿舍总数
 {

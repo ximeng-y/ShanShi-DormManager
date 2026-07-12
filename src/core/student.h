@@ -38,6 +38,7 @@ private:
 
 	//后门同步位置四字段，绕过setter校验直接赋值；由school完成住宿校验后经studentmanager调用。
 	void assign_dorm_info(int bed_id, int dorm_id, int building_id, int floor);
+	void assign_academic_identity(int id, int grade, int class_num);//主键迁移时一次性写入学号、年级与班级
 	friend class studentmanager;
 
 	QString name;
