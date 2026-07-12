@@ -1111,6 +1111,52 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 	return preview;
 }
 
+int school::apply_batch_assignment(const batch_assignment_preview& preview)//按固定预览执行补分
+{
+	if (preview.changes.isEmpty())
+		return 0;
+	if (!collect_accommodation_issues().isEmpty())
+		return -8;
+	QSet<int> student_ids;
+	QSet<QString> target_beds;
+	for (const accommodation_change& change : preview.changes)
+	{
+		if (change.student_id <= 0 || change.old_building_id != 0 || change.old_dorm_id != 0 || change.old_bed_id != 0
+			|| change.new_building_id <= 0 || change.new_dorm_id <= 0 || change.new_bed_id <= 0
+			|| student_ids.contains(change.student_id))
+			return -7;
+		const QString bed_key = QStringLiteral("%1/%2/%3").arg(change.new_building_id).arg(change.new_dorm_id).arg(change.new_bed_id);
+		if (target_beds.contains(bed_key))
+			return -7;
+		student_ids.insert(change.student_id);
+		target_beds.insert(bed_key);
+		const student* s = get_student(change.student_id);
+		const dorm* d = get_dorm(change.new_building_id, change.new_dorm_id);
+		const building* b = get_building(change.new_building_id);
+		if (s == nullptr || d == nullptr || b == nullptr
+			|| s->get_building_id() != 0 || s->get_dorm_id() != 0 || s->get_bed_id() != 0 || s->get_floor() != 0
+			|| d->is_bed_occupied(change.new_bed_id) != 0
+			|| !b->accepts_gender(s->get_gender()) || !d->accepts_gender(s->get_gender()))
+			return -7;
+	}
+
+	QVector<int> assigned_ids;
+	for (const accommodation_change& change : preview.changes)
+	{
+		const int result = assign_student_to_dorm(change.new_building_id, change.new_dorm_id, change.student_id, change.new_bed_id);
+		if (result == change.new_bed_id)
+		{
+			assigned_ids.append(change.student_id);
+			continue;
+		}
+		bool restored = true;
+		for (int i = assigned_ids.size() - 1; i >= 0; --i)
+			restored = remove_student_from_dorm(assigned_ids[i]) > 0 && restored;
+		return restored ? -5 : -6;
+	}
+	return assigned_ids.size();
+}
+
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
 	clear_all_dorms_reset_gender();

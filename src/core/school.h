@@ -131,6 +131,8 @@ public:
 	int assign_all_students_random();//补分，只处理当前未入住学生
 	int reassign_all_students_random();//重排，先清空全部宿舍并放开性别锁
 	batch_assignment_preview preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const;//生成未入住学生补分预览；发现住宿异常时只返回 issues
+	//返回值: >0=成功安排人数  0=没有可执行安排  -5=执行失败但已撤销本次安排  -6=撤销不完整  -7=预览涉及的数据已变化  -8=现有住宿数据异常
+	int apply_batch_assignment(const batch_assignment_preview& preview);//按预览中的具体床位执行补分，不重新随机
 
 	//宿舍集合协调
 	//单间清退返回值: >=0=成功(清退人数)  -1=参数非法  -8=宿舍不存在或住宿记录不一致
