@@ -46,6 +46,8 @@ private:
 	int selected_bed_id = 0;
 	int selected_student_id = 0;
 	int pending_move_student_id = 0;
+	int pending_source_building_id = 0;
+	int pending_source_dorm_id = 0;
 	int pending_source_bed_id = 0;
 };
 

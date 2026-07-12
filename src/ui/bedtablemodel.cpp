@@ -41,12 +41,17 @@ QVariant bedtablemodel::data(const QModelIndex& index, int role) const
 	}
 	const int student_id = current_dorm->get_student_id(bed_id);
 	const bool occupied = student_id > 0;
+	const student* occupant = occupied ? school::instance().get_student(student_id) : nullptr;
+	const bool record_valid = !occupied || (occupant != nullptr
+		&& occupant->get_building_id() == current_building_id
+		&& occupant->get_dorm_id() == current_dorm_id
+		&& occupant->get_bed_id() == bed_id
+		&& occupant->get_floor() == current_dorm_id / 100);
 	if (role == Qt::DisplayRole) {
 		if (!occupied) {
 			return QStringLiteral("%1号床\n空闲").arg(bed_id);
 		}
-		const student* occupant = school::instance().get_student(student_id);
-		return occupant == nullptr
+		return !record_valid
 			? QStringLiteral("%1号床\n记录异常：%2").arg(bed_id).arg(student_id)
 			: QStringLiteral("%1号床\n%2 · %3").arg(bed_id).arg(occupant->get_name()).arg(student_id);
 	}
@@ -57,8 +62,7 @@ QVariant bedtablemodel::data(const QModelIndex& index, int role) const
 		return QBrush(occupied ? QColor(QStringLiteral("#eef4f8")) : QColor(QStringLiteral("#f8fafb")));
 	}
 	if (role == Qt::ForegroundRole) {
-		const student* occupant = occupied ? school::instance().get_student(student_id) : nullptr;
-		return QBrush(QColor(occupied && occupant == nullptr ? QStringLiteral("#a23333") : QStringLiteral("#29455f")));
+		return QBrush(QColor(!record_valid ? QStringLiteral("#a23333") : QStringLiteral("#29455f")));
 	}
 	if (role == Qt::ToolTipRole) {
 		return data(index, Qt::DisplayRole).toString().replace(QLatin1Char('\n'), QStringLiteral("："));
@@ -73,7 +77,7 @@ QVariant bedtablemodel::data(const QModelIndex& index, int role) const
 		return occupied;
 	}
 	if (role == record_valid_role) {
-		return !occupied || school::instance().get_student(student_id) != nullptr;
+		return record_valid;
 	}
 	return QVariant();
 }
