@@ -22,6 +22,7 @@ public:
 private:
 	void attempt_add();//校验输入并调用 school 新增学生
 	void clear_validation();//清除字段错误状态
+	void refresh_student_id(bool refresh_sequence);//按年级班级刷新学号前缀、建议序号与完整预览
 
 	Ui::AddStudentDialog* ui;
 	int added_id = 0;
