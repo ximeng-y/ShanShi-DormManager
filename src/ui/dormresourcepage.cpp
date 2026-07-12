@@ -71,13 +71,13 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	ui->bedSelectionLabel->setAccessibleName(QStringLiteral("当前选中床位"));
 	ui->assignSelectedBedButton->setAccessibleName(QStringLiteral("安排学生入住当前空床"));
 	ui->removeSelectedBedButton->setAccessibleName(QStringLiteral("办理当前床位住客退宿"));
-	ui->moveWithinDormButton->setAccessibleName(QStringLiteral("将当前住客换到本宿舍空床"));
+	ui->moveWithinDormButton->setAccessibleName(QStringLiteral("为当前住客选择本宿舍目标床位"));
 	ui->moveToOtherDormButton->setAccessibleName(QStringLiteral("将当前住客调往其他宿舍"));
-	ui->cancelBedActionButton->setAccessibleName(QStringLiteral("取消选择目标空床"));
+	ui->cancelBedActionButton->setAccessibleName(QStringLiteral("取消换床"));
 	update_bed_action_state(QModelIndex());
 	connect(ui->assignSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::assign_selected_bed);
 	connect(ui->removeSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::remove_selected_occupant);
-	connect(ui->moveWithinDormButton, &QPushButton::clicked, this, &DormResourcePage::begin_within_dorm_move);
+	connect(ui->moveWithinDormButton, &QPushButton::clicked, this, &DormResourcePage::begin_within_dorm_bed_change);
 	connect(ui->moveToOtherDormButton, &QPushButton::clicked, this, &DormResourcePage::move_selected_occupant_to_other_dorm);
 	connect(ui->cancelBedActionButton, &QPushButton::clicked, this, &DormResourcePage::cancel_pending_bed_action);
 	ui->resourceSplitter->setStretchFactor(0, 0);
@@ -415,16 +415,23 @@ void DormResourcePage::update_bed_action_state(const QModelIndex& index)
 		ui->moveWithinDormButton->hide();
 		ui->moveToOtherDormButton->hide();
 		ui->cancelBedActionButton->show();
-		if (selected_bed_id <= 0 || selected_bed_id == pending_source_bed_id) {
-			ui->bedSelectionLabel->setText(QStringLiteral("请选择本宿舍中的一个空床作为目标。"));
+		if (selected_bed_id <= 0) {
+			ui->bedSelectionLabel->setText(QStringLiteral("请选择本宿舍中的其他床位；空床将直接移动，有住客将交换床位。"));
 			return;
 		}
-		if (!record_valid || occupied) {
-			ui->bedSelectionLabel->setText(QStringLiteral("%1号床不是可用空床，请选择其他床位。")
+		if (selected_bed_id == pending_source_bed_id) {
+			ui->bedSelectionLabel->setText(QStringLiteral("不能选择当前学生正在使用的%1号床，请选择其他床位。")
 				.arg(selected_bed_id));
 			return;
 		}
-		complete_within_dorm_move(selected_bed_id);
+		if (!record_valid) {
+			uifeedback::show_critical(this, QStringLiteral("住宿记录异常"),
+				QStringLiteral("%1号床的住客与学生位置记录不一致，请暂停相关操作并核查数据。").arg(selected_bed_id));
+			cancel_pending_bed_action();
+			refresh_data();
+			return;
+		}
+		complete_within_dorm_bed_change(selected_bed_id, occupied ? selected_student_id : 0);
 		return;
 	}
 	ui->cancelBedActionButton->hide();
@@ -440,17 +447,13 @@ void DormResourcePage::update_bed_action_state(const QModelIndex& index)
 
 	const bool available_empty_bed = selected_bed_id > 0 && record_valid && !occupied;
 	const bool available_occupant = selected_bed_id > 0 && record_valid && occupied;
-	const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
-	const bool has_empty_bed = current_dorm != nullptr && current_dorm->get_empty_count() > 0;
 	ui->assignSelectedBedButton->setVisible(available_empty_bed);
 	ui->assignSelectedBedButton->setEnabled(available_empty_bed);
 	ui->removeSelectedBedButton->setVisible(available_occupant);
 	ui->removeSelectedBedButton->setEnabled(available_occupant);
 	ui->moveWithinDormButton->setVisible(available_occupant);
-	ui->moveWithinDormButton->setEnabled(available_occupant && has_empty_bed);
-	ui->moveWithinDormButton->setToolTip(has_empty_bed
-		? QStringLiteral("在当前宿舍的可视化床位中选择一个空床。")
-		: QStringLiteral("当前宿舍没有可用于换床的空床。"));
+	ui->moveWithinDormButton->setEnabled(available_occupant);
+	ui->moveWithinDormButton->setToolTip(QStringLiteral("选择其他空床可直接移动，选择有住客的床位可交换床位。"));
 	ui->moveToOtherDormButton->setVisible(available_occupant);
 	ui->moveToOtherDormButton->setEnabled(available_occupant);
 }
@@ -521,10 +524,11 @@ void DormResourcePage::remove_selected_occupant()
 	refresh_data();
 }
 
-void DormResourcePage::begin_within_dorm_move()
+void DormResourcePage::begin_within_dorm_bed_change()
 {
 	const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
-	if (selected_student_id <= 0 || selected_bed_id <= 0 || current_dorm == nullptr || current_dorm->get_empty_count() <= 0) {
+	if (selected_student_id <= 0 || selected_bed_id <= 0 || current_dorm == nullptr
+		|| current_dorm->get_student_id(selected_bed_id) != selected_student_id) {
 		return;
 	}
 	pending_move_student_id = selected_student_id;
@@ -603,36 +607,66 @@ void DormResourcePage::cancel_pending_bed_action()
 	update_bed_action_state(QModelIndex());
 }
 
-void DormResourcePage::complete_within_dorm_move(int target_bed_id)
+void DormResourcePage::complete_within_dorm_bed_change(int target_bed_id, int target_student_id)
 {
-	const int student_id = pending_move_student_id;
+	const int source_student_id = pending_move_student_id;
+	const int source_bed_id = pending_source_bed_id;
 	if (selected_building_id != pending_source_building_id || selected_dorm_id != pending_source_dorm_id) {
-		uifeedback::show_error(this, QStringLiteral("无法完成换床"), QStringLiteral("当前宿舍已经变化，请重新选择住客和目标空床。"));
+		uifeedback::show_error(this, QStringLiteral("无法完成换床"), QStringLiteral("当前宿舍已经变化，请重新选择住客和目标床位。"));
 		cancel_pending_bed_action();
 		return;
 	}
-	if (!uifeedback::confirm_action(this, QStringLiteral("确认换床"),
-		QStringLiteral("将学号 %1 从%2号床移动到%3号床。")
-			.arg(student_id).arg(pending_source_bed_id).arg(target_bed_id), QStringLiteral("确认换床"))) {
-		ui->bedSelectionLabel->setText(QStringLiteral("换床尚未执行，可继续选择其他空床或取消。"));
+	const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
+	const student* source_student = school::instance().get_student(source_student_id);
+	const student* target_student = target_student_id > 0 ? school::instance().get_student(target_student_id) : nullptr;
+	const bool source_valid = current_dorm != nullptr && source_student != nullptr
+		&& current_dorm->get_student_id(source_bed_id) == source_student_id
+		&& source_student->get_building_id() == selected_building_id
+		&& source_student->get_dorm_id() == selected_dorm_id && source_student->get_bed_id() == source_bed_id
+		&& source_student->get_floor() == selected_dorm_id / 100;
+	const bool target_valid = target_student_id == 0
+		? current_dorm != nullptr && current_dorm->get_student_id(target_bed_id) == -1
+		: target_student != nullptr && current_dorm != nullptr
+			&& current_dorm->get_student_id(target_bed_id) == target_student_id
+			&& target_student->get_building_id() == selected_building_id
+			&& target_student->get_dorm_id() == selected_dorm_id && target_student->get_bed_id() == target_bed_id
+			&& target_student->get_floor() == selected_dorm_id / 100;
+	if (!source_valid || !target_valid || target_bed_id == source_bed_id || target_student_id == source_student_id) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"),
+			QStringLiteral("源床位或目标床位记录已经变化，请暂停相关操作并核查数据。"));
+		cancel_pending_bed_action();
+		refresh_data();
+		return;
+	}
+	const QString confirmation = target_student_id == 0
+		? QStringLiteral("将 %1（%2）从%3号床移动到%4号空床。")
+			.arg(source_student->get_name()).arg(source_student_id).arg(source_bed_id).arg(target_bed_id)
+		: QStringLiteral("将 %1（%2，%3号床）与 %4（%5，%6号床）交换床位。")
+			.arg(source_student->get_name()).arg(source_student_id).arg(source_bed_id)
+			.arg(target_student->get_name()).arg(target_student_id).arg(target_bed_id);
+	if (!uifeedback::confirm_action(this, QStringLiteral("确认换床"), confirmation, QStringLiteral("确认换床"))) {
 		ui->bedTableView->clearSelection();
 		ui->bedTableView->setCurrentIndex(QModelIndex());
+		ui->bedSelectionLabel->setText(QStringLiteral("换床尚未执行，可继续选择其他床位或取消。"));
 		return;
 	}
 	pending_move_student_id = 0;
 	pending_source_building_id = 0;
 	pending_source_dorm_id = 0;
 	pending_source_bed_id = 0;
-	const int result = school::instance().move_student_to_dorm(
-		selected_building_id, selected_dorm_id, student_id, target_bed_id);
-	if (result > 0) {
+	const int result = target_student_id == 0
+		? school::instance().move_student_to_dorm(selected_building_id, selected_dorm_id, source_student_id, target_bed_id)
+		: school::instance().swap_students(source_student_id, target_student_id);
+	if ((target_student_id == 0 && result > 0) || (target_student_id > 0 && result == 1)) {
 		refresh_data();
-		uifeedback::show_success(this, QStringLiteral("换床成功，学生已移动到%1号床。").arg(result));
+		uifeedback::show_success(this, target_student_id == 0
+			? QStringLiteral("换床成功，学生已移动到%1号床。").arg(result)
+			: QStringLiteral("换床成功，两名学生的床位已交换。"));
 		return;
 	}
-	if (result == -10) {
+	if ((target_student_id == 0 && result == -10) || (target_student_id > 0 && result == -6)) {
 		uifeedback::show_critical(this, QStringLiteral("换床恢复失败"), QStringLiteral("换床执行失败且原床位未能完整恢复，请暂停后续操作并核查数据。"));
-	} else if (result == -8) {
+	} else if ((target_student_id == 0 && result == -8) || (target_student_id > 0 && result == -4)) {
 		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("学生位置或宿舍床位记录不一致，请暂停相关操作并核查数据。"));
 	} else {
 		uifeedback::show_error(this, QStringLiteral("无法完成换床"), QStringLiteral("目标床位或学生状态已经变化，请刷新后重试。"),

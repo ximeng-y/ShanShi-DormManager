@@ -35,10 +35,10 @@ private:
 	void update_bed_action_state(const QModelIndex& index);//按选中床位更新情境操作栏
 	void assign_selected_bed();//为当前空床办理指定床位入住
 	void remove_selected_occupant();//为当前住客办理退宿
-	void begin_within_dorm_move();//进入同宿舍空床目标选择状态
+	void begin_within_dorm_bed_change();//进入同宿舍目标床位选择状态
 	void move_selected_occupant_to_other_dorm();//为当前住客选择并执行跨宿舍调宿
 	void cancel_pending_bed_action();//取消床位目标选择状态
-	void complete_within_dorm_move(int target_bed_id);//确认并执行同宿舍换床
+	void complete_within_dorm_bed_change(int target_bed_id, int target_student_id);//按目标床状态执行移动或住客交换
 
 	Ui::DormResourcePage* ui;
 	bedtablemodel* bed_model = nullptr;
