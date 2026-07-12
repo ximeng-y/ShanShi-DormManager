@@ -1,6 +1,7 @@
 #ifndef ACCOMMODATIONPAGE_H
 #define ACCOMMODATIONPAGE_H
 
+#include <QList>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -10,6 +11,7 @@ class AccommodationPage;
 QT_END_NAMESPACE
 
 class QShowEvent;
+class QComboBox;
 class student;
 
 //住宿安排页面。按任务组织入住、退宿、调宿换床与学生互换流程。
@@ -27,6 +29,10 @@ protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新住宿任务预览
 
 private:
+	void refresh_student_selectors();//按各任务适用的入住状态刷新可搜索学生下拉框
+	void populate_student_selector(QComboBox* combo, const QList<int>& student_ids, int excluded_student_id = 0);//填充姓名、性别与学号搜索项
+	int selected_student_id(const QComboBox* combo) const;//仅返回由下拉结果明确选中的学生学号
+	void select_student(QComboBox* combo, int student_id);//按稳定学号预选下拉项
 	void update_assign_controls();//按安置方式启用目标宿舍与床位输入
 	void update_assign_preview();//刷新入住学生与目标位置预览
 	void submit_assignment();//提交学生入住业务

@@ -8,6 +8,10 @@
 #include "system/check.h"
 #include "uifeedback.h"
 
+#include <QComboBox>
+#include <QCompleter>
+#include <QLineEdit>
+#include <QSet>
 #include <QShowEvent>
 #include <QSignalBlocker>
 
@@ -49,6 +53,34 @@ bool has_consistent_accommodation(const student& current_student)
 	const dorm* source_dorm = school::instance().get_dorm(current_student.get_building_id(), current_student.get_dorm_id());
 	return source_dorm != nullptr && source_dorm->get_student_id(current_student.get_bed_id()) == current_student.get_id();
 }
+
+QString student_selector_text(const student& current_student)
+{
+	const QString gender = current_student.get_gender() == 1 ? QStringLiteral("男")
+		: (current_student.get_gender() == 2 ? QStringLiteral("女") : QStringLiteral("未设置"));
+	return QStringLiteral("%1 · %2 · %3")
+		.arg(current_student.get_name(), gender, QString::number(current_student.get_id()));
+}
+
+void configure_student_selector(QComboBox* combo)
+{
+	combo->setEditable(true);
+	combo->setInsertPolicy(QComboBox::NoInsert);
+	combo->setMaxVisibleItems(12);
+	combo->lineEdit()->setPlaceholderText(QStringLiteral("输入姓名或学号"));
+	combo->lineEdit()->setClearButtonEnabled(true);
+	QCompleter* completer = combo->completer();
+	completer->setCaseSensitivity(Qt::CaseInsensitive);
+	completer->setFilterMode(Qt::MatchContains);
+	completer->setCompletionMode(QCompleter::PopupCompletion);
+	QObject::connect(completer, QOverload<const QString&>::of(&QCompleter::activated), combo,
+		[combo](const QString& text) {
+			const int index = combo->findText(text, Qt::MatchExactly);
+			if (index >= 0) {
+				combo->setCurrentIndex(index);
+			}
+		});
+}
 }
 
 AccommodationPage::AccommodationPage(QWidget* parent)
@@ -58,11 +90,16 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	ui->setupUi(this);
 	ui->taskInfoButton->set_information(ui->taskInfoButton->toolTip());
 	ui->taskTabs->setAccessibleName(QStringLiteral("住宿任务类型"));
-	ui->assignStudentSpin->setAccessibleName(QStringLiteral("入住学生学号"));
-	ui->removeStudentSpin->setAccessibleName(QStringLiteral("退宿学生学号"));
-	ui->moveStudentSpin->setAccessibleName(QStringLiteral("调宿学生学号"));
-	ui->swapStudent1Spin->setAccessibleName(QStringLiteral("交换学生一学号"));
-	ui->swapStudent2Spin->setAccessibleName(QStringLiteral("交换学生二学号"));
+	configure_student_selector(ui->assignStudentSpin);
+	configure_student_selector(ui->removeStudentSpin);
+	configure_student_selector(ui->moveStudentSpin);
+	configure_student_selector(ui->swapStudent1Spin);
+	configure_student_selector(ui->swapStudent2Spin);
+	ui->assignStudentSpin->setAccessibleName(QStringLiteral("入住学生姓名或学号"));
+	ui->removeStudentSpin->setAccessibleName(QStringLiteral("退宿学生姓名或学号"));
+	ui->moveStudentSpin->setAccessibleName(QStringLiteral("调宿学生姓名或学号"));
+	ui->swapStudent1Spin->setAccessibleName(QStringLiteral("交换学生一姓名或学号"));
+	ui->swapStudent2Spin->setAccessibleName(QStringLiteral("交换学生二姓名或学号"));
 	ui->assignStrategyCombo->setAccessibleName(QStringLiteral("入住安置方式"));
 	ui->assignBuildingSpin->setAccessibleName(QStringLiteral("入住目标楼栋"));
 	ui->assignDormSpin->setAccessibleName(QStringLiteral("入住目标宿舍"));
@@ -77,21 +114,29 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		update_assign_controls();
 		update_assign_preview();
 	});
-	connect(ui->assignStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
+	connect(ui->assignStudentSpin, &QComboBox::editTextChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBuildingSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBedSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
-	connect(ui->removeStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_remove_preview(); });
+	connect(ui->removeStudentSpin, &QComboBox::editTextChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
-	connect(ui->moveStudentSpin, &identifierlineedit::valueChanged, this, [this]() { refresh_move_buildings(); });
+	connect(ui->moveStudentSpin, &QComboBox::editTextChanged, this, [this]() { refresh_move_buildings(); });
 	connect(ui->moveBuildingCombo, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_dorms(); });
 	connect(ui->moveDormCombo, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_beds(); });
 	connect(ui->moveBedCombo, &QComboBox::currentIndexChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
-	connect(ui->swapStudent1Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
-	connect(ui->swapStudent2Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent1Spin, &QComboBox::editTextChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent1Spin, &QComboBox::currentIndexChanged, this, [this]() {
+		const int second_id = selected_student_id(ui->swapStudent2Spin);
+		populate_student_selector(ui->swapStudent2Spin, school::instance().get_assigned_student_ids(),
+			selected_student_id(ui->swapStudent1Spin));
+		select_student(ui->swapStudent2Spin, second_id);
+		update_swap_preview();
+	});
+	connect(ui->swapStudent2Spin, &QComboBox::editTextChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
+	refresh_student_selectors();
 	update_assign_controls();
 	update_assign_preview();
 	update_remove_preview();
@@ -113,7 +158,7 @@ void AccommodationPage::refresh_move_buildings()//按学生性别与可用目标
 {
 	const QSignalBlocker blocker(ui->moveBuildingCombo);
 	ui->moveBuildingCombo->clear();
-	const student* current_student = school::instance().get_student(ui->moveStudentSpin->value());
+	const student* current_student = school::instance().get_student(selected_student_id(ui->moveStudentSpin));
 	if (current_student != nullptr && has_consistent_accommodation(*current_student)
 		&& current_student->get_gender() >= 1 && current_student->get_gender() <= 2) {
 		for (int building_id : school::instance().get_all_building_ids()) {
@@ -140,7 +185,7 @@ void AccommodationPage::refresh_move_dorms()//按目标楼栋刷新可用宿舍�
 {
 	const QSignalBlocker blocker(ui->moveDormCombo);
 	ui->moveDormCombo->clear();
-	const student* current_student = school::instance().get_student(ui->moveStudentSpin->value());
+	const student* current_student = school::instance().get_student(selected_student_id(ui->moveStudentSpin));
 	const int building_id = ui->moveBuildingCombo->currentData().toInt();
 	if (current_student != nullptr && building_id > 0) {
 		for (const QPair<int, int>& dorm_key : school::instance().get_dorm_keys_of_building(building_id)) {
@@ -159,7 +204,7 @@ void AccommodationPage::refresh_move_beds()//按目标宿舍刷新床位下拉�
 {
 	const QSignalBlocker blocker(ui->moveBedCombo);
 	ui->moveBedCombo->clear();
-	const student* current_student = school::instance().get_student(ui->moveStudentSpin->value());
+	const student* current_student = school::instance().get_student(selected_student_id(ui->moveStudentSpin));
 	const int building_id = ui->moveBuildingCombo->currentData().toInt();
 	const int dorm_id = ui->moveDormCombo->currentData().toInt();
 	const dorm* target = school::instance().get_dorm(building_id, dorm_id);
@@ -181,8 +226,75 @@ AccommodationPage::~AccommodationPage()
 	delete ui;
 }
 
+void AccommodationPage::refresh_student_selectors()
+{
+	const int assign_id = selected_student_id(ui->assignStudentSpin);
+	const int remove_id = selected_student_id(ui->removeStudentSpin);
+	const int move_id = selected_student_id(ui->moveStudentSpin);
+	const int swap1_id = selected_student_id(ui->swapStudent1Spin);
+	const int swap2_id = selected_student_id(ui->swapStudent2Spin);
+	const QList<int> assigned_ids = school::instance().get_assigned_student_ids();
+	QSet<int> assigned_set;
+	for (int student_id : assigned_ids) {
+		assigned_set.insert(student_id);
+	}
+	QList<int> unassigned_ids;
+	for (int student_id : school::instance().get_all_student_ids()) {
+		if (!assigned_set.contains(student_id)) {
+			unassigned_ids.append(student_id);
+		}
+	}
+
+	populate_student_selector(ui->assignStudentSpin, unassigned_ids);
+	populate_student_selector(ui->removeStudentSpin, assigned_ids);
+	populate_student_selector(ui->moveStudentSpin, assigned_ids);
+	populate_student_selector(ui->swapStudent1Spin, assigned_ids);
+	select_student(ui->assignStudentSpin, assign_id);
+	select_student(ui->removeStudentSpin, remove_id);
+	select_student(ui->moveStudentSpin, move_id);
+	select_student(ui->swapStudent1Spin, swap1_id);
+	populate_student_selector(ui->swapStudent2Spin, assigned_ids, selected_student_id(ui->swapStudent1Spin));
+	select_student(ui->swapStudent2Spin, swap2_id);
+}
+
+void AccommodationPage::populate_student_selector(QComboBox* combo, const QList<int>& student_ids, int excluded_student_id)
+{
+	const QSignalBlocker blocker(combo);
+	combo->clear();
+	for (int student_id : student_ids) {
+		if (student_id == excluded_student_id) {
+			continue;
+		}
+		const student* current_student = school::instance().get_student(student_id);
+		if (current_student != nullptr) {
+			combo->addItem(student_selector_text(*current_student), student_id);
+		}
+	}
+	combo->setCurrentIndex(-1);
+	combo->lineEdit()->clear();
+}
+
+int AccommodationPage::selected_student_id(const QComboBox* combo) const
+{
+	const int index = combo->currentIndex();
+	if (index < 0 || combo->currentText() != combo->itemText(index)) {
+		return 0;
+	}
+	return combo->itemData(index).toInt();
+}
+
+void AccommodationPage::select_student(QComboBox* combo, int student_id)
+{
+	const int index = combo->findData(student_id);
+	combo->setCurrentIndex(index);
+	if (index < 0) {
+		combo->lineEdit()->clear();
+	}
+}
+
 void AccommodationPage::refresh_data()
 {
+	refresh_student_selectors();
 	update_assign_preview();
 	update_remove_preview();
 	refresh_move_buildings();
@@ -193,11 +305,13 @@ void AccommodationPage::prepare_student_task(int student_id, bool assigned)
 {
 	if (assigned) {
 		ui->taskTabs->setCurrentWidget(ui->moveTab);
-		ui->moveStudentSpin->setValue(student_id);
+		refresh_student_selectors();
+		select_student(ui->moveStudentSpin, student_id);
 		refresh_move_buildings();
 	} else {
 		ui->taskTabs->setCurrentWidget(ui->assignTab);
-		ui->assignStudentSpin->setValue(student_id);
+		refresh_student_selectors();
+		select_student(ui->assignStudentSpin, student_id);
 		update_assign_preview();
 	}
 }
@@ -231,11 +345,11 @@ void AccommodationPage::update_assign_controls()
 void AccommodationPage::update_assign_preview()
 {
 	ui->assignSubmitButton->setEnabled(false);
-	const int student_id = ui->assignStudentSpin->value();
+	const int student_id = selected_student_id(ui->assignStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	bool student_ready = false;
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		ui->assignStudentPreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号。"));
+		ui->assignStudentPreviewLabel->setText(QStringLiteral("请输入姓名或学号，并从匹配结果中选择一名未入住学生。"));
 	} else if (school::instance().get_assigned_student_ids().contains(student_id) && has_consistent_accommodation(*current_student)) {
 		ui->assignStudentPreviewLabel->setText(QStringLiteral("%1\n当前已入住：%2")
 			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
@@ -304,10 +418,10 @@ void AccommodationPage::update_assign_preview()
 
 void AccommodationPage::submit_assignment()
 {
-	const int student_id = ui->assignStudentSpin->value();
+	const int student_id = selected_student_id(ui->assignStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("学生学号无效或学生不存在。"));
+		uifeedback::show_error(this, QStringLiteral("无法办理入住"), QStringLiteral("请通过姓名或学号搜索并选择一名学生。"));
 		return;
 	}
 	if (school::instance().get_assigned_student_ids().contains(student_id)) {
@@ -405,10 +519,10 @@ void AccommodationPage::show_assignment_error(int result)
 void AccommodationPage::update_remove_preview()
 {
 	ui->removeSubmitButton->setEnabled(false);
-	const int student_id = ui->removeStudentSpin->value();
+	const int student_id = selected_student_id(ui->removeStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		ui->removePreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号。退宿仅释放床位并保留学籍。"));
+		ui->removePreviewLabel->setText(QStringLiteral("请输入姓名或学号，并从匹配结果中选择一名已入住学生。退宿仅释放床位并保留学籍。"));
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
@@ -428,10 +542,10 @@ void AccommodationPage::update_remove_preview()
 
 void AccommodationPage::submit_remove()
 {
-	const int student_id = ui->removeStudentSpin->value();
+	const int student_id = selected_student_id(ui->removeStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		uifeedback::show_error(this, QStringLiteral("无法办理退宿"), QStringLiteral("学生学号无效或学生不存在。"));
+		uifeedback::show_error(this, QStringLiteral("无法办理退宿"), QStringLiteral("请通过姓名或学号搜索并选择一名已入住学生。"));
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
@@ -472,10 +586,10 @@ void AccommodationPage::submit_remove()
 void AccommodationPage::update_move_preview()
 {
 	ui->moveSubmitButton->setEnabled(false);
-	const int student_id = ui->moveStudentSpin->value();
+	const int student_id = selected_student_id(ui->moveStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		ui->movePreviewLabel->setText(QStringLiteral("请输入已有学生的8位学号，并选择目标宿舍。"));
+		ui->movePreviewLabel->setText(QStringLiteral("请输入姓名或学号，并从匹配结果中选择一名已入住学生。"));
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
@@ -518,10 +632,10 @@ void AccommodationPage::update_move_preview()
 
 void AccommodationPage::submit_move()
 {
-	const int student_id = ui->moveStudentSpin->value();
+	const int student_id = selected_student_id(ui->moveStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
-		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("学生学号无效或学生不存在。"));
+		uifeedback::show_error(this, QStringLiteral("无法办理调宿"), QStringLiteral("请通过姓名或学号搜索并选择一名已入住学生。"));
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
@@ -622,10 +736,10 @@ void AccommodationPage::show_move_error(int result)
 void AccommodationPage::update_swap_preview()
 {
 	ui->swapSubmitButton->setEnabled(false);
-	const int student_id1 = ui->swapStudent1Spin->value();
-	const int student_id2 = ui->swapStudent2Spin->value();
+	const int student_id1 = selected_student_id(ui->swapStudent1Spin);
+	const int student_id2 = selected_student_id(ui->swapStudent2Spin);
 	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2)) {
-		ui->swapPreviewLabel->setText(QStringLiteral("请输入两名已入住学生的8位学号。"));
+		ui->swapPreviewLabel->setText(QStringLiteral("请通过姓名或学号搜索并选择两名已入住学生。"));
 		return;
 	}
 	if (student_id1 == student_id2) {
@@ -665,8 +779,8 @@ void AccommodationPage::update_swap_preview()
 
 void AccommodationPage::submit_swap()
 {
-	const int student_id1 = ui->swapStudent1Spin->value();
-	const int student_id2 = ui->swapStudent2Spin->value();
+	const int student_id1 = selected_student_id(ui->swapStudent1Spin);
+	const int student_id2 = selected_student_id(ui->swapStudent2Spin);
 	if (!check::is_valid_student_id(student_id1) || !check::is_valid_student_id(student_id2) || student_id1 == student_id2) {
 		uifeedback::show_error(this, QStringLiteral("无法交换床位"), QStringLiteral("请输入两名不同学生的有效学号。"));
 		return;
