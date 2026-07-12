@@ -74,23 +74,23 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		update_assign_controls();
 		update_assign_preview();
 	});
-	connect(ui->assignStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
-	connect(ui->assignBuildingSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
-	connect(ui->assignDormSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
+	connect(ui->assignStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
+	connect(ui->assignBuildingSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
+	connect(ui->assignDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBedSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
 	ui->removeSubmitButton->setEnabled(true);
-	connect(ui->removeStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_remove_preview(); });
+	connect(ui->removeStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
 	ui->moveSubmitButton->setEnabled(true);
-	connect(ui->moveStudentSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
-	connect(ui->moveBuildingSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
-	connect(ui->moveDormSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveStudentSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveBuildingSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
+	connect(ui->moveDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveBedSpin, &QSpinBox::valueChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
 	ui->swapSubmitButton->setEnabled(true);
-	connect(ui->swapStudent1Spin, &QSpinBox::valueChanged, this, [this]() { update_swap_preview(); });
-	connect(ui->swapStudent2Spin, &QSpinBox::valueChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent1Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent2Spin, &identifierlineedit::valueChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
 	update_assign_controls();
 	update_assign_preview();
@@ -147,7 +147,7 @@ void AccommodationPage::update_assign_controls()
 	ui->assignBedSpin->setEnabled(specified_bed);
 	if (!specified_dorm) {
 		ui->assignBuildingSpin->setValue(0);
-		ui->assignDormSpin->setValue(100);
+		ui->assignDormSpin->setValue(0);
 	}
 	if (!specified_bed) {
 		ui->assignBedSpin->setValue(0);
