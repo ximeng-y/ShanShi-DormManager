@@ -146,6 +146,7 @@
         <item row="0" column="1"><widget class="QLabel" name="unassignedValueLabel"><property name="text"><string>0 人</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set></property></widget></item>
         <item row="1" column="0"><widget class="QLabel" name="unsetGenderTitleLabel"><property name="text"><string>性别未设置</string></property></widget></item>
         <item row="1" column="1"><widget class="QLabel" name="unsetGenderValueLabel"><property name="text"><string>0 人</string></property><property name="alignment"><set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set></property></widget></item>
+        <item row="2" column="0" colspan="2"><widget class="QLabel" name="pendingEmptyLabel"><property name="text"><string>暂无待处理事项</string></property><property name="visible"><bool>false</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
        </layout>
       </widget>
      </item>

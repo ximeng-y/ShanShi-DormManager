@@ -96,7 +96,8 @@ void OverviewPage::refresh_summary()
 	ui->assignedCountValueLabel->setText(QString::number(current_school.get_assigned_student_count()));
 	ui->emptyBedValueLabel->setText(QString::number(current_school.get_empty_bed_count()));
 	ui->buildingCountValueLabel->setText(QString::number(current_school.get_building_count()));
-	ui->unassignedValueLabel->setText(QStringLiteral("%1 人").arg(current_school.get_unassigned_student_count()));
+	const int unassigned_count = current_school.get_unassigned_student_count();
+	ui->unassignedValueLabel->setText(QStringLiteral("%1 人").arg(unassigned_count));
 
 	int male_total = 0;
 	int female_total = 0;
@@ -124,6 +125,13 @@ void OverviewPage::refresh_summary()
 		}
 	}
 	ui->unsetGenderValueLabel->setText(QStringLiteral("%1 人").arg(unset_gender_count));
+	const bool has_unassigned = unassigned_count > 0;
+	const bool has_unset_gender = unset_gender_count > 0;
+	ui->unassignedTitleLabel->setVisible(has_unassigned);
+	ui->unassignedValueLabel->setVisible(has_unassigned);
+	ui->unsetGenderTitleLabel->setVisible(has_unset_gender);
+	ui->unsetGenderValueLabel->setVisible(has_unset_gender);
+	ui->pendingEmptyLabel->setVisible(!has_unassigned && !has_unset_gender);
 
 	const auto update_progress = [](QProgressBar* progress, int assigned, int total) {
 		const int percentage = total > 0 ? assigned * 100 / total : 0;
