@@ -148,12 +148,25 @@ public:
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿；一方为空时无操作成功
 
 private:
+	struct dorm_accommodation_snapshot
+	{
+		int building_id = 0;
+		int dorm_id = 0;
+		int gender = 0;
+		QVector<int> beds;
+	};
+	struct accommodation_snapshot
+	{
+		QVector<dorm_accommodation_snapshot> dorms;
+	};
 	school() = default;//构造函数，单例模式禁止外部实例化
 	int clear_dorm_impl(int building_id, int dorm_id, bool reset_gender);//清空单间宿舍的共享实现
 	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed);//调宿与换床共享实现
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
 	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
 	QVector<accommodation_data_issue> collect_accommodation_issues() const;//逐床核对全校住宿数据并返回面向UI的异常信息
+	accommodation_snapshot take_accommodation_snapshot() const;//保存全校床位与宿舍性别锁，调用前应完成一致性检查
+	bool restore_accommodation_snapshot(const accommodation_snapshot& snapshot);//清空当前住宿后按原床位恢复快照
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置

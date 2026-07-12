@@ -1014,6 +1014,44 @@ QVector<accommodation_data_issue> school::collect_accommodation_issues() const//
 	return issues;
 }
 
+school::accommodation_snapshot school::take_accommodation_snapshot() const//保存全校住宿快照
+{
+	accommodation_snapshot snapshot;
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d != nullptr)
+			snapshot.dorms.append({key.first, key.second, d->get_for_gender(), snapshot_dorm(*d)});
+	}
+	return snapshot;
+}
+
+bool school::restore_accommodation_snapshot(const accommodation_snapshot& snapshot)//恢复全校住宿快照
+{
+	for (const auto& key : get_all_dorm_keys())
+		if (dormmanager::instance().clear_dorm_students(key.first, key.second, true) < 0)
+			return false;
+	for (int student_id : get_all_student_ids())
+		if (studentmanager::instance().clear_dorm_info(student_id) != 1)
+			return false;
+	for (const dorm_accommodation_snapshot& dorm_snapshot : snapshot.dorms)
+	{
+		if (!restore_dorm(dorm_snapshot.building_id, dorm_snapshot.dorm_id, dorm_snapshot.beds, dorm_snapshot.gender))
+			return false;
+		const dorm* d = get_dorm(dorm_snapshot.building_id, dorm_snapshot.dorm_id);
+		if (d == nullptr)
+			return false;
+		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
+		{
+			const int student_id = d->get_student_id(bed_id);
+			if (student_id > 0 && studentmanager::instance().assign_dorm_info(
+				student_id, bed_id, d->get_id(), d->get_building_id(), d->get_floor()) != 1)
+				return false;
+		}
+	}
+	return collect_accommodation_issues().isEmpty();
+}
+
 batch_assignment_preview school::preview_assign_unassigned_students(assignment_strategy strategy, quint32 random_seed) const//生成未入住学生补分预览基础信息
 {
 	batch_assignment_preview preview;
