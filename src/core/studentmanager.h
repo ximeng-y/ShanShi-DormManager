@@ -31,6 +31,8 @@ public:
 	//逻辑判断
 	int is_student_have_dorm(int student_id);//检查指定学号的学生是否已入住任意宿舍
 	bool is_exists(int student_id) const;//判断指定学号的学生是否存在
+	bool is_sequence_used(int grade, int sequence, int except_student_id = 0) const;//同年级是否已有学生使用指定序号
+	int next_available_sequence(int grade, int except_student_id = 0) const;//最小可用序号，0=耗尽/-1=参数非法
 	
 	//高级查询: 手握全量, 一次遍历完成
 	QVector<int> ids_of_class(int class_num) const;//列出指定班级号的所有学生学号

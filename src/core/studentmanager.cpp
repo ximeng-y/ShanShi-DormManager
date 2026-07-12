@@ -1,6 +1,7 @@
 #include "studentmanager.h"
 #include "system/check.h"
 #include "student.h"
+#include <QBitArray>
 
 studentmanager& studentmanager::instance()
 {
@@ -16,12 +17,14 @@ bool studentmanager::add(const student& s)//添加学生: 校验字段合法且�
 		!check::is_valid_class_num(s.get_class_num()) ||
 		!check::is_valid_grade(s.get_grade()) ||
 		!check::is_valid_gender(s.get_gender()) ||
-		!check::is_valid_student_id(s.get_id()))
+		!check::is_student_id_consistent(s.get_id(), s.get_grade(), s.get_class_num()))
 		return false;//字段非法
 	if (s.get_bed_id() != 0 || s.get_dorm_id() != 0 || s.get_building_id() != 0 || s.get_floor() != 0)
 		return false;//禁止携带住宿位置快照入库，所有入住必须经过school
 	if (students.contains(s.get_id()))
 		return false;//学号已存在(唯一性约束)
+	if (is_sequence_used(s.get_grade(), check::student_id_sequence(s.get_id())))
+		return false;//同一年级内序号必须唯一，忽略班级
 
 	students.insert(s.get_id(), s);
 	return true;
@@ -37,6 +40,41 @@ bool studentmanager::remove(int student_id)//移除学生
 bool studentmanager::is_exists(int student_id) const//判断学生是否存在
 {
 	return students.contains(student_id);//直接返回是否存在
+}
+
+bool studentmanager::is_sequence_used(int grade, int sequence, int except_student_id) const//同年级是否已有学生使用指定序号
+{
+	if (!check::is_valid_grade(grade) || !check::is_valid_student_sequence(sequence))
+		return false;
+	for (auto it = students.constBegin(); it != students.constEnd(); ++it)
+	{
+		if (it.key() == except_student_id || it.value().get_grade() != grade)
+			continue;
+		if (check::student_id_sequence(it.value().get_id()) == sequence)
+			return true;
+	}
+	return false;
+}
+
+int studentmanager::next_available_sequence(int grade, int except_student_id) const//查找同年级最小未占用序号
+{
+	if (!check::is_valid_grade(grade))
+		return -1;
+	QBitArray used(10000, false);
+	for (auto it = students.constBegin(); it != students.constEnd(); ++it)
+	{
+		if (it.key() == except_student_id || it.value().get_grade() != grade)
+			continue;
+		const int sequence = check::student_id_sequence(it.value().get_id());
+		if (check::is_valid_student_sequence(sequence))
+			used.setBit(sequence);
+	}
+	for (int sequence = 1; sequence <= 9999; ++sequence)
+	{
+		if (!used.testBit(sequence))
+			return sequence;
+	}
+	return 0;
 }
 
 const student* studentmanager::get(int student_id) const//按学号取本体（只读）
