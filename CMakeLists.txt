@@ -14,6 +14,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
         src/main.cpp
+        src/ui/resources.qrc
         src/ui/mainwidget.cpp
         src/ui/mainwidget.h
         src/ui/mainwidget.ui

@@ -312,6 +312,46 @@ QComboBox {
 	selection-background-color: #315f86;
 }
 
+QSpinBox {
+	padding-right: 30px;
+}
+
+QSpinBox::up-button,
+QSpinBox::down-button {
+	subcontrol-origin: border;
+	width: 24px;
+	border-left: 1px solid #d8e0e7;
+	background: #f8fafb;
+}
+
+QSpinBox::up-button {
+	subcontrol-position: top right;
+	border-top-right-radius: 5px;
+	border-bottom: 1px solid #d8e0e7;
+}
+
+QSpinBox::down-button {
+	subcontrol-position: bottom right;
+	border-bottom-right-radius: 5px;
+}
+
+QSpinBox::up-button:hover,
+QSpinBox::down-button:hover {
+	background: #e9f0f6;
+}
+
+QSpinBox::up-arrow {
+	width: 10px;
+	height: 6px;
+	image: url(:/icons/spin-up.svg);
+}
+
+QSpinBox::down-arrow {
+	width: 10px;
+	height: 6px;
+	image: url(:/icons/spin-down.svg);
+}
+
 QLineEdit:focus,
 QSpinBox:focus,
 QComboBox:focus {
