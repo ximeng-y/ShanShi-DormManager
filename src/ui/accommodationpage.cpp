@@ -9,11 +9,11 @@
 #include "uifeedback.h"
 
 #include <QComboBox>
-#include <QCompleter>
 #include <QLineEdit>
 #include <QSet>
 #include <QShowEvent>
 #include <QSignalBlocker>
+#include <QStandardItemModel>
 
 namespace {
 QString accommodation_student_text(const student& current_student)
@@ -69,17 +69,7 @@ void configure_student_selector(QComboBox* combo)
 	combo->setMaxVisibleItems(12);
 	combo->lineEdit()->setPlaceholderText(QStringLiteral("输入姓名或学号"));
 	combo->lineEdit()->setClearButtonEnabled(true);
-	QCompleter* completer = combo->completer();
-	completer->setCaseSensitivity(Qt::CaseInsensitive);
-	completer->setFilterMode(Qt::MatchContains);
-	completer->setCompletionMode(QCompleter::PopupCompletion);
-	QObject::connect(completer, QOverload<const QString&>::of(&QCompleter::activated), combo,
-		[combo](const QString& text) {
-			const int index = combo->findText(text, Qt::MatchExactly);
-			if (index >= 0) {
-				combo->setCurrentIndex(index);
-			}
-		});
+	combo->setCompleter(nullptr);
 }
 }
 
@@ -114,19 +104,34 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		update_assign_controls();
 		update_assign_preview();
 	});
-	connect(ui->assignStudentSpin, &QComboBox::editTextChanged, this, [this]() { update_assign_preview(); });
+	connect(ui->assignStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
+		filter_student_selector(ui->assignStudentSpin, text);
+		update_assign_preview();
+	});
+	connect(ui->assignStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBuildingSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignDormSpin, &identifierlineedit::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignBedSpin, &QSpinBox::valueChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
-	connect(ui->removeStudentSpin, &QComboBox::editTextChanged, this, [this]() { update_remove_preview(); });
+	connect(ui->removeStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
+		filter_student_selector(ui->removeStudentSpin, text);
+		update_remove_preview();
+	});
+	connect(ui->removeStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
-	connect(ui->moveStudentSpin, &QComboBox::editTextChanged, this, [this]() { refresh_move_buildings(); });
+	connect(ui->moveStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
+		filter_student_selector(ui->moveStudentSpin, text);
+		refresh_move_buildings();
+	});
+	connect(ui->moveStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_buildings(); });
 	connect(ui->moveBuildingCombo, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_dorms(); });
 	connect(ui->moveDormCombo, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_beds(); });
 	connect(ui->moveBedCombo, &QComboBox::currentIndexChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
-	connect(ui->swapStudent1Spin, &QComboBox::editTextChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent1Spin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
+		filter_student_selector(ui->swapStudent1Spin, text);
+		update_swap_preview();
+	});
 	connect(ui->swapStudent1Spin, &QComboBox::currentIndexChanged, this, [this]() {
 		const int second_id = selected_student_id(ui->swapStudent2Spin);
 		populate_student_selector(ui->swapStudent2Spin, school::instance().get_assigned_student_ids(),
@@ -134,7 +139,11 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		select_student(ui->swapStudent2Spin, second_id);
 		update_swap_preview();
 	});
-	connect(ui->swapStudent2Spin, &QComboBox::editTextChanged, this, [this]() { update_swap_preview(); });
+	connect(ui->swapStudent2Spin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
+		filter_student_selector(ui->swapStudent2Spin, text);
+		update_swap_preview();
+	});
+	connect(ui->swapStudent2Spin, &QComboBox::currentIndexChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
 	refresh_student_selectors();
 	update_assign_controls();
@@ -259,19 +268,52 @@ void AccommodationPage::refresh_student_selectors()
 
 void AccommodationPage::populate_student_selector(QComboBox* combo, const QList<int>& student_ids, int excluded_student_id)
 {
-	const QSignalBlocker blocker(combo);
-	combo->clear();
+	QList<int> available_ids;
 	for (int student_id : student_ids) {
-		if (student_id == excluded_student_id) {
-			continue;
-		}
-		const student* current_student = school::instance().get_student(student_id);
-		if (current_student != nullptr) {
-			combo->addItem(student_selector_text(*current_student), student_id);
+		if (student_id != excluded_student_id && school::instance().get_student(student_id) != nullptr) {
+			available_ids.append(student_id);
 		}
 	}
-	combo->setCurrentIndex(-1);
-	combo->lineEdit()->clear();
+	student_selector_ids.insert(combo, available_ids);
+	filter_student_selector(combo, QString());
+}
+
+void AccommodationPage::filter_student_selector(QComboBox* combo, const QString& search_text)
+{
+	const QString trimmed_search = search_text.trimmed();
+	int match_count = 0;
+	{
+		const QSignalBlocker blocker(combo);
+		combo->clear();
+		for (int student_id : student_selector_ids.value(combo)) {
+			const student* current_student = school::instance().get_student(student_id);
+			if (current_student == nullptr) {
+				continue;
+			}
+			const QString item_text = student_selector_text(*current_student);
+			if (!trimmed_search.isEmpty()
+				&& !current_student->get_name().contains(trimmed_search, Qt::CaseInsensitive)
+				&& !QString::number(student_id).contains(trimmed_search)) {
+				continue;
+			}
+			combo->addItem(item_text, student_id);
+			++match_count;
+		}
+		if (!trimmed_search.isEmpty() && match_count == 0) {
+			combo->addItem(QStringLiteral("没有匹配的学生"), 0);
+			if (auto* model = qobject_cast<QStandardItemModel*>(combo->model())) {
+				model->item(0)->setEnabled(false);
+			}
+		}
+		combo->setCurrentIndex(-1);
+		combo->lineEdit()->setText(search_text);
+		combo->lineEdit()->setCursorPosition(search_text.size());
+	}
+	if (trimmed_search.isEmpty()) {
+		combo->hidePopup();
+	} else {
+		combo->showPopup();
+	}
 }
 
 int AccommodationPage::selected_student_id(const QComboBox* combo) const

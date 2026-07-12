@@ -2,6 +2,7 @@
 #define ACCOMMODATIONPAGE_H
 
 #include <QList>
+#include <QHash>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -31,6 +32,7 @@ protected:
 private:
 	void refresh_student_selectors();//按各任务适用的入住状态刷新可搜索学生下拉框
 	void populate_student_selector(QComboBox* combo, const QList<int>& student_ids, int excluded_student_id = 0);//填充姓名、性别与学号搜索项
+	void filter_student_selector(QComboBox* combo, const QString& search_text);//实时筛选下拉内容并显示无匹配提示
 	int selected_student_id(const QComboBox* combo) const;//仅返回由下拉结果明确选中的学生学号
 	void select_student(QComboBox* combo, int student_id);//按稳定学号预选下拉项
 	void update_assign_controls();//按安置方式启用目标宿舍与床位输入
@@ -51,6 +53,7 @@ private:
 	QString validate_swap_constraints(const student& student1, const student& student2, bool& data_error) const;//交换前只读检查性别与目标约束
 
 	Ui::AccommodationPage* ui;
+	QHash<QComboBox*, QList<int>> student_selector_ids;//保存各任务当前允许选择的完整学生目录
 };
 
 #endif // ACCOMMODATIONPAGE_H
