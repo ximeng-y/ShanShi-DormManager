@@ -105,6 +105,8 @@ set(PROJECT_SOURCES
         src/core/school.cpp
         src/core/school.h
         src/core/sampledataplan.h
+        src/persistence/schoolsnapshot.cpp
+        src/persistence/schoolsnapshot.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
