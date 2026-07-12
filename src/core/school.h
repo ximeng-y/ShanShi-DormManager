@@ -5,6 +5,7 @@
 #include <QPair>
 #include <QString>
 #include "sampledataplan.h"
+#include "persistence/schoolsnapshot.h"
 
 class student;
 class dorm;
@@ -271,6 +272,8 @@ private:
 	bool purge_all_data();//事务内部清除三个manager当前全部对象
 	bool write_sample_data_plan(const sampledataplan& plan);//按楼栋、空宿舍、学生、指定床位顺序写入
 	bool restore_school_data_snapshot(const school_data_snapshot& snapshot);//清除残留后恢复完整原数据
+	schoolsnapshot create_persistence_snapshot() const;//导出完整学校持久化快照
+	bool restore_persistence_snapshot(const schoolsnapshot& snapshot);//整体恢复持久化快照并核对结果
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置

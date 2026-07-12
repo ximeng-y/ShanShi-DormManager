@@ -1196,6 +1196,101 @@ bool school::restore_school_data_snapshot(const school_data_snapshot& snapshot)/
 	return purge_all_data() && write_sample_data_plan(snapshot.data);
 }
 
+schoolsnapshot school::create_persistence_snapshot() const//导出完整学校持久化快照
+{
+	schoolsnapshot snapshot;
+	snapshot.saved_at = QDateTime::currentDateTime();
+	for (int building_id : get_all_building_ids())
+	{
+		const building* current_building = get_building(building_id);
+		if (current_building != nullptr)
+			snapshot.buildings.append({current_building->get_id(), current_building->get_max_floor(), current_building->get_for_gender()});
+	}
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* current_dorm = get_dorm(key.first, key.second);
+		if (current_dorm != nullptr)
+			snapshot.dorms.append({key.first, key.second, current_dorm->get_max_num(),
+				current_dorm->get_for_gender(), snapshot_dorm(*current_dorm)});
+	}
+	for (int student_id : get_all_student_ids())
+	{
+		const student* current_student = get_student(student_id);
+		if (current_student != nullptr)
+			snapshot.students.append({current_student->get_id(), current_student->get_name(), current_student->get_gender(),
+				current_student->get_grade(), current_student->get_class_num(), current_student->get_building_id(),
+				current_student->get_dorm_id(), current_student->get_floor(), current_student->get_bed_id()});
+	}
+	return snapshot;
+}
+
+bool school::restore_persistence_snapshot(const schoolsnapshot& snapshot)//整体恢复持久化快照并核对结果
+{
+	if (snapshot.format != QStringLiteral("DormManagerData") || snapshot.version != schoolsnapshot::current_version)
+		return false;
+	sampledataplan plan;
+	for (const building_snapshot& item : snapshot.buildings)
+		plan.buildings.append({item.id, item.gender, item.max_floor});
+	for (const dorm_snapshot& item : snapshot.dorms)
+	{
+		if (item.beds.size() != item.max_beds)
+			return false;
+		plan.dorms.append({item.building_id, item.dorm_id, item.max_beds, item.gender_lock});
+	}
+	QHash<int, const student_snapshot*> students;
+	for (const student_snapshot& item : snapshot.students)
+	{
+		if (students.contains(item.id))
+			return false;
+		students.insert(item.id, &item);
+		const bool all_empty = item.building_id == 0 && item.dorm_id == 0 && item.floor == 0 && item.bed_id == 0;
+		const bool all_assigned = item.building_id > 0 && item.dorm_id > 0 && item.floor > 0 && item.bed_id > 0;
+		if (!all_empty && !all_assigned)
+			return false;
+		plan.students.append({item.id, item.name, item.gender, item.class_number, item.grade,
+			item.building_id, item.dorm_id, item.bed_id});
+	}
+	QSet<int> students_in_beds;
+	for (const dorm_snapshot& item : snapshot.dorms)
+	{
+		for (int bed_index = 0; bed_index < item.beds.size(); ++bed_index)
+		{
+			const int student_id = item.beds.at(bed_index);
+			if (student_id == 0)
+				continue;
+			if (students_in_beds.contains(student_id))
+				return false;
+			students_in_beds.insert(student_id);
+			const student_snapshot* current_student = students.value(student_id, nullptr);
+			if (current_student == nullptr || current_student->building_id != item.building_id
+				|| current_student->dorm_id != item.dorm_id || current_student->bed_id != bed_index + 1
+				|| current_student->floor != item.dorm_id / 100)
+				return false;
+		}
+	}
+	for (const student_snapshot& item : snapshot.students)
+	{
+		const bool assigned = item.building_id > 0;
+		if (assigned != students_in_beds.contains(item.id))
+			return false;
+	}
+	if (!validate_sample_data_plan(plan, true))
+		return false;
+	const school_data_snapshot before = take_school_data_snapshot();
+	if (!restore_school_data_snapshot({plan}))
+	{
+		restore_school_data_snapshot(before);
+		return false;
+	}
+	const schoolsnapshot restored = create_persistence_snapshot();
+	if (!restored.data_equals(snapshot))
+	{
+		restore_school_data_snapshot(before);
+		return false;
+	}
+	return true;
+}
+
 int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后生成样例数据
 {
 	if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty() || !validate_sample_data_plan(plan)) return -1;
