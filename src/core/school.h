@@ -157,6 +157,7 @@ public:
 	bool is_read_only() const;
 	QString active_data_directory() const;
 	QString last_persistence_error() const;
+	int last_persistence_error_code() const;
 	persistence_start_status persistence_status() const;
 	QString persistence_candidate_summary(bool executable_data) const;//返回冲突候选的目录、保存时间及对象数量
 
@@ -297,6 +298,9 @@ private:
 	bool load_storage_directory(const QString& directory, bool writable, bool fallback_directory,
 		persistence_start_status normal_status);//加载指定目录正式文件或备份
 	bool apply_loaded_snapshot(const schoolsnapshot& snapshot);//启动加载期间暂停持久化并恢复快照
+	bool begin_persistent_mutation();//建立最外层写事务快照，只读模式返回false
+	int finish_persistent_mutation(int result, bool business_success);//结束int写事务并提交自动保存
+	bool finish_persistent_mutation(bool result);//兼容现有bool写入口，持久化失败统一返回false
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置
@@ -307,6 +311,11 @@ private:
 	bool persistence_suspended = false;
 	bool read_only = true;
 	QString persistence_error;
+	int persistence_error_code = 0;
+	int mutation_depth = 0;
+	bool mutation_business_failed = false;
+	schoolsnapshot mutation_before;
+	bool mutation_before_valid = false;
 	schoolsnapshot executable_candidate;
 	schoolsnapshot fallback_candidate;
 	bool executable_candidate_valid = false;

@@ -1332,6 +1332,7 @@ bool school::is_persistence_ready() const { return persistence_initialized && !s
 bool school::is_read_only() const { return read_only; }
 QString school::active_data_directory() const { return storage.data_directory(); }
 QString school::last_persistence_error() const { return persistence_error; }
+int school::last_persistence_error_code() const { return persistence_error_code; }
 persistence_start_status school::persistence_status() const { return current_persistence_status; }
 
 QString school::persistence_candidate_summary(bool executable_data) const
@@ -1403,6 +1404,93 @@ bool school::apply_loaded_snapshot(const schoolsnapshot& snapshot)
 	const bool restored = restore_persistence_snapshot(snapshot);
 	persistence_suspended = false;
 	return restored;
+}
+
+bool school::begin_persistent_mutation()//建立最外层写事务
+{
+	if (persistence_suspended || !persistence_initialized)
+	{
+		++mutation_depth;
+		return true;
+	}
+	if (read_only)
+	{
+		persistence_error_code = -102;
+		persistence_error = QStringLiteral("当前处于只读安全模式，不能修改数据。请先处理数据文件问题并重新启动程序。");
+		return false;
+	}
+	if (mutation_depth == 0)
+	{
+		mutation_before = create_persistence_snapshot();
+		mutation_before_valid = !schoolstorage::encode_snapshot(mutation_before, &persistence_error).isEmpty();
+		mutation_business_failed = !mutation_before_valid;
+		persistence_error_code = 0;
+	}
+	++mutation_depth;
+	return mutation_before_valid;
+}
+
+int school::finish_persistent_mutation(int result, bool business_success)//提交最外层int写事务
+{
+	if (mutation_depth <= 0)
+		return result;
+	mutation_business_failed = mutation_business_failed || !business_success;
+	--mutation_depth;
+	if (mutation_depth > 0 || persistence_suspended || !persistence_initialized)
+		return result;
+	const schoolsnapshot after = create_persistence_snapshot();
+	const bool changed = mutation_before_valid && !after.data_equals(mutation_before);
+	if (mutation_business_failed)
+	{
+		if (changed)
+		{
+			persistence_suspended = true;
+			const bool restored = restore_persistence_snapshot(mutation_before)
+				&& create_persistence_snapshot().data_equals(mutation_before);
+			persistence_suspended = false;
+			if (!restored)
+			{
+				read_only = true;
+				persistence_error_code = -101;
+				persistence_error = QStringLiteral("业务失败后未能完整恢复操作前数据，请立即停止后续操作并重新启动程序。");
+				return -101;
+			}
+		}
+		mutation_before_valid = false;
+		return result;
+	}
+	if (!changed)
+	{
+		mutation_before_valid = false;
+		return result;
+	}
+	if (storage.save_snapshot(after, &persistence_error))
+	{
+		mutation_before_valid = false;
+		persistence_error_code = 0;
+		return result;
+	}
+	persistence_suspended = true;
+	const bool restored = restore_persistence_snapshot(mutation_before)
+		&& create_persistence_snapshot().data_equals(mutation_before);
+	persistence_suspended = false;
+	mutation_before_valid = false;
+	if (!restored)
+	{
+		read_only = true;
+		persistence_error_code = -101;
+		persistence_error = QStringLiteral("保存失败且内存数据未能完整恢复，请立即停止后续操作并重新启动程序。");
+		return -101;
+	}
+	persistence_error_code = -100;
+	persistence_error = QStringLiteral("操作未保存，系统已恢复到操作前状态。请检查数据目录权限或磁盘空间后重试。");
+	return -100;
+}
+
+bool school::finish_persistent_mutation(bool result)//提交兼容bool写事务
+{
+	const int finalized = finish_persistent_mutation(result ? 1 : 0, result);
+	return finalized == 1;
 }
 
 schoolsnapshot school::create_persistence_snapshot() const//导出完整学校持久化快照
