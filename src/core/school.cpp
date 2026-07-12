@@ -6,6 +6,8 @@
 #include "system/check.h"
 #include <QRandomGenerator>
 #include <QHash>
+#include <QDir>
+#include <QFileInfo>
 #include <QSet>
 #include <QStringList>
 #include <algorithm>
@@ -1195,6 +1197,212 @@ bool school::write_sample_data_plan(const sampledataplan& plan)//按固定计划
 bool school::restore_school_data_snapshot(const school_data_snapshot& snapshot)//恢复完整全校数据
 {
 	return purge_all_data() && write_sample_data_plan(snapshot.data);
+}
+
+persistence_start_status school::initialize_persistence()//启动加载或创建持久化文件
+{
+	if (persistence_initialized)
+		return current_persistence_status;
+	persistence_initialized = true;
+	const QString executable_directory = schoolstorage::executable_data_directory();
+	const QString fallback_directory = schoolstorage::fallback_data_directory();
+	executable_directory_writable = schoolstorage::directory_is_writable(executable_directory);
+	fallback_directory_writable = schoolstorage::directory_is_writable(fallback_directory);
+	const bool executable_exists = QFileInfo::exists(QDir(executable_directory).filePath(QStringLiteral("school-data.json")));
+	const bool fallback_exists = QFileInfo::exists(QDir(fallback_directory).filePath(QStringLiteral("school-data.json")));
+
+	if (executable_exists && fallback_exists)
+	{
+		schoolstorage executable_storage;
+		executable_storage.set_data_directory(executable_directory);
+		schoolstorage fallback_storage;
+		fallback_storage.set_data_directory(fallback_directory);
+		QString executable_error;
+		QString fallback_error;
+		executable_candidate_valid = executable_storage.load_primary(executable_candidate, &executable_error) == storage_load_status::loaded;
+		fallback_candidate_valid = fallback_storage.load_primary(fallback_candidate, &fallback_error) == storage_load_status::loaded;
+		if (executable_candidate_valid && fallback_candidate_valid)
+		{
+			read_only = true;
+			persistence_error = QStringLiteral("程序目录和用户目录均存在有效数据，请选择本次使用的数据。 ");
+			current_persistence_status = persistence_start_status::data_conflict;
+			return current_persistence_status;
+		}
+		if (executable_candidate_valid)
+			return load_storage_directory(executable_directory, executable_directory_writable, false,
+				persistence_start_status::ready) ? current_persistence_status : current_persistence_status;
+		if (fallback_candidate_valid)
+			return load_storage_directory(fallback_directory, fallback_directory_writable, true,
+				persistence_start_status::fallback_ready) ? current_persistence_status : current_persistence_status;
+		persistence_error = QStringLiteral("程序目录和用户目录中的数据均无法读取。\n程序目录：%1\n用户目录：%2")
+			.arg(executable_error, fallback_error);
+		read_only = true;
+		current_persistence_status = persistence_start_status::read_only_corrupt;
+		return current_persistence_status;
+	}
+
+	if (executable_exists)
+	{
+		if (executable_directory_writable)
+		{
+			load_storage_directory(executable_directory, true, false, persistence_start_status::ready);
+			return current_persistence_status;
+		}
+		schoolstorage source_storage;
+		source_storage.set_data_directory(executable_directory);
+		schoolsnapshot source_snapshot;
+		QString source_error;
+		const storage_load_status source_status = source_storage.load_primary(source_snapshot, &source_error);
+		if (source_status == storage_load_status::loaded && fallback_directory_writable)
+		{
+			storage.set_data_directory(fallback_directory);
+			if (storage.rebuild_primary(source_snapshot, &persistence_error) && apply_loaded_snapshot(source_snapshot))
+			{
+				read_only = false;
+				current_persistence_status = persistence_start_status::fallback_ready;
+				return current_persistence_status;
+			}
+		}
+		if (source_status == storage_load_status::loaded && apply_loaded_snapshot(source_snapshot))
+		{
+			storage.set_data_directory(executable_directory);
+			read_only = true;
+			persistence_error = QStringLiteral("程序目录数据已只读打开，但无法迁移到用户目录。%1").arg(persistence_error);
+			current_persistence_status = persistence_start_status::read_only_unwritable;
+			return current_persistence_status;
+		}
+		read_only = true;
+		persistence_error = source_error;
+		current_persistence_status = source_status == storage_load_status::newer_version
+			? persistence_start_status::read_only_newer_version : persistence_start_status::read_only_corrupt;
+		return current_persistence_status;
+	}
+
+	if (fallback_exists)
+	{
+		load_storage_directory(fallback_directory, fallback_directory_writable, true, persistence_start_status::fallback_ready);
+		return current_persistence_status;
+	}
+
+	schoolsnapshot empty_snapshot;
+	empty_snapshot.saved_at = QDateTime::currentDateTime();
+	if (executable_directory_writable)
+	{
+		storage.set_data_directory(executable_directory);
+		if (storage.create_initial_file(empty_snapshot, &persistence_error))
+		{
+			read_only = false;
+			current_persistence_status = persistence_start_status::ready;
+			return current_persistence_status;
+		}
+	}
+	if (fallback_directory_writable)
+	{
+		storage.set_data_directory(fallback_directory);
+		if (storage.create_initial_file(empty_snapshot, &persistence_error))
+		{
+			read_only = false;
+			current_persistence_status = persistence_start_status::fallback_ready;
+			return current_persistence_status;
+		}
+	}
+	read_only = true;
+	current_persistence_status = persistence_start_status::read_only_unwritable;
+	return current_persistence_status;
+}
+
+bool school::resolve_persistence_conflict(bool use_executable_data)//确认双目录冲突使用哪份数据
+{
+	if (current_persistence_status != persistence_start_status::data_conflict)
+		return false;
+	const schoolsnapshot& selected = use_executable_data ? executable_candidate : fallback_candidate;
+	const bool candidate_valid = use_executable_data ? executable_candidate_valid : fallback_candidate_valid;
+	const bool writable = use_executable_data ? executable_directory_writable : fallback_directory_writable;
+	if (!candidate_valid || !apply_loaded_snapshot(selected))
+		return false;
+	storage.set_data_directory(use_executable_data ? schoolstorage::executable_data_directory() : schoolstorage::fallback_data_directory());
+	read_only = !writable;
+	current_persistence_status = use_executable_data
+		? (writable ? persistence_start_status::ready : persistence_start_status::read_only_unwritable)
+		: (writable ? persistence_start_status::fallback_ready : persistence_start_status::read_only_unwritable);
+	return true;
+}
+
+bool school::is_persistence_ready() const { return persistence_initialized && !storage.data_directory().isEmpty(); }
+bool school::is_read_only() const { return read_only; }
+QString school::active_data_directory() const { return storage.data_directory(); }
+QString school::last_persistence_error() const { return persistence_error; }
+persistence_start_status school::persistence_status() const { return current_persistence_status; }
+
+QString school::persistence_candidate_summary(bool executable_data) const
+{
+	const schoolsnapshot& candidate = executable_data ? executable_candidate : fallback_candidate;
+	const QString directory = executable_data ? schoolstorage::executable_data_directory() : schoolstorage::fallback_data_directory();
+	return QStringLiteral("目录：%1\n保存时间：%2\n学生：%3 人\n楼栋：%4 栋\n宿舍：%5 间")
+		.arg(directory, candidate.saved_at.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")))
+		.arg(candidate.students.size()).arg(candidate.buildings.size()).arg(candidate.dorms.size());
+}
+
+bool school::load_storage_directory(const QString& directory, bool writable, bool fallback_directory,
+	persistence_start_status normal_status)
+{
+	storage.set_data_directory(directory);
+	schoolsnapshot snapshot;
+	QString load_error;
+	const storage_load_status primary_status = storage.load_primary(snapshot, &load_error);
+	if (primary_status == storage_load_status::loaded && apply_loaded_snapshot(snapshot))
+	{
+		read_only = !writable;
+		current_persistence_status = writable ? normal_status : persistence_start_status::read_only_unwritable;
+		return true;
+	}
+	if (primary_status == storage_load_status::newer_version)
+	{
+		read_only = true;
+		persistence_error = load_error;
+		current_persistence_status = persistence_start_status::read_only_newer_version;
+		return false;
+	}
+	if (primary_status == storage_load_status::invalid && writable)
+		storage.archive_invalid_file(storage.primary_file_path(), nullptr, nullptr);
+	schoolsnapshot backup_snapshot;
+	QString backup_error;
+	const storage_load_status backup_status = storage.load_backup(backup_snapshot, &backup_error);
+	if (backup_status == storage_load_status::loaded && apply_loaded_snapshot(backup_snapshot))
+	{
+		if (writable && !storage.rebuild_primary(backup_snapshot, &persistence_error))
+		{
+			read_only = true;
+			current_persistence_status = persistence_start_status::read_only_unwritable;
+			return false;
+		}
+		read_only = !writable;
+		current_persistence_status = writable ? persistence_start_status::backup_restored
+			: persistence_start_status::read_only_unwritable;
+		return true;
+	}
+	if (backup_status == storage_load_status::newer_version)
+	{
+		read_only = true;
+		persistence_error = backup_error;
+		current_persistence_status = persistence_start_status::read_only_newer_version;
+		return false;
+	}
+	if (backup_status == storage_load_status::invalid && writable)
+		storage.archive_invalid_file(storage.backup_file_path(), nullptr, nullptr);
+	read_only = true;
+	persistence_error = QStringLiteral("正式数据无法读取：%1\n备份数据无法读取：%2").arg(load_error, backup_error);
+	current_persistence_status = writable || fallback_directory
+		? persistence_start_status::read_only_corrupt : persistence_start_status::read_only_unwritable;
+	return false;
+}
+
+bool school::apply_loaded_snapshot(const schoolsnapshot& snapshot)
+{
+	persistence_suspended = true;
+	const bool restored = restore_persistence_snapshot(snapshot);
+	persistence_suspended = false;
+	return restored;
 }
 
 schoolsnapshot school::create_persistence_snapshot() const//导出完整学校持久化快照

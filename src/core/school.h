@@ -6,6 +6,7 @@
 #include <QString>
 #include "sampledataplan.h"
 #include "persistence/schoolsnapshot.h"
+#include "persistence/schoolstorage.h"
 
 class student;
 class dorm;
@@ -37,6 +38,17 @@ enum class dorm_adjustment_mode
 	overlap_swap,
 	overlap_swap_and_evict,
 	gender_dorm_swap
+};
+
+enum class persistence_start_status
+{
+	ready,
+	fallback_ready,
+	backup_restored,
+	data_conflict,
+	read_only_corrupt,
+	read_only_unwritable,
+	read_only_newer_version
 };
 
 struct accommodation_change
@@ -139,6 +151,14 @@ public:
 	static school& instance();//创建单例入口
 	school(const school&) = delete;//禁止拷贝构造，维护单例唯一性
 	school& operator=(const school&) = delete;//禁止拷贝赋值，维护单例唯一性
+	persistence_start_status initialize_persistence();//启动时选择目录、加载数据或创建首次空文件
+	bool resolve_persistence_conflict(bool use_executable_data);//双目录均有有效数据时由UI确认使用哪一份
+	bool is_persistence_ready() const;
+	bool is_read_only() const;
+	QString active_data_directory() const;
+	QString last_persistence_error() const;
+	persistence_start_status persistence_status() const;
+	QString persistence_candidate_summary(bool executable_data) const;//返回冲突候选的目录、保存时间及对象数量
 
 	//基础只读查询入口。返回指针均指向对应 manager 容器内部本体，后续删除对应对象后会失效；
 	//student 指针还可能在 studentmanager 后续 add/remove 触发 QHash rehash 后失效。
@@ -274,9 +294,25 @@ private:
 	bool restore_school_data_snapshot(const school_data_snapshot& snapshot);//清除残留后恢复完整原数据
 	schoolsnapshot create_persistence_snapshot() const;//导出完整学校持久化快照
 	bool restore_persistence_snapshot(const schoolsnapshot& snapshot);//整体恢复持久化快照并核对结果
+	bool load_storage_directory(const QString& directory, bool writable, bool fallback_directory,
+		persistence_start_status normal_status);//加载指定目录正式文件或备份
+	bool apply_loaded_snapshot(const schoolsnapshot& snapshot);//启动加载期间暂停持久化并恢复快照
 	QVector<int> snapshot_dorm(const dorm& d) const;//按床位保存宿舍快照，0表示空床
 	bool restore_dorm(int building_id, int dorm_id, const QVector<int>& beds, int gender);//按床位恢复宿舍原住客与性别锁
 	void reset_and_sync_students(const QVector<int>& original_ids, int b1, int d1, int b2, int d2);//按交换后两间宿舍现状同步学生位置
+
+	schoolstorage storage;
+	persistence_start_status current_persistence_status = persistence_start_status::read_only_unwritable;
+	bool persistence_initialized = false;
+	bool persistence_suspended = false;
+	bool read_only = true;
+	QString persistence_error;
+	schoolsnapshot executable_candidate;
+	schoolsnapshot fallback_candidate;
+	bool executable_candidate_valid = false;
+	bool fallback_candidate_valid = false;
+	bool executable_directory_writable = false;
+	bool fallback_directory_writable = false;
 };
 
 #endif // SCHOOL_H
