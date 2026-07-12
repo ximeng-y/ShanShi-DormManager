@@ -236,13 +236,33 @@ int school::change_student_academic_info(int old_student_id, int new_grade, int 
 	if (current == nullptr)
 		return 0;
 	const student snapshot = *current;
-	if (!check::is_student_id_consistent(snapshot.get_id(), snapshot.get_grade(), snapshot.get_class_num()))
+	if (old_student_id != snapshot.get_id()
+		|| !check::is_student_id_consistent(snapshot.get_id(), snapshot.get_grade(), snapshot.get_class_num()))
 		return -1;
 	const bool unassigned = snapshot.get_bed_id() == 0 && snapshot.get_dorm_id() == 0
 		&& snapshot.get_building_id() == 0 && snapshot.get_floor() == 0;
 	const bool assigned = snapshot.get_bed_id() > 0 && check::is_valid_dorm_id(snapshot.get_dorm_id())
 		&& check::is_valid_building_id(snapshot.get_building_id()) && snapshot.get_floor() == snapshot.get_dorm_id() / 100;
 	if (!unassigned && !assigned)
+		return -8;
+	int bed_reference_count = 0;
+	bool declared_bed_found = false;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		const dorm* inspected_dorm = dormmanager::instance().get(key.first, key.second);
+		if (inspected_dorm == nullptr)
+			continue;
+		for (int bed_id = 1; bed_id <= inspected_dorm->get_max_num(); ++bed_id)
+		{
+			if (inspected_dorm->get_student_id(bed_id) != old_student_id)
+				continue;
+			++bed_reference_count;
+			declared_bed_found = assigned && key.first == snapshot.get_building_id()
+				&& key.second == snapshot.get_dorm_id() && bed_id == snapshot.get_bed_id();
+		}
+	}
+	if ((unassigned && bed_reference_count != 0)
+		|| (assigned && (bed_reference_count != 1 || !declared_bed_found)))
 		return -8;
 	if (assigned)
 	{

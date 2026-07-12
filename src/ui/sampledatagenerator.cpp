@@ -363,7 +363,9 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	}
 
 	QHash<int, QSet<int>> used_sequences_by_grade;
+	QSet<int> used_student_ids;
 	for (int student_id : current_school.get_all_student_ids()) {
+		used_student_ids.insert(student_id);
 		const student* existing_student = current_school.get_student(student_id);
 		if (existing_student == nullptr || !check::is_valid_grade(existing_student->get_grade())) {
 			continue;
@@ -390,8 +392,9 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 				class_num = config.minimum_class_num + profile_index % class_count;
 				const QSet<int>& used_sequences = used_sequences_by_grade[grade];
 				for (int sequence = 1; sequence <= 9999; ++sequence) {
-					if (!used_sequences.contains(sequence)) {
-						student_id = check::make_student_id(grade, class_num, sequence);
+					const int candidate = check::make_student_id(grade, class_num, sequence);
+					if (!used_sequences.contains(sequence) && !used_student_ids.contains(candidate)) {
+						student_id = candidate;
 						break;
 					}
 				}
@@ -400,6 +403,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 				return false;
 			}
 			used_sequences_by_grade[grade].insert(check::student_id_sequence(student_id));
+			used_student_ids.insert(student_id);
 			plannedstudent student_plan;
 			student_plan.id = student_id;
 			student_plan.name = random_student_name(random);
