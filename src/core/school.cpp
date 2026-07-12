@@ -1021,6 +1021,93 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 	preview.unassigned_student_ids = get_unassigned_student_ids();
 	preview.candidate_count = preview.unassigned_student_ids.size();
 	preview.available_bed_count = get_empty_bed_count();
+
+	struct planned_dorm
+	{
+		int building_id = 0;
+		int dorm_id = 0;
+		int gender = 0;
+		QVector<int> beds;
+	};
+	QVector<planned_dorm> dorms;
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d == nullptr || d->is_full())
+			continue;
+		dorms.append({key.first, key.second, d->get_for_gender(), snapshot_dorm(*d)});
+	}
+
+	QVector<int> candidates = preview.unassigned_student_ids;
+	QRandomGenerator random(random_seed);
+	if (strategy == assignment_strategy::random)
+	{
+		for (int i = candidates.size() - 1; i > 0; --i)
+			candidates.swapItemsAt(i, random.bounded(i + 1));
+	}
+	preview.unassigned_student_ids.clear();
+	for (int student_id : candidates)
+	{
+		const student* s = get_student(student_id);
+		if (s == nullptr || (s->get_gender() != 1 && s->get_gender() != 2))
+		{
+			preview.unassigned_student_ids.append(student_id);
+			continue;
+		}
+		QVector<int> compatible;
+		for (int i = 0; i < dorms.size(); ++i)
+		{
+			const building* b = get_building(dorms[i].building_id);
+			if (b == nullptr || !b->accepts_gender(s->get_gender())
+				|| (dorms[i].gender != 0 && dorms[i].gender != s->get_gender()))
+				continue;
+			bool has_empty_bed = false;
+			for (int occupant_id : dorms[i].beds)
+				has_empty_bed = has_empty_bed || occupant_id == 0;
+			if (has_empty_bed)
+				compatible.append(i);
+		}
+		if (compatible.isEmpty())
+		{
+			preview.unassigned_student_ids.append(student_id);
+			continue;
+		}
+
+		int selected = compatible.first();
+		if (strategy == assignment_strategy::random)
+			selected = compatible.at(random.bounded(compatible.size()));
+		else
+		{
+			for (int index : compatible)
+			{
+				const planned_dorm& current = dorms[index];
+				const planned_dorm& best = dorms[selected];
+				const int current_occupied = current.beds.size() - std::count(current.beds.cbegin(), current.beds.cend(), 0);
+				const int best_occupied = best.beds.size() - std::count(best.beds.cbegin(), best.beds.cend(), 0);
+				const bool current_started = current_occupied > 0;
+				const bool best_started = best_occupied > 0;
+				const bool better = current_started != best_started ? current_started
+					: current_occupied * best.beds.size() != best_occupied * current.beds.size()
+						? current_occupied * best.beds.size() > best_occupied * current.beds.size()
+						: current.building_id != best.building_id ? current.building_id < best.building_id
+						: current.dorm_id < best.dorm_id;
+				if (better)
+					selected = index;
+			}
+		}
+
+		planned_dorm& target = dorms[selected];
+		QVector<int> empty_beds;
+		for (int i = 0; i < target.beds.size(); ++i)
+			if (target.beds[i] == 0)
+				empty_beds.append(i + 1);
+		const int bed_id = strategy == assignment_strategy::random
+			? empty_beds.at(random.bounded(empty_beds.size())) : empty_beds.first();
+		target.beds[bed_id - 1] = student_id;
+		if (target.gender == 0)
+			target.gender = s->get_gender();
+		preview.changes.append({student_id, 0, 0, 0, target.building_id, target.dorm_id, bed_id});
+	}
 	return preview;
 }
 
