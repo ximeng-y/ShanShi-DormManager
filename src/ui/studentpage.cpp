@@ -86,6 +86,7 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->studentTable->setAccessibleName(QStringLiteral("学生目录"));
 	ui->studentTable->setAccessibleDescription(QStringLiteral("使用方向键选择学生，按回车打开完整只读详情。"));
 	ui->searchLineEdit->setAccessibleName(QStringLiteral("搜索学生学号或姓名"));
+	ui->gradeFilterCombo->setAccessibleName(QStringLiteral("按年级筛选学生"));
 	ui->classFilterCombo->setAccessibleName(QStringLiteral("按班级筛选学生"));
 	ui->statusFilterCombo->setAccessibleName(QStringLiteral("按入住状态筛选学生"));
 	ui->editNameLineEdit->setAccessibleName(QStringLiteral("修改学生姓名"));
@@ -150,6 +151,10 @@ StudentPage::StudentPage(QWidget* parent)
 	});
 
 	connect(ui->searchLineEdit, &QLineEdit::textChanged, this, [this]() { apply_filters(); });
+	connect(ui->gradeFilterCombo, &QComboBox::currentIndexChanged, this, [this]() {
+		rebuild_class_filter();
+		apply_filters();
+	});
 	connect(ui->classFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
 	connect(ui->statusFilterCombo, &QComboBox::currentIndexChanged, this, [this]() { apply_filters(); });
 	connect(ui->resetFilterButton, &QPushButton::clicked, this, &StudentPage::reset_filters);
@@ -189,7 +194,8 @@ StudentPage::StudentPage(QWidget* parent)
 	ui->detailPanel->show();
 	clear_student_summary();
 	setTabOrder(ui->addStudentButton, ui->searchLineEdit);
-	setTabOrder(ui->searchLineEdit, ui->classFilterCombo);
+	setTabOrder(ui->searchLineEdit, ui->gradeFilterCombo);
+	setTabOrder(ui->gradeFilterCombo, ui->classFilterCombo);
 	setTabOrder(ui->classFilterCombo, ui->statusFilterCombo);
 	setTabOrder(ui->statusFilterCombo, ui->resetFilterButton);
 	setTabOrder(ui->resetFilterButton, ui->studentTable);
@@ -205,6 +211,7 @@ StudentPage::~StudentPage()
 
 void StudentPage::refresh_data()
 {
+	rebuild_grade_filter();
 	rebuild_class_filter();
 	apply_filters();
 }
@@ -217,14 +224,40 @@ void StudentPage::showEvent(QShowEvent* event)
 	}
 }
 
+void StudentPage::rebuild_grade_filter()
+{
+	const int selected_grade = ui->gradeFilterCombo->currentData().toInt();
+	QSet<int> grades;
+	const school& current_school = school::instance();
+	for (int student_id : current_school.get_all_student_ids()) {
+		const student* current_student = current_school.get_student(student_id);
+		if (current_student != nullptr && current_student->get_grade() > 0) {
+			grades.insert(current_student->get_grade());
+		}
+	}
+	QList<int> sorted_grades = grades.values();
+	std::sort(sorted_grades.begin(), sorted_grades.end());
+
+	const QSignalBlocker blocker(ui->gradeFilterCombo);
+	ui->gradeFilterCombo->clear();
+	ui->gradeFilterCombo->addItem(QStringLiteral("全部年级"), 0);
+	for (int grade : sorted_grades) {
+		ui->gradeFilterCombo->addItem(QStringLiteral("%1级").arg(grade), grade);
+	}
+	const int restored_index = ui->gradeFilterCombo->findData(selected_grade);
+	ui->gradeFilterCombo->setCurrentIndex(restored_index >= 0 ? restored_index : 0);
+}
+
 void StudentPage::rebuild_class_filter()
 {
+	const int selected_grade = ui->gradeFilterCombo->currentData().toInt();
 	const int selected_class = ui->classFilterCombo->currentData().toInt();
 	QSet<int> class_numbers;
 	const school& current_school = school::instance();
 	for (int student_id : current_school.get_all_student_ids()) {
 		const student* current_student = current_school.get_student(student_id);
-		if (current_student != nullptr && current_student->get_class_num() > 0) {
+		if (current_student != nullptr && current_student->get_class_num() > 0
+			&& (selected_grade == 0 || current_student->get_grade() == selected_grade)) {
 			class_numbers.insert(current_student->get_class_num());
 		}
 	}
@@ -249,6 +282,7 @@ void StudentPage::apply_filters()
 	QScopedValueRollback<bool> refresh_guard(filter_refresh_in_progress, true);
 	const school& current_school = school::instance();
 	const QString search_text = ui->searchLineEdit->text().trimmed();
+	const int selected_grade = ui->gradeFilterCombo->currentData().toInt();
 	const int selected_class = ui->classFilterCombo->currentData().toInt();
 	const int selected_status = ui->statusFilterCombo->currentIndex();
 	QSet<int> assigned_ids;
@@ -266,11 +300,12 @@ void StudentPage::apply_filters()
 		const bool matches_search = search_text.isEmpty()
 			|| QString::number(student_id).contains(search_text)
 			|| current_student->get_name().contains(search_text, Qt::CaseInsensitive);
+		const bool matches_grade = selected_grade == 0 || current_student->get_grade() == selected_grade;
 		const bool matches_class = selected_class == 0 || current_student->get_class_num() == selected_class;
 		const bool matches_status = selected_status == 0
 			|| (selected_status == 1 && assigned)
 			|| (selected_status == 2 && !assigned);
-		if (matches_search && matches_class && matches_status) {
+		if (matches_search && matches_grade && matches_class && matches_status) {
 			matched_ids.append(student_id);
 		}
 	}
@@ -336,12 +371,15 @@ void StudentPage::reset_filters()
 {
 	{
 		const QSignalBlocker search_blocker(ui->searchLineEdit);
+		const QSignalBlocker grade_blocker(ui->gradeFilterCombo);
 		const QSignalBlocker class_blocker(ui->classFilterCombo);
 		const QSignalBlocker status_blocker(ui->statusFilterCombo);
 		ui->searchLineEdit->clear();
+		ui->gradeFilterCombo->setCurrentIndex(0);
 		ui->classFilterCombo->setCurrentIndex(0);
 		ui->statusFilterCombo->setCurrentIndex(0);
 	}
+	rebuild_class_filter();
 	apply_filters();
 }
 
@@ -504,6 +542,7 @@ void StudentPage::set_student_directory_enabled(bool enabled)
 {
 	ui->studentTable->setEnabled(enabled);
 	ui->searchLineEdit->setEnabled(enabled);
+	ui->gradeFilterCombo->setEnabled(enabled);
 	ui->classFilterCombo->setEnabled(enabled);
 	ui->statusFilterCombo->setEnabled(enabled);
 	ui->resetFilterButton->setEnabled(enabled);

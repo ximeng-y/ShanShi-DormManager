@@ -25,6 +25,7 @@
     <layout class="QHBoxLayout" name="filterLayout">
      <property name="spacing"><number>10</number></property>
      <item><widget class="QLineEdit" name="searchLineEdit"><property name="placeholderText"><string>搜索学号或姓名</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+     <item><widget class="QComboBox" name="gradeFilterCombo"><item><property name="text"><string>全部年级</string></property></item></widget></item>
      <item><widget class="QComboBox" name="classFilterCombo"><item><property name="text"><string>全部班级</string></property></item></widget></item>
      <item><widget class="QComboBox" name="statusFilterCombo"><item><property name="text"><string>全部入住状态</string></property></item><item><property name="text"><string>已入住</string></property></item><item><property name="text"><string>未入住</string></property></item></widget></item>
      <item><widget class="QPushButton" name="resetFilterButton"><property name="text"><string>重置筛选</string></property></widget></item>
