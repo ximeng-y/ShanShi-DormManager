@@ -1334,6 +1334,62 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 	return assigned_ids.size();
 }
 
+int school::apply_reassignment(const reassignment_preview& preview)//按固定预览执行全校重新安排
+{
+	if (!collect_accommodation_issues().isEmpty())
+		return -8;
+	QSet<int> all_preview_students;
+	QSet<QString> target_beds;
+	QHash<QString, int> simulated_genders;
+	for (const accommodation_change& change : preview.changes)
+	{
+		const student* s = get_student(change.student_id);
+		const dorm* d = get_dorm(change.new_building_id, change.new_dorm_id);
+		const building* b = get_building(change.new_building_id);
+		if (s == nullptr || d == nullptr || b == nullptr || all_preview_students.contains(change.student_id)
+			|| s->get_gender() != change.student_gender
+			|| s->get_building_id() != change.old_building_id || s->get_dorm_id() != change.old_dorm_id
+			|| s->get_bed_id() != change.old_bed_id
+			|| (change.old_dorm_id > 0 && s->get_floor() != change.old_dorm_id / 100)
+			|| (change.old_dorm_id == 0 && s->get_floor() != 0)
+			|| change.new_bed_id > d->get_max_num() || !b->accepts_gender(s->get_gender()))
+			return -7;
+		const QString bed_key = QStringLiteral("%1/%2/%3").arg(change.new_building_id).arg(change.new_dorm_id).arg(change.new_bed_id);
+		if (target_beds.contains(bed_key))
+			return -7;
+		target_beds.insert(bed_key);
+		all_preview_students.insert(change.student_id);
+		const QString dorm_key = QStringLiteral("%1/%2").arg(change.new_building_id).arg(change.new_dorm_id);
+		const int planned_gender = simulated_genders.value(dorm_key, 0);
+		if (planned_gender != 0 && planned_gender != s->get_gender())
+			return -7;
+		simulated_genders[dorm_key] = s->get_gender();
+	}
+	for (int student_id : preview.unassigned_student_ids)
+	{
+		const student* s = get_student(student_id);
+		if (s == nullptr || all_preview_students.contains(student_id))
+			return -7;
+		all_preview_students.insert(student_id);
+	}
+	if (all_preview_students.size() != get_student_count())
+		return -7;
+
+	const accommodation_snapshot snapshot = take_accommodation_snapshot();
+	for (const auto& key : get_all_dorm_keys())
+		if (dormmanager::instance().clear_dorm_students(key.first, key.second, true) < 0)
+			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
+	for (int student_id : get_all_student_ids())
+		if (studentmanager::instance().clear_dorm_info(student_id) != 1)
+			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
+	for (const accommodation_change& change : preview.changes)
+	{
+		if (assign_student_to_dorm(change.new_building_id, change.new_dorm_id, change.student_id, change.new_bed_id) != change.new_bed_id)
+			return restore_accommodation_snapshot(snapshot) ? -5 : -6;
+	}
+	return preview.changes.size();
+}
+
 int school::reassign_all_students_random()//清空后为全校学生随机重排宿舍
 {
 	clear_all_dorms_reset_gender();
