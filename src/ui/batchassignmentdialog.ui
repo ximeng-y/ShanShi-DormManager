@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BatchAssignmentDialog</class>
+ <widget class="QDialog" name="BatchAssignmentDialog">
+  <property name="geometry"><rect><x>0</x><y>0</y><width>1040</width><height>720</height></rect></property>
+  <property name="minimumSize"><size><width>820</width><height>600</height></size></property>
+  <property name="windowTitle"><string>批量住宿分配</string></property>
+  <property name="modal"><bool>true</bool></property>
+  <layout class="QVBoxLayout" name="dialogLayout">
+   <property name="spacing"><number>14</number></property>
+   <property name="leftMargin"><number>24</number></property>
+   <property name="topMargin"><number>20</number></property>
+   <property name="rightMargin"><number>24</number></property>
+   <property name="bottomMargin"><number>18</number></property>
+   <item>
+    <layout class="QHBoxLayout" name="headingLayout">
+     <item><widget class="QLabel" name="headingLabel"><property name="text"><string>批量住宿分配</string></property><property name="pageHeading" stdset="0"><bool>true</bool></property></widget></item>
+     <item><spacer name="headingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+     <item><widget class="QLabel" name="stepLabel"><property name="text"><string>1 / 3</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+    </layout>
+   </item>
+   <item><widget class="QLabel" name="descriptionLabel"><property name="text"><string>先选择任务和策略，系统会生成本次具体安排；确认执行时不会重新随机。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+   <item>
+    <widget class="QStackedWidget" name="pageStack">
+     <property name="currentIndex"><number>0</number></property>
+     <widget class="QWidget" name="taskPage">
+      <layout class="QVBoxLayout" name="taskPageLayout">
+       <property name="contentsMargins"><left>0</left><top>4</top><right>0</right><bottom>0</bottom></property>
+       <property name="spacing"><number>14</number></property>
+       <item><widget class="QLabel" name="taskPromptLabel"><property name="text"><string>请选择本次任务</string></property><property name="detailHeading" stdset="0"><bool>true</bool></property></widget></item>
+       <item>
+        <layout class="QHBoxLayout" name="taskCardLayout">
+         <property name="spacing"><number>16</number></property>
+         <item>
+          <widget class="QFrame" name="assignmentCard">
+           <property name="advancedCard" stdset="0"><bool>true</bool></property>
+           <layout class="QVBoxLayout" name="assignmentCardLayout">
+            <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>16</number></property>
+            <item><widget class="QRadioButton" name="assignmentRadio"><property name="text"><string>为未入住学生补分</string></property><property name="checked"><bool>true</bool></property></widget></item>
+            <item><widget class="QLabel" name="assignmentDescriptionLabel"><property name="text"><string>不改变已有住宿关系，只为当前未入住学生安排符合性别要求的空床。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+            <item><spacer name="assignmentCardSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>18</height></size></property></spacer></item>
+            <item><widget class="QLabel" name="assignmentRiskLabel"><property name="text"><string>影响：仅当前未入住学生</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="reassignmentCard">
+           <property name="advancedCard" stdset="0"><bool>true</bool></property>
+           <layout class="QVBoxLayout" name="reassignmentCardLayout">
+            <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>16</number></property>
+            <item><widget class="QRadioButton" name="reassignmentRadio"><property name="text"><string>全校重新安排</string></property></widget></item>
+            <item><widget class="QLabel" name="reassignmentDescriptionLabel"><property name="text"><string>清除现有住宿安排后重新分配全部学生，学生档案和宿舍资源不会删除。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+            <item><spacer name="reassignmentCardSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>18</height></size></property></spacer></item>
+            <item><widget class="QLabel" name="reassignmentRiskLabel"><property name="text"><string>高影响：全部学生的住宿安排</string></property><property name="warningHint" stdset="0"><bool>true</bool></property></widget></item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QFrame" name="currentSummaryFrame">
+         <property name="detailPanel" stdset="0"><bool>true</bool></property>
+         <layout class="QVBoxLayout" name="currentSummaryLayout">
+          <property name="leftMargin"><number>18</number></property><property name="topMargin"><number>14</number></property><property name="rightMargin"><number>18</number></property><property name="bottomMargin"><number>14</number></property>
+          <item><widget class="QLabel" name="currentSummaryTitle"><property name="text"><string>当前概况</string></property><property name="detailSubheading" stdset="0"><bool>true</bool></property></widget></item>
+          <item><widget class="QLabel" name="currentSummaryLabel"><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item><spacer name="taskPageSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property></spacer></item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="strategyPage">
+      <layout class="QVBoxLayout" name="strategyPageLayout">
+       <property name="contentsMargins"><left>0</left><top>4</top><right>0</right><bottom>0</bottom></property>
+       <property name="spacing"><number>12</number></property>
+       <item><widget class="QLabel" name="strategyHeadingLabel"><property name="text"><string>选择分配策略</string></property><property name="detailHeading" stdset="0"><bool>true</bool></property></widget></item>
+       <item>
+        <widget class="QFrame" name="strategyFrame">
+         <property name="detailPanel" stdset="0"><bool>true</bool></property>
+         <layout class="QVBoxLayout" name="strategyLayout">
+          <property name="leftMargin"><number>20</number></property><property name="topMargin"><number>16</number></property><property name="rightMargin"><number>20</number></property><property name="bottomMargin"><number>16</number></property>
+          <property name="spacing"><number>8</number></property>
+          <item><widget class="QRadioButton" name="fillRadio"><property name="text"><string>优先填满已有宿舍</string></property><property name="checked"><bool>true</bool></property></widget></item>
+          <item><widget class="QLabel" name="fillDescriptionLabel"><property name="text"><string>优先使用已有住客且尚有空床的宿舍，减少零散占用。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+          <item><widget class="QRadioButton" name="randomRadio"><property name="text"><string>随机安排</string></property></widget></item>
+          <item><widget class="QLabel" name="randomDescriptionLabel"><property name="text"><string>在全部符合性别与容量要求的可用床位中随机安排。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+          <item><widget class="QRadioButton" name="preserveBuildingRadio"><property name="text"><string>尽量保持原宿舍楼</string></property></widget></item>
+          <item><widget class="QLabel" name="preserveBuildingDescriptionLabel"><property name="text"><string>原已入住学生优先回到原宿舍楼，原楼无法接纳时再跨楼安排。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="seedGroup">
+         <property name="title"><string>随机种子</string></property>
+         <layout class="QVBoxLayout" name="seedGroupLayout">
+          <property name="leftMargin"><number>16</number></property><property name="topMargin"><number>18</number></property><property name="rightMargin"><number>16</number></property><property name="bottomMargin"><number>14</number></property>
+          <item>
+           <layout class="QHBoxLayout" name="seedLayout">
+            <item><widget class="QLineEdit" name="seedLineEdit"><property name="placeholderText"><string>请输入0～4294967295</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
+            <item><widget class="QPushButton" name="regenerateSeedButton"><property name="text"><string>重新生成</string></property></widget></item>
+           </layout>
+          </item>
+          <item><widget class="QLabel" name="seedHintLabel"><property name="text"><string>相同数据、策略和随机种子会生成相同预览；确定性策略仍会保存该种子用于记录。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+          <item><widget class="QLabel" name="seedErrorLabel"><property name="text"><string>请输入有效的32位无符号整数。</string></property><property name="visible"><bool>false</bool></property><property name="fieldError" stdset="0"><bool>true</bool></property></widget></item>
+         </layout>
+        </widget>
+       </item>
+       <item><spacer name="strategyPageSpacer"><property name="orientation"><enum>Qt::Orientation::Vertical</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="previewPage">
+      <layout class="QVBoxLayout" name="previewPageLayout">
+       <property name="contentsMargins"><left>0</left><top>4</top><right>0</right><bottom>0</bottom></property>
+       <property name="spacing"><number>10</number></property>
+       <item>
+        <layout class="QHBoxLayout" name="previewHeadingLayout">
+         <item><widget class="QLabel" name="previewStatusLabel"><property name="text"><string>预检结果</string></property><property name="detailHeading" stdset="0"><bool>true</bool></property></widget></item>
+         <item><spacer name="previewHeadingSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
+         <item><widget class="QPushButton" name="copyIssuesButton"><property name="text"><string>复制异常信息</string></property><property name="visible"><bool>false</bool></property></widget></item>
+        </layout>
+       </item>
+       <item><widget class="QLabel" name="previewSummaryLabel"><property name="text"><string>—</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+       <item>
+        <widget class="QTabWidget" name="previewTabs">
+         <widget class="QWidget" name="changesTab">
+          <attribute name="title"><string>安排明细</string></attribute>
+          <layout class="QVBoxLayout" name="changesTabLayout">
+           <property name="contentsMargins"><left>8</left><top>8</top><right>8</right><bottom>8</bottom></property>
+           <item>
+            <widget class="QTableWidget" name="changesTable">
+             <property name="alternatingRowColors"><bool>true</bool></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="sortingEnabled"><bool>false</bool></property><property name="wordWrap"><bool>false</bool></property>
+             <column><property name="text"><string>学号</string></property></column><column><property name="text"><string>姓名</string></property></column><column><property name="text"><string>原位置</string></property></column><column><property name="text"><string>新位置</string></property></column><column><property name="text"><string>结果</string></property></column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="unassignedTab">
+          <attribute name="title"><string>无法安排</string></attribute>
+          <layout class="QVBoxLayout" name="unassignedTabLayout">
+           <property name="contentsMargins"><left>8</left><top>8</top><right>8</right><bottom>8</bottom></property>
+           <item>
+            <widget class="QTableWidget" name="unassignedTable">
+             <property name="alternatingRowColors"><bool>true</bool></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="wordWrap"><bool>false</bool></property>
+             <column><property name="text"><string>学号</string></property></column><column><property name="text"><string>姓名</string></property></column><column><property name="text"><string>说明</string></property></column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="issuesTab">
+          <attribute name="title"><string>住宿异常</string></attribute>
+          <layout class="QVBoxLayout" name="issuesTabLayout">
+           <property name="contentsMargins"><left>8</left><top>8</top><right>8</right><bottom>8</bottom></property>
+           <item>
+            <widget class="QTableWidget" name="issuesTable">
+             <property name="alternatingRowColors"><bool>true</bool></property><property name="editTriggers"><set>QAbstractItemView::EditTrigger::NoEditTriggers</set></property><property name="selectionBehavior"><enum>QAbstractItemView::SelectionBehavior::SelectRows</enum></property><property name="selectionMode"><enum>QAbstractItemView::SelectionMode::SingleSelection</enum></property><property name="wordWrap"><bool>true</bool></property>
+             <column><property name="text"><string>对象</string></property></column><column><property name="text"><string>异常说明</string></property></column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+       <item><widget class="QCheckBox" name="riskCheckBox"><property name="text"><string>我已核对本次重新安排对全部学生住宿位置的影响</string></property><property name="visible"><bool>false</bool></property></widget></item>
+       <item><widget class="QLabel" name="previewHintLabel"><property name="text"><string>双击学生记录可打开只读详情；表格中的学号、姓名和位置均可选择复制。</string></property><property name="wordWrap"><bool>true</bool></property><property name="pageDescription" stdset="0"><bool>true</bool></property></widget></item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="navigationLayout">
+     <item><widget class="QPushButton" name="cancelButton"><property name="text"><string>取消</string></property></widget></item>
+     <item><spacer name="navigationSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+     <item><widget class="QPushButton" name="backButton"><property name="text"><string>上一步</string></property><property name="visible"><bool>false</bool></property></widget></item>
+     <item><widget class="QPushButton" name="nextButton"><property name="text"><string>下一步</string></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
+     <item><widget class="QPushButton" name="previewButton"><property name="text"><string>生成预览</string></property><property name="visible"><bool>false</bool></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
+     <item><widget class="QPushButton" name="regeneratePreviewButton"><property name="text"><string>重新预览</string></property><property name="visible"><bool>false</bool></property></widget></item>
+     <item><widget class="QPushButton" name="applyButton"><property name="text"><string>确认执行</string></property><property name="visible"><bool>false</bool></property><property name="primaryButton" stdset="0"><bool>true</bool></property></widget></item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
