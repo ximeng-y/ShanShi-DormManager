@@ -48,6 +48,8 @@ void AdvancedAdjustmentPage::open_batch_assignment()
 void AdvancedAdjustmentPage::open_dorm_adjustment()
 {
 	DormAdjustmentDialog dialog(this);
+	connect(&dialog, &DormAdjustmentDialog::student_navigation_requested, this, &AdvancedAdjustmentPage::student_open_requested);
+	connect(&dialog, &DormAdjustmentDialog::dorm_navigation_requested, this, &AdvancedAdjustmentPage::dorm_open_requested);
 	dialog.exec();
 	refresh_summary();
 }
@@ -55,6 +57,8 @@ void AdvancedAdjustmentPage::open_dorm_adjustment()
 void AdvancedAdjustmentPage::open_batch_clear()
 {
 	BatchClearDialog dialog(this);
+	connect(&dialog, &BatchClearDialog::student_navigation_requested, this, &AdvancedAdjustmentPage::student_open_requested);
+	connect(&dialog, &BatchClearDialog::dorm_navigation_requested, this, &AdvancedAdjustmentPage::dorm_open_requested);
 	dialog.exec();
 	refresh_summary();
 }

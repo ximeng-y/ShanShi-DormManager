@@ -63,6 +63,7 @@ BatchClearDialog::BatchClearDialog(QWidget* parent)
 	connect(ui->closeButton, &QPushButton::clicked, this, &QDialog::reject);
 	connect(ui->riskCheckBox, &QCheckBox::toggled, this, &BatchClearDialog::update_execute_state);
 	connect(ui->copyIssuesButton, &QPushButton::clicked, this, &BatchClearDialog::copy_issues);
+	connect(ui->issueTable, &QTableWidget::cellDoubleClicked, this, &BatchClearDialog::open_issue_target);
 
 	populate_buildings();
 	refresh_scope_controls();
@@ -341,6 +342,19 @@ void BatchClearDialog::copy_issues()
 	}
 	QApplication::clipboard()->setText(lines.join(QLatin1Char('\n')));
 	uifeedback::show_success(this, QStringLiteral("异常信息已复制"));
+}
+
+void BatchClearDialog::open_issue_target(int row, int)
+{
+	if (row < 0 || row >= current_preview.issues.size()) return;
+	const accommodation_data_issue& issue = current_preview.issues.at(row);
+	if (issue.student_id > 0) {
+		reject();
+		emit student_navigation_requested(issue.student_id);
+	} else if (issue.building_id > 0) {
+		reject();
+		emit dorm_navigation_requested(issue.building_id, issue.dorm_id);
+	}
 }
 
 QString BatchClearDialog::gender_text(int gender) const

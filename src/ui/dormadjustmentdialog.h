@@ -19,6 +19,10 @@ public:
 	explicit DormAdjustmentDialog(QWidget* parent = nullptr);
 	~DormAdjustmentDialog();
 
+signals:
+	void student_navigation_requested(int student_id);
+	void dorm_navigation_requested(int building_id, int dorm_id);
+
 protected:
 	void showEvent(QShowEvent* event) override;
 

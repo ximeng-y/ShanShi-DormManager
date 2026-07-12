@@ -24,6 +24,10 @@ public:
 
 	void set_initial_dorm(int building_id, int dorm_id);//从宿舍资源页进入时预选当前宿舍
 
+signals:
+	void student_navigation_requested(int student_id);
+	void dorm_navigation_requested(int building_id, int dorm_id);
+
 protected:
 	void showEvent(QShowEvent* event) override;//首次显示时按当前屏幕可用区域收缩
 
@@ -40,6 +44,7 @@ private:
 	void return_to_selection();//返回范围选择并使旧预览失效
 	void apply_preview();//确认并执行固定预览
 	void copy_issues();//复制住宿异常信息
+	void open_issue_target(int row, int column);//双击异常项跳转到学生或宿舍页面
 	QString gender_text(int gender) const;//转换宿舍性别锁文本
 	QString scope_text() const;//转换当前清退范围文本
 

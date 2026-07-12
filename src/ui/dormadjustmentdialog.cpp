@@ -3,14 +3,22 @@
 
 #include "studentdetaildialog.h"
 #include "uifeedback.h"
+#include "core/dorm.h"
+#include "core/student.h"
 
 #include <QHeaderView>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QItemSelectionModel>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScreen>
 #include <QShowEvent>
 #include <QSignalBlocker>
+#include <QShortcut>
 #include <QStandardItemModel>
+
+#include <algorithm>
 
 DormAdjustmentDialog::DormAdjustmentDialog(QWidget* parent)
 	: QDialog(parent), ui(new Ui::DormAdjustmentDialog)
@@ -20,6 +28,10 @@ DormAdjustmentDialog::DormAdjustmentDialog(QWidget* parent)
 	, change_model(new QStandardItemModel(this))
 {
 	ui->setupUi(this);
+	ui->fullSwapInfo->set_information(ui->fullSwapInfo->toolTip());
+	ui->overlapInfo->set_information(ui->overlapInfo->toolTip());
+	ui->evictInfo->set_information(ui->evictInfo->toolTip());
+	ui->genderSwapInfo->set_information(ui->genderSwapInfo->toolTip());
 	ui->currentAView->setModel(current_a_model); ui->currentBView->setModel(current_b_model);
 	ui->beforeAView->setModel(before_a_model); ui->beforeBView->setModel(before_b_model);
 	ui->afterAView->setModel(after_a_model); ui->afterBView->setModel(after_b_model);
@@ -29,6 +41,20 @@ DormAdjustmentDialog::DormAdjustmentDialog(QWidget* parent)
 		view->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 		view->verticalHeader()->setVisible(false);
 		view->setSelectionBehavior(QAbstractItemView::SelectItems);
+		view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+		QShortcut* copy_shortcut = new QShortcut(QKeySequence::Copy, view);
+		connect(copy_shortcut, &QShortcut::activated, view, [view] {
+			QModelIndexList indexes = view->selectionModel()->selectedIndexes();
+			std::sort(indexes.begin(), indexes.end(), [](const QModelIndex& a, const QModelIndex& b) { return a.row() == b.row() ? a.column() < b.column() : a.row() < b.row(); });
+			QString text;
+			int previous_row = -1;
+			for (const QModelIndex& index : indexes) {
+				if (!text.isEmpty()) text += index.row() == previous_row ? QLatin1Char('\t') : QLatin1Char('\n');
+				text += index.data().toString();
+				previous_row = index.row();
+			}
+			if (!text.isEmpty()) QGuiApplication::clipboard()->setText(text);
+		});
 	}
 	connect(ui->buildingACombo, &QComboBox::currentIndexChanged, this, [this] { refresh_dorms(true); });
 	connect(ui->buildingBCombo, &QComboBox::currentIndexChanged, this, [this] { refresh_dorms(false); });
@@ -152,7 +178,19 @@ dorm_adjustment_mode DormAdjustmentDialog::selected_mode() const
 void DormAdjustmentDialog::generate_preview()
 {
 	current_preview = school::instance().preview_dorm_adjustment(ui->buildingACombo->currentData().toInt(), ui->dormACombo->currentData().toInt(), ui->buildingBCombo->currentData().toInt(), ui->dormBCombo->currentData().toInt(), selected_mode());
-	if (!current_preview.issues.isEmpty()) { uifeedback::show_error(this, QStringLiteral("无法生成调整预览"), current_preview.issues.first().message); return; }
+	if (!current_preview.issues.isEmpty()) {
+		QStringList details;
+		for (const accommodation_data_issue& issue : current_preview.issues) details.append(issue.message);
+		uifeedback::show_error(this, QStringLiteral("无法生成调整预览"), current_preview.issues.first().message, details.join(QLatin1Char('\n')));
+		const accommodation_data_issue& issue = current_preview.issues.first();
+		if ((issue.student_id > 0 || issue.building_id > 0)
+			&& uifeedback::confirm_action(this, QStringLiteral("前往处理异常"), QStringLiteral("是否关闭当前向导并前往异常记录所在页面？"), QStringLiteral("前往处理"))) {
+			reject();
+			if (issue.student_id > 0) emit student_navigation_requested(issue.student_id);
+			else emit dorm_navigation_requested(issue.building_id, issue.dorm_id);
+		}
+		return;
+	}
 	if (!current_preview.available) { uifeedback::show_error(this, QStringLiteral("当前方式不可用"), current_preview.unavailable_reason); return; }
 	show_preview();
 }
