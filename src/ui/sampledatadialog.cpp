@@ -38,8 +38,8 @@ SampleDataDialog::SampleDataDialog(QWidget* parent)
 	ui->sixBedDormSpin->setAccessibleName(QStringLiteral("每栋六人间数量"));
 	ui->mixedMaleDormSpin->setAccessibleName(QStringLiteral("每栋混合楼男舍数量"));
 	ui->mixedFemaleDormSpin->setAccessibleName(QStringLiteral("每栋混合楼女舍数量"));
-	ui->mixedUnlockedDormSpin->setAccessibleName(QStringLiteral("每栋混合楼未锁定宿舍数量"));
-	ui->reservedUnlockedSpin->setAccessibleName(QStringLiteral("全部混合楼合计保留的未锁定空宿舍数量"));
+	ui->mixedUnlockedDormSpin->setAccessibleName(QStringLiteral("每栋混合楼宿舍性别锁未设置的宿舍数量"));
+	ui->reservedUnlockedSpin->setAccessibleName(QStringLiteral("全部混合楼合计保留的宿舍性别锁未设置空宿舍数量"));
 	ui->maleStudentSpin->setAccessibleName(QStringLiteral("生成男生总数"));
 	ui->maleAssignedSpin->setAccessibleName(QStringLiteral("生成男生入住人数"));
 	ui->femaleStudentSpin->setAccessibleName(QStringLiteral("生成女生总数"));

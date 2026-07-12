@@ -15,9 +15,9 @@ EditDormDialog::EditDormDialog(int building_id, int dorm_id, QWidget* parent)
 	, target_dorm_id(dorm_id)
 {
 	ui->setupUi(this);
-	ui->genderCombo->addItem(QStringLiteral("未锁定"), 0);
+	ui->genderCombo->addItem(QStringLiteral("未设置"), 0);
 	ui->maxNumSpin->setAccessibleName(QStringLiteral("宿舍床位数量"));
-	ui->genderCombo->setAccessibleName(QStringLiteral("房间性别锁"));
+	ui->genderCombo->setAccessibleName(QStringLiteral("宿舍性别锁"));
 	const building* current_building = school::instance().get_building(building_id);
 	if (current_building != nullptr && current_building->accepts_gender(1)) {
 		ui->genderCombo->addItem(QStringLiteral("男舍"), 1);
@@ -81,16 +81,16 @@ void EditDormDialog::attempt_save()
 		if (result != 1) {
 			const bool restored = !capacity_changed || current_school.set_dorm_max_num(target_building_id, target_dorm_id, original_max_num) == 1;
 			if (!restored) {
-				uifeedback::show_critical(this, QStringLiteral("宿舍属性恢复失败"), QStringLiteral("性别锁修改失败，且原床位容量未能恢复。请暂停后续操作并核查数据。"));
+				uifeedback::show_critical(this, QStringLiteral("宿舍属性恢复失败"), QStringLiteral("宿舍性别锁修改失败，且原床位容量未能恢复。请暂停后续操作并核查数据。"));
 			} else {
 				const QString restore_suffix = capacity_changed ? QStringLiteral("，已恢复原容量") : QString();
 				QString message;
 				if (result == -2) {
 					message = QStringLiteral("所在楼栋不接纳目标性别%1。").arg(restore_suffix);
 				} else if (result == -3) {
-					message = QStringLiteral("现有住客与目标性别锁冲突，或有住客时不能解除性别锁%1。").arg(restore_suffix);
+					message = QStringLiteral("现有住客与目标宿舍性别锁冲突，或有住客时不能将宿舍性别锁改为未设置%1。").arg(restore_suffix);
 				} else {
-					message = result == 0 ? QStringLiteral("宿舍已经不存在。") : QStringLiteral("性别锁参数无效%1。").arg(restore_suffix);
+					message = result == 0 ? QStringLiteral("宿舍已经不存在。") : QStringLiteral("宿舍性别锁参数无效%1。").arg(restore_suffix);
 				}
 				uifeedback::show_error(this, QStringLiteral("无法修改宿舍"), message);
 			}

@@ -32,7 +32,7 @@ AddDormDialog::AddDormDialog(int building_id, QWidget* parent)
 	ui->roomNumEdit->setAccessibleName(QStringLiteral("宿舍号后两位"));
 	ui->roomNumEdit->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[0-9]{1,2}")), ui->roomNumEdit));
 	ui->maxNumSpin->setAccessibleName(QStringLiteral("宿舍床位数量"));
-	ui->genderLockCombo->setAccessibleName(QStringLiteral("房间性别锁"));
+	ui->genderLockCombo->setAccessibleName(QStringLiteral("宿舍性别锁"));
 	ui->genderLockCombo->addItem(QStringLiteral("暂不锁定"), 0);
 	const building* current_building = school::instance().get_building(building_id);
 	if (current_building != nullptr) {
@@ -123,7 +123,7 @@ void AddDormDialog::attempt_add()
 		} else {
 			const QString detail = result == 0 ? QStringLiteral("所选楼栋已经不存在，请刷新后重试。")
 				: result == -2 ? QStringLiteral("该宿舍号已被占用。系统没有静默更换编号，请确认新的建议值后再添加。")
-				: result == -3 ? QStringLiteral("房间性别锁与当前楼栋规则冲突。")
+				: result == -3 ? QStringLiteral("宿舍性别锁与当前楼栋的性别要求冲突。")
 				: result == -9 ? QStringLiteral("该楼层的01～99号宿舍已全部占用。")
 				: result == -5 ? QStringLiteral("新增宿舍未能完成，本次操作造成的状态变化已恢复。")
 				: QStringLiteral("宿舍资料不符合楼栋规则，请检查后重试。");

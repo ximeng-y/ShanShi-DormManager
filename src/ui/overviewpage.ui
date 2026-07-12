@@ -105,7 +105,7 @@
         <item>
          <layout class="QHBoxLayout" name="emptyBedTitleLayout">
           <item><widget class="QLabel" name="emptyBedTitleLabel"><property name="text"><string>全部空床位</string></property></widget></item>
-          <item><widget class="infobutton" name="emptyBedInfoButton"><property name="toolTip"><string>统计所有未被占用的床位，不区分房间性别锁。</string></property></widget></item>
+          <item><widget class="infobutton" name="emptyBedInfoButton"><property name="toolTip"><string>统计所有未被占用的床位，不区分宿舍性别锁。</string></property></widget></item>
           <item><spacer name="emptyBedTitleSpacer"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>20</width><height>20</height></size></property></spacer></item>
          </layout>
         </item>

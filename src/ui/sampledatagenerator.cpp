@@ -235,16 +235,16 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 		if (config.mixed_male_dorm_count < 0 || config.mixed_female_dorm_count < 0
 			|| config.mixed_unlocked_dorm_count < 0
 			|| mixed_dorm_count != dorms_per_building) {
-			errors.append(QStringLiteral("混合楼男舍、女舍与未锁定宿舍数量之和必须等于每栋宿舍总数。"));
+			errors.append(QStringLiteral("混合楼男生宿舍、女生宿舍与宿舍性别锁未设置的宿舍数量之和必须等于每栋宿舍总数。"));
 		}
 		const qint64 total_unlocked = static_cast<qint64>(config.mixed_building_count)
 			* config.mixed_unlocked_dorm_count;
 		if (config.minimum_unlocked_empty_dorm_count < 0
 			|| config.minimum_unlocked_empty_dorm_count > total_unlocked) {
-			errors.append(QStringLiteral("保留的未锁定空宿舍数量不能超过混合楼未锁定宿舍总数。"));
+			errors.append(QStringLiteral("保留的宿舍性别锁未设置空宿舍数量不能超过对应宿舍总数。"));
 		}
 	} else if (config.minimum_unlocked_empty_dorm_count != 0) {
-		errors.append(QStringLiteral("未生成混合楼时，保留的未锁定空宿舍数量必须为0。"));
+		errors.append(QStringLiteral("未生成混合宿舍楼时，保留的宿舍性别锁未设置空宿舍数量必须为0。"));
 	}
 
 	if (config.male_student_count < 0 || config.female_student_count < 0
@@ -433,7 +433,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	QVector<int> female_coverage_dorms;
 
 	if (config.minimum_unlocked_empty_dorm_count > shared_dorm_indexes.size()) {
-		result.error_message = QStringLiteral("可保留的未锁定宿舍不足，无法形成入住计划。");
+		result.error_message = QStringLiteral("可保留的宿舍性别锁未设置宿舍不足，无法形成入住计划。");
 		return result;
 	}
 	QVector<int> unreserved_shared = shared_dorm_indexes.mid(config.minimum_unlocked_empty_dorm_count);
@@ -531,7 +531,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 		}
 	}
 	if (result.remaining_unlocked_dorm_count < config.minimum_unlocked_empty_dorm_count) {
-		result.error_message = QStringLiteral("计划未能保留指定数量的未锁定空宿舍。");
+		result.error_message = QStringLiteral("计划未能保留指定数量的宿舍性别锁未设置空宿舍。");
 	}
 	return result;
 }

@@ -48,7 +48,7 @@ OverviewPage::OverviewPage(QWidget* parent)
 	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	ui->buildingCapacityTable->horizontalHeaderItem(4)->setText(QStringLiteral("空床位"));
-	ui->buildingCapacityTable->horizontalHeaderItem(4)->setToolTip(QStringLiteral("统计未被占用的床位，不区分房间性别锁。"));
+	ui->buildingCapacityTable->horizontalHeaderItem(4)->setToolTip(QStringLiteral("统计未被占用的床位，不区分宿舍性别锁。"));
 	connect(ui->generateSampleDataButton, &QPushButton::clicked, this, &OverviewPage::open_sample_data_dialog);
 	connect(ui->buildingCapacityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
 		QTableWidgetItem* building_item = ui->buildingCapacityTable->item(row, 0);

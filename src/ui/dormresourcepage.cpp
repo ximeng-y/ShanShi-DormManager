@@ -44,7 +44,7 @@ QString resource_dorm_gender_text(int gender)
 	if (gender == 2) {
 		return QStringLiteral("女舍");
 	}
-	return QStringLiteral("未锁定");
+	return QStringLiteral("未设置");
 }
 }
 

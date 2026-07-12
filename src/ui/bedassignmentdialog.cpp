@@ -69,7 +69,7 @@ void BedAssignmentDialog::update_preview()
 		|| !target_building->accepts_gender(current_student->get_gender())
 		|| !target_dorm->accepts_gender(current_student->get_gender())
 		|| target_dorm->is_bed_occupied(target_bed_id) != 0) {
-		ui->previewLabel->setText(QStringLiteral("学生性别、目标房间性别锁或床位状态不允许本次入住。"));
+		ui->previewLabel->setText(QStringLiteral("学生性别、目标宿舍性别锁或床位状态不允许本次入住。"));
 		return;
 	}
 	ui->previewLabel->setText(QStringLiteral("%1（%2）· %3级 · %4班\n确认后入住当前所选空床。")
