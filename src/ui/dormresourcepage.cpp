@@ -257,7 +257,9 @@ void DormResourcePage::select_building(int building_id)
 	selected_building_id = building_id;
 	selected_dorm_id = 0;
 	const QSignalBlocker search_blocker(ui->dormSearchLineEdit);
+	const QSignalBlocker status_blocker(ui->dormStatusFilterCombo);
 	ui->dormSearchLineEdit->clear();
+	ui->dormStatusFilterCombo->setCurrentIndex(0);
 	if (isVisible()) {
 		refresh_data();
 	}
