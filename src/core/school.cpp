@@ -163,6 +163,33 @@ bool school::add_student(const student& student_to_add)//添加学生
 	return studentmanager::instance().add(student_to_add);
 }
 
+int school::suggest_dorm_id(int building_id, int floor) const//建议指定楼层最小缺号宿舍
+{
+	if (!check::is_valid_building_id(building_id) || !check::is_valid_floor(floor, 99))
+		return -1;
+	const building* current_building = buildingmanager::instance().get(building_id);
+	if (current_building == nullptr)
+		return 0;
+	if (floor > current_building->get_max_floor() + 1)
+		return -1;
+	QSet<int> used_room_numbers;
+	for (const auto& key : dormmanager::instance().all_dorm_keys())
+	{
+		if (key.first != building_id || check::dorm_id_floor(key.second) != floor)
+			continue;
+		const int room_num = check::dorm_id_room_num(key.second);
+		if (!check::is_valid_dorm_room_num(room_num))
+			return -1;
+		used_room_numbers.insert(room_num);
+	}
+	for (int room_num = 1; room_num <= 99; ++room_num)
+	{
+		if (!used_room_numbers.contains(room_num))
+			return check::make_dorm_id(floor, room_num);
+	}
+	return -9;
+}
+
 int school::suggest_student_id(int grade, int class_num) const//建议指定年级班级的最小缺号学号
 {
 	if (!check::is_valid_grade(grade) || !check::is_valid_class_num(class_num))

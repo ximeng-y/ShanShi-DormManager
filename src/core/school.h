@@ -41,6 +41,7 @@ public:
 	QVector<QPair<int, int>> get_dorm_keys_of_building(int building_id) const;//列出指定楼全部宿舍，参数非法或楼不存在返回空表
 	QVector<int> get_student_ids_of_dorm(int building_id, int dorm_id) const;//按床位顺序列出指定宿舍住客，参数非法/宿舍不存在/无住客均返回空表
 	QVector<QPair<int, int>> get_available_dorm_keys(int gender) const;//列出指定性别全部可用宿舍，参数非法返回空表
+	int suggest_dorm_id(int building_id, int floor) const;//建议指定楼层最小缺号宿舍，0=楼不存在/-1=参数非法/-9=本层用尽
 
 	//学生基础资料管理
 	bool add_student(const student& student_to_add);//添加学生，字段非法、携带住宿位置或学号重复时返回false
