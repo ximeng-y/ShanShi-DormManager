@@ -1420,6 +1420,13 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		return 0;
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
+	QSet<int> preview_candidates;
+	for (const accommodation_change& change : preview.changes) preview_candidates.insert(change.student_id);
+	for (int student_id : preview.unassigned_student_ids) preview_candidates.insert(student_id);
+	const QVector<int> current_candidate_ids = get_unassigned_student_ids();
+	const QSet<int> current_candidates(current_candidate_ids.cbegin(), current_candidate_ids.cend());
+	if (preview.candidate_count != current_candidates.size() || preview_candidates != current_candidates)
+		return -7;
 	QSet<int> student_ids;
 	QSet<QString> target_beds;
 	QHash<QString, int> simulated_genders;
@@ -1618,6 +1625,20 @@ int school::apply_batch_clear(const batch_clear_preview& preview)//按固定预�
 {
 	if (!collect_accommodation_issues().isEmpty())
 		return -8;
+	QVector<QPair<int, int>> current_keys;
+	if (preview.scope == clear_scope::dorm)
+		current_keys.append(qMakePair(preview.building_id, preview.dorm_id));
+	else if (preview.scope == clear_scope::building)
+		current_keys = get_dorm_keys_of_building(preview.building_id);
+	else
+		current_keys = get_all_dorm_keys();
+	QSet<QString> preview_keys;
+	for (const dorm_gender_change& change : preview.dorm_changes)
+		preview_keys.insert(QStringLiteral("%1/%2").arg(change.building_id).arg(change.dorm_id));
+	QSet<QString> actual_keys;
+	for (const auto& key : current_keys) actual_keys.insert(QStringLiteral("%1/%2").arg(key.first).arg(key.second));
+	if (preview_keys != actual_keys)
+		return -7;
 	QVector<dorm_accommodation_snapshot> snapshots;
 	QSet<int> affected_students;
 	int current_occupants = 0;
