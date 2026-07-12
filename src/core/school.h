@@ -262,6 +262,7 @@ public:
 	int apply_dorm_adjustment(const dorm_adjustment_preview& preview);//重新核对预览后分发至对应宿舍调整事务
 	//返回值: 1=成功  -1=样例计划非法  -5=替换失败且原数据已恢复  -6=原数据恢复不完整  -8=替换前原数据异常或无法按当前规则恢复
 	int replace_all_with_sample_data(const sampledataplan& plan);//清空全部现有数据后按固定计划生成样例数据
+	int append_sample_data(const sampledataplan& plan);//按固定计划追加样例数据，1=成功/-1=计划非法或冲突/-5=写入失败已恢复
 
 private:
 	struct dorm_accommodation_snapshot

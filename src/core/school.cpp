@@ -1447,8 +1447,6 @@ bool school::resolve_persistence_conflict(bool use_executable_data)//确认双�
 		? (writable ? persistence_start_status::ready : persistence_start_status::read_only_unwritable)
 		: (writable ? persistence_start_status::fallback_ready : persistence_start_status::read_only_unwritable);
 	return true;
-	};
-	return finish_persistent_mutation(operation());
 }
 
 bool school::is_persistence_ready() const
@@ -1579,21 +1577,27 @@ bool school::begin_persistent_mutation()//建立最外层写事务
 	{
 		mutation_before = create_persistence_snapshot();
 		mutation_before_valid = !schoolstorage::encode_snapshot(mutation_before, &persistence_error).isEmpty();
-		mutation_business_failed = !mutation_before_valid;
 		persistence_error_code = 0;
+		if (!mutation_before_valid)
+		{
+			read_only = true;
+			persistence_error_code = -101;
+			persistence_error = QStringLiteral("无法建立操作前数据快照，系统已进入只读安全模式。%1").arg(persistence_error);
+			return false;
+		}
 	}
 	++mutation_depth;
-	return mutation_before_valid;
+	return true;
 }
 
 int school::finish_persistent_mutation(int result, bool business_success)//提交最外层int写事务
 {
 	if (mutation_depth <= 0)
 		return result;
-	mutation_business_failed = mutation_business_failed || !business_success;
 	--mutation_depth;
 	if (mutation_depth > 0 || persistence_suspended || !persistence_initialized)
 		return result;
+	mutation_business_failed = !business_success;
 	const schoolsnapshot after = create_persistence_snapshot();
 	const bool changed = mutation_before_valid && !after.data_equals(mutation_before);
 	if (mutation_business_failed)
@@ -1768,6 +1772,25 @@ int school::replace_all_with_sample_data(const sampledataplan& plan)//清空后�
 	if (!purge_all_data()) return restore_school_data_snapshot(snapshot) ? -5 : -6;
 	if (write_sample_data_plan(plan)) return 1;
 	return restore_school_data_snapshot(snapshot) ? -5 : -6;
+	};
+	const int result = operation();
+	return finish_persistent_mutation(result, result == 1);
+}
+
+int school::append_sample_data(const sampledataplan& plan)//按固定计划追加样例数据
+{
+	if (!begin_persistent_mutation()) return -102;
+	const auto operation = [&]() -> int {
+		if (plan.buildings.isEmpty() || plan.dorms.isEmpty() || plan.students.isEmpty()
+			|| !validate_sample_data_plan(plan))
+			return -1;
+		for (const samplebuildingplan& item : plan.buildings)
+			if (get_building(item.id) != nullptr) return -1;
+		for (const sampledormplan& item : plan.dorms)
+			if (get_dorm(item.building_id, item.dorm_id) != nullptr) return -1;
+		for (const samplestudentplan& item : plan.students)
+			if (get_student(item.id) != nullptr) return -1;
+		return write_sample_data_plan(plan) ? 1 : -5;
 	};
 	const int result = operation();
 	return finish_persistent_mutation(result, result == 1);

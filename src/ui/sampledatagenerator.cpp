@@ -584,70 +584,23 @@ sampledataresult sampledatagenerator::generate(const sampledataconfig& config, s
 		return result;
 	}
 
-	QVector<int> created_building_ids;
-	QVector<QPair<int, int>> created_dorm_keys;
-	QVector<int> created_student_ids;
-	const auto fail = [&](const QString& message) {
-		result.error_message = message;
-		rollback_created_data(current_school, created_student_ids, created_dorm_keys, created_building_ids, result);
+	sampledataplan append_plan;
+	append_plan.buildings = generated_plan.buildings;
+	append_plan.dorms = generated_plan.dorms;
+	append_plan.students = generated_plan.students;
+	const int append_result = current_school.append_sample_data(append_plan);
+	if (append_result != 1) {
+		result.error_message = append_result == -100 || append_result == -101 || append_result == -102
+			? current_school.last_persistence_error()
+			: QStringLiteral("追加样例数据失败，返回码：%1。").arg(append_result);
+		result.rollback_complete = append_result != -101;
 		return result;
-	};
-
-	for (const plannedbuilding& building_plan : generated_plan.buildings) {
-		const int add_result = current_school.add_building(building_plan.id, building_plan.gender, building_plan.max_floor);
-		if (add_result != 1) {
-			return fail(QStringLiteral("添加%1号样例宿舍楼失败，返回码：%2。").arg(building_plan.id).arg(add_result));
-		}
-		created_building_ids.append(building_plan.id);
-		++result.added_building_count;
 	}
-
-	for (const planneddorm& dorm_plan : generated_plan.dorms) {
-		dorm dorm_to_add;
-		const bool initialized = dorm_to_add.set_building_id(dorm_plan.building_id)
-			&& dorm_to_add.set_id(dorm_plan.dorm_id)
-			&& dorm_to_add.set_max_num(dorm_plan.max_num);
-		if (!initialized || !current_school.add_dorm(dorm_to_add)) {
-			return fail(QStringLiteral("添加%1号楼%2宿舍失败。").arg(dorm_plan.building_id).arg(dorm_plan.dorm_id));
-		}
-		created_dorm_keys.append(qMakePair(dorm_plan.building_id, dorm_plan.dorm_id));
-		++result.added_dorm_count;
-		if (dorm_plan.gender_lock != 0) {
-			const int lock_result = current_school.set_dorm_gender(
-				dorm_plan.building_id, dorm_plan.dorm_id, dorm_plan.gender_lock);
-			if (lock_result != 1) {
-				return fail(QStringLiteral("设置%1号楼%2宿舍性别锁失败，返回码：%3。")
-					.arg(dorm_plan.building_id).arg(dorm_plan.dorm_id).arg(lock_result));
-			}
-		}
-	}
-
-	for (const plannedstudent& student_plan : generated_plan.students) {
-		student student_to_add;
-		const bool initialized = student_to_add.set_id(student_plan.id)
-			&& student_to_add.set_name(student_plan.name)
-			&& student_to_add.set_gender(student_plan.gender)
-			&& student_to_add.set_class_num(student_plan.class_num)
-			&& student_to_add.set_grade(student_plan.grade);
-		if (!initialized || !current_school.add_student(student_to_add)) {
-			return fail(QStringLiteral("添加学号为%1的样例学生失败。").arg(student_plan.id));
-		}
-		created_student_ids.append(student_plan.id);
-		++result.added_student_count;
-	}
-
-	for (const plannedstudent& student_plan : generated_plan.students) {
-		if (student_plan.building_id == 0 || student_plan.dorm_id == 0) {
-			continue;
-		}
-		const int assign_result = current_school.assign_student_to_dorm(
-			student_plan.building_id, student_plan.dorm_id, student_plan.id);
-		if (assign_result <= 0) {
-			return fail(QStringLiteral("安排学号为%1的样例学生入住%2号楼%3宿舍失败，返回码：%4。")
-				.arg(student_plan.id).arg(student_plan.building_id).arg(student_plan.dorm_id).arg(assign_result));
-		}
-		++result.assigned_student_count;
-	}
+	result.added_building_count = append_plan.buildings.size();
+	result.added_dorm_count = append_plan.dorms.size();
+	result.added_student_count = append_plan.students.size();
+	for (const samplestudentplan& student_plan : append_plan.students)
+		if (student_plan.building_id > 0) ++result.assigned_student_count;
 
 	result.success = true;
 	result.remaining_unlocked_dorm_count = generated_plan.remaining_unlocked_dorm_count;
