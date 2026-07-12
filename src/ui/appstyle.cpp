@@ -276,6 +276,37 @@ QFrame[advancedCard="true"] {
 	background: #ffffff;
 }
 
+QFrame[operationPanel="true"],
+QFrame[previewPanel="true"] {
+	border: 1px solid #d8e0e7;
+	border-radius: 10px;
+	background: #ffffff;
+}
+
+QStackedWidget[wizardStack="true"],
+QStackedWidget[wizardStack="true"] > QWidget {
+	background: transparent;
+}
+
+QTableView[bedPreview="true"] {
+	min-height: 92px;
+	border: 1px solid #ccd7e0;
+	border-radius: 8px;
+	background: #fbfcfd;
+	gridline-color: #dfe6ec;
+}
+
+QLabel[previewStatus="success"] {
+	color: #247052;
+	font-weight: 600;
+}
+
+QLabel[previewStatus="error"],
+QLabel[riskLevel="high"] {
+	color: #a23333;
+	font-weight: 600;
+}
+
 QLabel[phaseBadge="true"] {
 	border: 1px solid #9dafbe;
 	border-radius: 12px;
