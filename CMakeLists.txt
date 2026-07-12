@@ -19,6 +19,8 @@ set(PROJECT_SOURCES
         src/ui/mainwidget.ui
         src/ui/appstyle.cpp
         src/ui/appstyle.h
+        src/ui/windowtheme.cpp
+        src/ui/windowtheme.h
         src/ui/infobutton.cpp
         src/ui/infobutton.h
         src/ui/uifeedback.cpp

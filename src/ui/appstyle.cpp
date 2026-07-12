@@ -1,5 +1,43 @@
 #include "appstyle.h"
 
+#include <QColor>
+
+QPalette appstyle::light_palette()
+{
+	QPalette palette;
+	const QColor text(QStringLiteral("#243447"));
+	const QColor muted_text(QStringLiteral("#6d7f90"));
+	const QColor disabled_text(QStringLiteral("#9ba8b4"));
+	const QColor window(QStringLiteral("#f3f6f9"));
+	const QColor base(QStringLiteral("#ffffff"));
+	const QColor alternate(QStringLiteral("#f7f9fb"));
+	const QColor highlight(QStringLiteral("#dceaf5"));
+	for (QPalette::ColorGroup group : {QPalette::Active, QPalette::Inactive}) {
+		palette.setColor(group, QPalette::Window, window);
+		palette.setColor(group, QPalette::WindowText, text);
+		palette.setColor(group, QPalette::Base, base);
+		palette.setColor(group, QPalette::AlternateBase, alternate);
+		palette.setColor(group, QPalette::ToolTipBase, base);
+		palette.setColor(group, QPalette::ToolTipText, text);
+		palette.setColor(group, QPalette::Text, text);
+		palette.setColor(group, QPalette::Button, base);
+		palette.setColor(group, QPalette::ButtonText, text);
+		palette.setColor(group, QPalette::BrightText, QColor(QStringLiteral("#ffffff")));
+		palette.setColor(group, QPalette::Link, QColor(QStringLiteral("#315f86")));
+		palette.setColor(group, QPalette::Highlight, highlight);
+		palette.setColor(group, QPalette::HighlightedText, QColor(QStringLiteral("#17324d")));
+		palette.setColor(group, QPalette::PlaceholderText, muted_text);
+	}
+	palette.setColor(QPalette::Disabled, QPalette::Window, window);
+	palette.setColor(QPalette::Disabled, QPalette::WindowText, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::Base, QColor(QStringLiteral("#f2f4f6")));
+	palette.setColor(QPalette::Disabled, QPalette::Text, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::Button, QColor(QStringLiteral("#f2f4f6")));
+	palette.setColor(QPalette::Disabled, QPalette::ButtonText, disabled_text);
+	palette.setColor(QPalette::Disabled, QPalette::PlaceholderText, QColor(QStringLiteral("#b3bdc6")));
+	return palette;
+}
+
 QString appstyle::stylesheet()
 {
 	return QStringLiteral(R"(
