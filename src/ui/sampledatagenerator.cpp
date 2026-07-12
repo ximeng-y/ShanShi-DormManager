@@ -367,8 +367,10 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 	for (int student_id : current_school.get_all_student_ids()) {
 		used_student_ids.insert(student_id);
 		const student* existing_student = current_school.get_student(student_id);
-		if (existing_student == nullptr || !check::is_valid_grade(existing_student->get_grade())) {
-			continue;
+		if (existing_student == nullptr || existing_student->get_id() != student_id
+			|| !check::is_student_id_consistent(existing_student->get_id(), existing_student->get_grade(), existing_student->get_class_num())) {
+			result.error_message = QStringLiteral("现有学生中存在不符合统一学号规则的异常记录，请先核查后再追加样例数据。");
+			return result;
 		}
 		const int sequence = check::student_id_sequence(existing_student->get_id());
 		if (check::is_valid_student_sequence(sequence)) {
