@@ -21,6 +21,7 @@ class MainWidget : public QWidget
 public:
     MainWidget(QWidget *parent = nullptr);
     ~MainWidget();
+	void enter_read_only_mode();//运行中发生严重持久化错误时立即禁用全部写入口
 
 protected:
 	void closeEvent(QCloseEvent* event) override;//关闭前保存窗口与导航状态

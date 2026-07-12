@@ -112,6 +112,7 @@ void MainWidget::showEvent(QShowEvent* event)
 void MainWidget::show_persistence_startup_notice()
 {
 	school& current_school = school::instance();
+	bool conflict_resolved = false;
 	if (current_school.persistence_status() == persistence_start_status::data_conflict)
 	{
 		QMessageBox dialog(this);
@@ -125,21 +126,29 @@ void MainWidget::show_persistence_startup_notice()
 		dialog.exec();
 		const bool use_executable = dialog.clickedButton() == executable_button;
 		if (dialog.clickedButton() != executable_button && dialog.clickedButton() != fallback_button)
+		{
+			enter_read_only_mode();
+			uifeedback::show_critical(this, QStringLiteral("尚未选择数据"),
+				QStringLiteral("未选择本次使用的数据，系统将保持只读状态，不会执行任何修改。"));
 			return;
+		}
 		if (!current_school.resolve_persistence_conflict(use_executable))
 		{
+			enter_read_only_mode();
 			uifeedback::show_critical(this, QStringLiteral("无法加载所选数据"),
 				QStringLiteral("所选数据未能完整恢复，系统不会执行后续修改。"), current_school.last_persistence_error());
 			return;
 		}
+		conflict_resolved = true;
 		refresh_all_pages();
 	}
 
 	switch (current_school.persistence_status())
 	{
 	case persistence_start_status::fallback_ready:
-		uifeedback::show_information(this, QStringLiteral("数据目录已切换"),
-			QStringLiteral("程序目录不可写，本次将自动保存到用户数据目录：\n%1").arg(current_school.active_data_directory()));
+		if (!conflict_resolved)
+			uifeedback::show_information(this, QStringLiteral("使用用户数据目录"),
+				QStringLiteral("本次将使用以下用户数据目录自动保存：\n%1").arg(current_school.active_data_directory()));
 		break;
 	case persistence_start_status::backup_restored:
 		uifeedback::show_information(this, QStringLiteral("已从备份恢复"),
@@ -155,6 +164,11 @@ void MainWidget::show_persistence_startup_notice()
 	default:
 		break;
 	}
+}
+
+void MainWidget::enter_read_only_mode()
+{
+	lock_read_only_controls();
 }
 
 bool MainWidget::eventFilter(QObject* watched, QEvent* event)

@@ -29,6 +29,7 @@ protected:
 
 private:
 	void open_sample_data_dialog();//打开样例参数弹窗并在成功后刷新概览
+	void refresh_persistence_info();//刷新自动保存状态与当前实际数据目录
 	void refresh_summary();//刷新学生、床位与入住情况统计
 	void refresh_building_capacity();//刷新楼栋容量表格
 

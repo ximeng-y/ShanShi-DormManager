@@ -1,4 +1,5 @@
 #include "uifeedback.h"
+#include "mainwidget.h"
 
 #include "core/school.h"
 
@@ -14,12 +15,29 @@
 #include <QWidget>
 
 namespace {
+void lock_main_window_if_needed(QWidget* parent, int error_code)
+{
+	if (error_code != -101 && error_code != -102)
+		return;
+	QWidget* current = parent;
+	while (current != nullptr)
+	{
+		if (auto* main_widget = qobject_cast<MainWidget*>(current))
+		{
+			main_widget->enter_read_only_mode();
+			return;
+		}
+		current = current->parentWidget();
+	}
+}
+
 bool show_persistence_error(QWidget* parent)
 {
 	int error_code = 0;
 	const QString message = school::instance().take_persistence_error(&error_code);
 	if (error_code != -100 && error_code != -101 && error_code != -102)
 		return false;
+	lock_main_window_if_needed(parent, error_code);
 	const QMessageBox::Icon icon = error_code == -101 ? QMessageBox::Critical : QMessageBox::Warning;
 	const QString title = error_code == -100 ? QStringLiteral("操作未保存")
 		: (error_code == -101 ? QStringLiteral("数据恢复失败") : QStringLiteral("当前为只读模式"));
