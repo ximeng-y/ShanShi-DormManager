@@ -41,6 +41,8 @@ OverviewPage::OverviewPage(QWidget* parent)
 	ui->sampleDataInfoButton->set_information(ui->sampleDataInfoButton->toolTip());
 	ui->generateSampleDataButton->setAccessibleName(QStringLiteral("生成随机样例数据"));
 	ui->buildingCapacityTable->setAccessibleName(QStringLiteral("宿舍楼容量概况"));
+	ui->buildingCapacityTable->setAccessibleDescription(QStringLiteral("双击某行可在宿舍资源页打开对应楼栋。"));
+	ui->buildingCapacityTable->setToolTip(QStringLiteral("双击楼栋可查看对应宿舍资源"));
 	ui->buildingCapacityTable->verticalHeader()->setVisible(false);
 	ui->buildingCapacityTable->verticalHeader()->setDefaultSectionSize(42);
 	ui->buildingCapacityTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -48,6 +50,12 @@ OverviewPage::OverviewPage(QWidget* parent)
 	ui->buildingCapacityTable->horizontalHeaderItem(4)->setText(QStringLiteral("空床位"));
 	ui->buildingCapacityTable->horizontalHeaderItem(4)->setToolTip(QStringLiteral("统计未被占用的床位，不区分房间性别锁。"));
 	connect(ui->generateSampleDataButton, &QPushButton::clicked, this, &OverviewPage::open_sample_data_dialog);
+	connect(ui->buildingCapacityTable, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
+		QTableWidgetItem* building_item = ui->buildingCapacityTable->item(row, 0);
+		if (building_item != nullptr) {
+			emit building_open_requested(building_item->data(Qt::UserRole).toInt());
+		}
+	});
 }
 
 OverviewPage::~OverviewPage()

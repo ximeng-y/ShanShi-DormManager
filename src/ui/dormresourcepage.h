@@ -22,6 +22,7 @@ public:
 	explicit DormResourcePage(QWidget* parent = nullptr);
 	~DormResourcePage();
 	void refresh_data();//刷新楼栋与宿舍目录
+	void select_building(int building_id);//定位指定楼栋并清除宿舍搜索条件
 
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新资源目录

@@ -228,6 +228,20 @@ void DormResourcePage::refresh_data()
 	refresh_building_list();
 }
 
+void DormResourcePage::select_building(int building_id)
+{
+	if (school::instance().get_building(building_id) == nullptr) {
+		return;
+	}
+	selected_building_id = building_id;
+	selected_dorm_id = 0;
+	const QSignalBlocker search_blocker(ui->dormSearchLineEdit);
+	ui->dormSearchLineEdit->clear();
+	if (isVisible()) {
+		refresh_data();
+	}
+}
+
 void DormResourcePage::showEvent(QShowEvent* event)
 {
 	QWidget::showEvent(event);

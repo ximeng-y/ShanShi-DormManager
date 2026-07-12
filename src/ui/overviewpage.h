@@ -21,6 +21,9 @@ public:
 	~OverviewPage();
 	void refresh_data();//刷新概览统计与楼栋容量数据
 
+signals:
+	void building_open_requested(int building_id);//请求宿舍资源页定位指定楼栋
+
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新只读数据
 
