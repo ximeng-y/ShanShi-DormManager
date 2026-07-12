@@ -23,9 +23,9 @@
           <property name="verticalSpacing"><number>12</number></property>
           <item row="0" column="0"><widget class="QLabel" name="assignStudentLabel"><property name="text"><string>学生</string></property></widget></item><item row="0" column="1"><widget class="QComboBox" name="assignStudentSpin"><property name="editable"><bool>true</bool></property><property name="insertPolicy"><enum>QComboBox::InsertPolicy::NoInsert</enum></property><property name="placeholderText"><string>输入姓名或学号</string></property></widget></item>
           <item row="1" column="0"><widget class="QLabel" name="assignStrategyLabel"><property name="text"><string>安置方式</string></property></widget></item><item row="1" column="1"><widget class="QComboBox" name="assignStrategyCombo"><property name="toolTip"><string>系统推荐按楼号、宿舍号选择最小顺位；随机分配从全部可用宿舍中随机选择。</string></property><item><property name="text"><string>系统推荐最小顺位宿舍</string></property></item><item><property name="text"><string>随机分配可用宿舍</string></property></item><item><property name="text"><string>指定宿舍</string></property></item><item><property name="text"><string>指定床位</string></property></item></widget></item>
-          <item row="2" column="0"><widget class="QLabel" name="assignBuildingLabel"><property name="text"><string>目标楼栋</string></property></widget></item><item row="2" column="1"><widget class="identifierlineedit" name="assignBuildingSpin"><property name="minimum"><number>1</number></property><property name="maximum"><number>99</number></property><property name="placeholderText"><string>指定安置方式时输入楼号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
-          <item row="3" column="0"><widget class="QLabel" name="assignDormLabel"><property name="text"><string>目标宿舍</string></property></widget></item><item row="3" column="1"><widget class="identifierlineedit" name="assignDormSpin"><property name="minimum"><number>101</number></property><property name="maximum"><number>9999</number></property><property name="placeholderText"><string>指定安置方式时输入宿舍号</string></property><property name="clearButtonEnabled"><bool>true</bool></property></widget></item>
-          <item row="4" column="0"><widget class="QLabel" name="assignBedLabel"><property name="text"><string>目标床位</string></property></widget></item><item row="4" column="1"><widget class="QSpinBox" name="assignBedSpin"><property name="minimum"><number>0</number></property><property name="maximum"><number>2147483647</number></property><property name="specialValueText"><string>自动分配</string></property></widget></item>
+          <item row="2" column="0"><widget class="QLabel" name="assignBuildingLabel"><property name="text"><string>目标楼栋</string></property></widget></item><item row="2" column="1"><widget class="QComboBox" name="assignBuildingSpin"/></item>
+          <item row="3" column="0"><widget class="QLabel" name="assignDormLabel"><property name="text"><string>目标宿舍</string></property></widget></item><item row="3" column="1"><widget class="QComboBox" name="assignDormSpin"/></item>
+          <item row="4" column="0"><widget class="QLabel" name="assignBedLabel"><property name="text"><string>目标床位</string></property></widget></item><item row="4" column="1"><widget class="QComboBox" name="assignBedSpin"/></item>
          </layout>
         </widget>
        </item>
@@ -71,7 +71,7 @@
    </item>
   </layout>
  </widget>
- <customwidgets><customwidget><class>infobutton</class><extends>QToolButton</extends><header>ui/infobutton.h</header></customwidget><customwidget><class>identifierlineedit</class><extends>QLineEdit</extends><header>ui/identifierlineedit.h</header></customwidget></customwidgets>
+ <customwidgets><customwidget><class>infobutton</class><extends>QToolButton</extends><header>ui/infobutton.h</header></customwidget></customwidgets>
  <resources/>
  <connections/>
 </ui>

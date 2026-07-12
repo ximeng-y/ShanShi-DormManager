@@ -36,6 +36,9 @@ private:
 	int selected_student_id(const QComboBox* combo) const;//仅返回由下拉结果明确选中的学生学号
 	void select_student(QComboBox* combo, int student_id);//按稳定学号预选下拉项
 	void update_assign_controls();//按安置方式启用目标宿舍与床位输入
+	void refresh_assign_buildings();//按当前学生性别刷新可用目标楼栋
+	void refresh_assign_dorms();//按目标楼栋刷新可用宿舍
+	void refresh_assign_beds();//按目标宿舍刷新可用空床
 	void update_assign_preview();//刷新入住学生与目标位置预览
 	void submit_assignment();//提交学生入住业务
 	void show_assignment_error(int result);//解释入住返回码
