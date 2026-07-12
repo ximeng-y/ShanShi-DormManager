@@ -2,6 +2,7 @@
 #include "./ui_studentdetaildialog.h"
 
 #include "core/school.h"
+#include "core/dorm.h"
 #include "core/student.h"
 
 #include <QLabel>
@@ -69,12 +70,16 @@ void StudentDetailDialog::load_student(int student_id)
 		|| current_student->get_floor() > 0 || current_student->get_bed_id() > 0;
 	const bool complete_position = current_student->get_building_id() > 0 && current_student->get_dorm_id() > 0
 		&& current_student->get_floor() > 0 && current_student->get_bed_id() > 0;
-	const bool abnormal_position = assigned != complete_position || (!assigned && has_any_position);
+	const dorm* current_dorm = complete_position
+		? school::instance().get_dorm(current_student->get_building_id(), current_student->get_dorm_id()) : nullptr;
+	const bool consistent_position = current_dorm != nullptr
+		&& current_student->get_floor() == current_dorm->get_floor()
+		&& current_dorm->get_student_id(current_student->get_bed_id()) == student_id;
+	const bool abnormal_position = (assigned && !consistent_position) || (!assigned && has_any_position);
 	ui->statusValueLabel->setText(abnormal_position
 		? QStringLiteral("住宿记录异常")
 		: (assigned ? QStringLiteral("已入住") : QStringLiteral("未入住")));
-	if (assigned && current_student->get_building_id() > 0 && current_student->get_dorm_id() > 0
-		&& current_student->get_floor() > 0 && current_student->get_bed_id() > 0) {
+	if (assigned && consistent_position) {
 		ui->buildingValueLabel->setText(QStringLiteral("%1号楼").arg(current_student->get_building_id()));
 		ui->dormValueLabel->setText(QStringLiteral("%1室").arg(current_student->get_dorm_id()));
 		ui->floorValueLabel->setText(QStringLiteral("%1层").arg(current_student->get_floor()));

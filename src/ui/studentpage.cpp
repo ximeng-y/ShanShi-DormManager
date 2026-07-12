@@ -6,6 +6,7 @@
 #include "uifeedback.h"
 
 #include "core/school.h"
+#include "core/dorm.h"
 #include "core/student.h"
 #include "system/check.h"
 
@@ -52,16 +53,34 @@ bool student_has_complete_position(const student& current_student)
 		&& current_student.get_floor() > 0;
 }
 
+bool student_has_any_position(const student& current_student)
+{
+	return current_student.get_building_id() > 0 || current_student.get_dorm_id() > 0
+		|| current_student.get_bed_id() > 0 || current_student.get_floor() > 0;
+}
+
+bool student_has_consistent_position(const student& current_student)
+{
+	if (!student_has_complete_position(current_student))
+		return false;
+	const dorm* current_dorm = school::instance().get_dorm(current_student.get_building_id(), current_student.get_dorm_id());
+	return current_dorm != nullptr
+		&& current_student.get_floor() == current_dorm->get_floor()
+		&& current_dorm->get_student_id(current_student.get_bed_id()) == current_student.get_id();
+}
+
+bool student_position_is_abnormal(const student& current_student, bool assigned)
+{
+	return assigned ? !student_has_consistent_position(current_student) : student_has_any_position(current_student);
+}
+
 QString student_accommodation_text(const student& current_student, bool assigned)
 {
-	const bool has_any_position = current_student.get_building_id() > 0
-		|| current_student.get_dorm_id() > 0
-		|| current_student.get_bed_id() > 0
-		|| current_student.get_floor() > 0;
+	const bool has_any_position = student_has_any_position(current_student);
 	if (!assigned && !has_any_position) {
 		return QStringLiteral("未入住");
 	}
-	if (!assigned || !student_has_complete_position(current_student)) {
+	if (!assigned || !student_has_consistent_position(current_student)) {
 		return QStringLiteral("住宿记录异常");
 	}
 	return QStringLiteral("%1号楼 · %2室 · %3号床")
@@ -299,14 +318,16 @@ void StudentPage::apply_filters()
 			continue;
 		}
 		const bool assigned = assigned_ids.contains(student_id);
+		const bool abnormal_position = student_position_is_abnormal(*current_student, assigned);
 		const bool matches_search = search_text.isEmpty()
 			|| QString::number(student_id).contains(search_text)
 			|| current_student->get_name().contains(search_text, Qt::CaseInsensitive);
 		const bool matches_grade = selected_grade == 0 || current_student->get_grade() == selected_grade;
 		const bool matches_class = selected_class == 0 || current_student->get_class_num() == selected_class;
 		const bool matches_status = selected_status == 0
-			|| (selected_status == 1 && assigned)
-			|| (selected_status == 2 && !assigned);
+			|| (selected_status == 1 && assigned && !abnormal_position)
+			|| (selected_status == 2 && !assigned && !abnormal_position)
+			|| (selected_status == 3 && abnormal_position);
 		if (matches_search && matches_grade && matches_class && matches_status) {
 			matched_ids.append(student_id);
 		}
@@ -323,13 +344,15 @@ void StudentPage::apply_filters()
 				continue;
 			}
 			const bool assigned = assigned_ids.contains(current_student->get_id());
+			const bool abnormal_position = student_position_is_abnormal(*current_student, assigned);
 			const QStringList values = {
 				QString::number(current_student->get_id()),
 				current_student->get_name(),
 				student_gender_text(current_student->get_gender()),
 				QStringLiteral("%1班").arg(current_student->get_class_num()),
 				QString::number(current_student->get_grade()),
-				assigned ? QStringLiteral("已入住") : QStringLiteral("未入住"),
+				abnormal_position ? QStringLiteral("住宿异常")
+					: (assigned ? QStringLiteral("已入住") : QStringLiteral("未入住")),
 				student_accommodation_text(*current_student, assigned)
 			};
 			for (int column = 0; column < values.size(); ++column) {
@@ -338,9 +361,10 @@ void StudentPage::apply_filters()
 				if (column == 0) {
 					item->setData(Qt::UserRole, current_student->get_id());
 				}
-				if (column == 6 && values.at(column) == QStringLiteral("住宿记录异常")) {
+				if ((column == 5 && abnormal_position)
+					|| (column == 6 && values.at(column) == QStringLiteral("住宿记录异常"))) {
 					item->setForeground(QBrush(QColor(QStringLiteral("#a23333"))));
-					item->setToolTip(QStringLiteral("学生位置字段与公开入住状态不一致，请核查数据。"));
+					item->setToolTip(QStringLiteral("学生位置字段与宿舍床位记录不一致，请核查数据。"));
 				}
 				ui->studentTable->setItem(row, column, item);
 			}
@@ -395,6 +419,7 @@ void StudentPage::show_student_summary(int student_id)
 
 	selected_student_id = student_id;
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
+	const bool abnormal_position = student_position_is_abnormal(*current_student, assigned);
 	ui->detailNameLabel->show();
 	ui->detailNameLabel->setText(current_student->get_name());
 	ui->studentIdValueLabel->setText(QString::number(current_student->get_id()));
@@ -402,14 +427,14 @@ void StudentPage::show_student_summary(int student_id)
 	ui->gradeValueLabel->setText(QString::number(current_student->get_grade()));
 	ui->classValueLabel->setText(QStringLiteral("%1班").arg(current_student->get_class_num()));
 	ui->accommodationValueLabel->setText(student_accommodation_text(*current_student, assigned));
-	ui->accommodationActionButton->setText(assigned
+	ui->accommodationActionButton->setText(abnormal_position ? QStringLiteral("住宿记录异常") : assigned
 		? QStringLiteral("办理调宿")
 		: QStringLiteral("办理入住"));
 	ui->detailHintLabel->hide();
 	ui->detailContent->show();
 	ui->editContent->hide();
 	ui->editStudentButton->setEnabled(true);
-	ui->accommodationActionButton->setEnabled(true);
+	ui->accommodationActionButton->setEnabled(!abnormal_position);
 	ui->moreActionButton->setEnabled(true);
 }
 
