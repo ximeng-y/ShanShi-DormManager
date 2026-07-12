@@ -18,6 +18,7 @@ enum class assignment_strategy
 struct accommodation_change
 {
 	int student_id = 0;
+	int student_gender = 0;
 	int old_building_id = 0;
 	int old_dorm_id = 0;
 	int old_bed_id = 0;

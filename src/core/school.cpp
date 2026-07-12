@@ -4,7 +4,9 @@
 #include "buildingmanager.h"
 #include "system/check.h"
 #include <QRandomGenerator>
+#include <QHash>
 #include <QSet>
+#include <QStringList>
 #include <algorithm>
 
 school& school::instance()
@@ -963,6 +965,8 @@ QVector<accommodation_data_issue> school::collect_accommodation_issues() const//
 			issues.append({0, key.first, key.second, QStringLiteral("宿舍或所属宿舍楼不存在。")});
 			continue;
 		}
+		if (d->get_for_gender() != 0 && !b->accepts_gender(d->get_for_gender()))
+			issues.append({0, key.first, key.second, QStringLiteral("宿舍性别锁与所属宿舍楼的性别要求冲突。")});
 		for (int bed_id = 1; bed_id <= d->get_max_num(); ++bed_id)
 		{
 			const int student_id = d->get_student_id(bed_id);
@@ -1020,7 +1024,7 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 		return preview;
 	preview.unassigned_student_ids = get_unassigned_student_ids();
 	preview.candidate_count = preview.unassigned_student_ids.size();
-	preview.available_bed_count = get_empty_bed_count();
+	preview.available_bed_count = 0;
 
 	struct planned_dorm
 	{
@@ -1106,8 +1110,9 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 		target.beds[bed_id - 1] = student_id;
 		if (target.gender == 0)
 			target.gender = s->get_gender();
-		preview.changes.append({student_id, 0, 0, 0, target.building_id, target.dorm_id, bed_id});
+		preview.changes.append({student_id, s->get_gender(), 0, 0, 0, target.building_id, target.dorm_id, bed_id});
 	}
+	preview.available_bed_count = preview.changes.size();
 	return preview;
 }
 
@@ -1119,9 +1124,12 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		return -8;
 	QSet<int> student_ids;
 	QSet<QString> target_beds;
+	QHash<QString, int> simulated_genders;
+	QHash<QString, int> original_genders;
 	for (const accommodation_change& change : preview.changes)
 	{
-		if (change.student_id <= 0 || change.old_building_id != 0 || change.old_dorm_id != 0 || change.old_bed_id != 0
+		if (change.student_id <= 0 || (change.student_gender != 1 && change.student_gender != 2)
+			|| change.old_building_id != 0 || change.old_dorm_id != 0 || change.old_bed_id != 0
 			|| change.new_building_id <= 0 || change.new_dorm_id <= 0 || change.new_bed_id <= 0
 			|| student_ids.contains(change.student_id))
 			return -7;
@@ -1133,11 +1141,22 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		const student* s = get_student(change.student_id);
 		const dorm* d = get_dorm(change.new_building_id, change.new_dorm_id);
 		const building* b = get_building(change.new_building_id);
+		const QString dorm_key = QStringLiteral("%1/%2").arg(change.new_building_id).arg(change.new_dorm_id);
 		if (s == nullptr || d == nullptr || b == nullptr
+			|| s->get_gender() != change.student_gender
 			|| s->get_building_id() != 0 || s->get_dorm_id() != 0 || s->get_bed_id() != 0 || s->get_floor() != 0
 			|| d->is_bed_occupied(change.new_bed_id) != 0
-			|| !b->accepts_gender(s->get_gender()) || !d->accepts_gender(s->get_gender()))
+			|| !b->accepts_gender(s->get_gender()))
 			return -7;
+		if (!simulated_genders.contains(dorm_key))
+		{
+			simulated_genders.insert(dorm_key, d->get_for_gender());
+			original_genders.insert(dorm_key, d->get_for_gender());
+		}
+		if (simulated_genders.value(dorm_key) != 0 && simulated_genders.value(dorm_key) != s->get_gender())
+			return -7;
+		if (simulated_genders.value(dorm_key) == 0)
+			simulated_genders[dorm_key] = s->get_gender();
 	}
 
 	QVector<int> assigned_ids;
@@ -1152,6 +1171,16 @@ int school::apply_batch_assignment(const batch_assignment_preview& preview)//按
 		bool restored = true;
 		for (int i = assigned_ids.size() - 1; i >= 0; --i)
 			restored = remove_student_from_dorm(assigned_ids[i]) > 0 && restored;
+		for (auto it = original_genders.cbegin(); it != original_genders.cend(); ++it)
+		{
+			const QStringList parts = it.key().split(QLatin1Char('/'));
+			if (parts.size() != 2)
+			{
+				restored = false;
+				continue;
+			}
+			restored = dormmanager::instance().set_dorm_gender(parts[0].toInt(), parts[1].toInt(), it.value()) == 1 && restored;
+		}
 		return restored ? -5 : -6;
 	}
 	return assigned_ids.size();
