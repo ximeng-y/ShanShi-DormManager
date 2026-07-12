@@ -1,12 +1,51 @@
 #include "check.h"
 #include <QString>
 
-bool check::is_valid_student_id(int id)//检查学号是否合法(10000000~99999999)
+bool check::is_valid_student_id(int id)//检查学号是否符合YYCCSSSS基本结构
 {
 	if(id < 10000000 || id > 99999999)
 		return false;
+	return is_valid_class_num((id / 10000) % 100) && is_valid_student_sequence(id % 10000);
+}
 
-	return true;
+bool check::is_valid_student_sequence(int sequence)//检查同年级学生序号是否合法(1~9999)
+{
+	return sequence >= 1 && sequence <= 9999;
+}
+
+int check::make_student_id(int grade, int class_num, int sequence)//按YYCCSSSS生成学号
+{
+	if (!is_valid_grade(grade) || !is_valid_class_num(class_num) || !is_valid_student_sequence(sequence))
+		return 0;
+	return (grade % 100) * 1000000 + class_num * 10000 + sequence;
+}
+
+int check::student_id_year_suffix(int student_id)//解析学号年级后两位
+{
+	if (!is_valid_student_id(student_id))
+		return -1;
+	return student_id / 1000000;
+}
+
+int check::student_id_class_num(int student_id)//解析学号班级号
+{
+	if (!is_valid_student_id(student_id))
+		return -1;
+	return (student_id / 10000) % 100;
+}
+
+int check::student_id_sequence(int student_id)//解析学号同年级序号
+{
+	if (!is_valid_student_id(student_id))
+		return -1;
+	return student_id % 10000;
+}
+
+bool check::is_student_id_consistent(int student_id, int grade, int class_num)//检查学号与完整年级、班级是否一致
+{
+	if (!is_valid_grade(grade) || !is_valid_class_num(class_num) || !is_valid_student_id(student_id))
+		return false;
+	return student_id_year_suffix(student_id) == grade % 100 && student_id_class_num(student_id) == class_num;
 }
 
 bool check::is_valid_class_num(int class_num)//检查班级号是否合法(1~99)
@@ -16,9 +55,9 @@ bool check::is_valid_class_num(int class_num)//检查班级号是否合法(1~99)
 	return true;
 }
 
-bool check::is_valid_grade(int grade)//检查年级是否合法(2000~2999)
+bool check::is_valid_grade(int grade)//检查年级是否合法(2010~2099)
 {
-	if (grade < 2000 || grade > 2999)
+	if (grade < 2010 || grade > 2099)
 		return false;
 	return true;
 }
