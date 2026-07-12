@@ -1681,6 +1681,190 @@ void school::reset_and_sync_students(const QVector<int>& original_ids, int b1, i
 	}
 }
 
+dorm_adjustment_preview school::preview_dorm_adjustment(int b1, int d1, int b2, int d2, dorm_adjustment_mode mode) const//生成宿舍整体调整预览
+{
+	dorm_adjustment_preview preview;
+	preview.mode = mode;
+	preview.issues = collect_accommodation_issues();
+	if (!preview.issues.isEmpty())
+		return preview;
+	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1)
+		|| !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))
+	{
+		preview.unavailable_reason = QStringLiteral("请选择两间不同的有效宿舍。");
+		return preview;
+	}
+	const dorm* a = get_dorm(b1, d1);
+	const dorm* b = get_dorm(b2, d2);
+	const building* building_a = get_building(b1);
+	const building* building_b = get_building(b2);
+	if (a == nullptr || b == nullptr || building_a == nullptr || building_b == nullptr)
+	{
+		preview.unavailable_reason = QStringLiteral("所选宿舍或所属宿舍楼不存在。");
+		return preview;
+	}
+	preview.before_a = {b1, d1, a->get_for_gender(), snapshot_dorm(*a)};
+	preview.before_b = {b2, d2, b->get_for_gender(), snapshot_dorm(*b)};
+	preview.after_a = preview.before_a;
+	preview.after_b = preview.before_b;
+	const QVector<int> list_a = a->get_student_id_list();
+	const QVector<int> list_b = b->get_student_id_list();
+	const int overlap = qMin(list_a.size(), list_b.size());
+
+	auto accepts = [this](int building_id, const dorm* target, int student_id)
+	{
+		const student* s = get_student(student_id);
+		const building* target_building = get_building(building_id);
+		return s != nullptr && target_building != nullptr && target_building->accepts_gender(s->get_gender())
+			&& target->accepts_gender(s->get_gender());
+	};
+	auto clear_beds = [](dorm_preview_state& state)
+	{
+		std::fill(state.beds.begin(), state.beds.end(), 0);
+	};
+	auto remove_id = [](dorm_preview_state& state, int student_id)
+	{
+		for (int& occupant : state.beds)
+			if (occupant == student_id)
+			{
+				occupant = 0;
+				return;
+			}
+	};
+	auto add_lowest = [this](dorm_preview_state& state, int student_id)
+	{
+		for (int& occupant : state.beds)
+			if (occupant == 0)
+			{
+				occupant = student_id;
+				const student* s = get_student(student_id);
+				if (state.gender == 0 && s != nullptr)
+					state.gender = s->get_gender();
+				return true;
+			}
+		return false;
+	};
+
+	if (mode == dorm_adjustment_mode::full_swap)
+	{
+		if (a->get_for_gender() != b->get_for_gender())
+			preview.unavailable_reason = QStringLiteral("两间宿舍的宿舍性别锁不同，不能完整交换。");
+		else if (list_a.size() != list_b.size())
+			preview.unavailable_reason = QStringLiteral("两间宿舍住客人数不同，不能完整交换。");
+		else
+		{
+			for (int id : list_a)
+				if (!accepts(b2, b, id)) preview.unavailable_reason = QStringLiteral("宿舍A中至少一名学生不符合宿舍B的性别要求。");
+			for (int id : list_b)
+				if (!accepts(b1, a, id)) preview.unavailable_reason = QStringLiteral("宿舍B中至少一名学生不符合宿舍A的性别要求。");
+			if (preview.unavailable_reason.isEmpty())
+			{
+				clear_beds(preview.after_a);
+				clear_beds(preview.after_b);
+				for (int id : list_b) add_lowest(preview.after_a, id);
+				for (int id : list_a) add_lowest(preview.after_b, id);
+			}
+		}
+	}
+	else if (mode == dorm_adjustment_mode::overlap_swap || mode == dorm_adjustment_mode::overlap_swap_and_evict)
+	{
+		if (a->get_for_gender() != b->get_for_gender())
+			preview.unavailable_reason = QStringLiteral("两间宿舍的宿舍性别锁不同，不能使用此调整方式。");
+		else
+		{
+			for (int i = 0; i < overlap; ++i)
+				if (!accepts(b2, b, list_a[i]) || !accepts(b1, a, list_b[i]))
+					preview.unavailable_reason = QStringLiteral("至少一名学生不符合目标宿舍的性别要求。");
+			if (preview.unavailable_reason.isEmpty() && overlap > 0)
+			{
+				if (mode == dorm_adjustment_mode::overlap_swap_and_evict)
+				{
+					clear_beds(preview.after_a);
+					clear_beds(preview.after_b);
+				}
+				else
+					for (int i = 0; i < overlap; ++i)
+					{
+						remove_id(preview.after_a, list_a[i]);
+						remove_id(preview.after_b, list_b[i]);
+					}
+				for (int i = 0; i < overlap; ++i)
+				{
+					add_lowest(preview.after_a, list_b[i]);
+					add_lowest(preview.after_b, list_a[i]);
+				}
+			}
+		}
+	}
+	else
+	{
+		if (building_a->get_for_gender() != 3 || building_b->get_for_gender() != 3)
+			preview.unavailable_reason = QStringLiteral("男女宿舍交换只适用于混合宿舍楼中的宿舍。");
+		else if (!((a->get_for_gender() == 1 && b->get_for_gender() == 2) || (a->get_for_gender() == 2 && b->get_for_gender() == 1)))
+			preview.unavailable_reason = QStringLiteral("请选择一间男生宿舍和一间女生宿舍。");
+		else if (overlap > 0)
+		{
+			clear_beds(preview.after_a);
+			clear_beds(preview.after_b);
+			preview.after_a.gender = 0;
+			preview.after_b.gender = 0;
+			for (int i = 0; i < overlap; ++i)
+			{
+				add_lowest(preview.after_a, list_b[i]);
+				add_lowest(preview.after_b, list_a[i]);
+			}
+		}
+	}
+	if (!preview.unavailable_reason.isEmpty())
+		return preview;
+
+	QSet<int> affected;
+	for (int id : list_a) affected.insert(id);
+	for (int id : list_b) affected.insert(id);
+	auto find_bed = [](const dorm_preview_state& state, int student_id)
+	{
+		for (int i = 0; i < state.beds.size(); ++i)
+			if (state.beds[i] == student_id) return i + 1;
+		return 0;
+	};
+	for (int student_id : affected)
+	{
+		const student* s = get_student(student_id);
+		const int new_bed_a = find_bed(preview.after_a, student_id);
+		const int new_bed_b = find_bed(preview.after_b, student_id);
+		preview.changes.append({student_id, s == nullptr ? 0 : s->get_gender(),
+			s == nullptr ? 0 : s->get_building_id(), s == nullptr ? 0 : s->get_dorm_id(), s == nullptr ? 0 : s->get_bed_id(),
+			new_bed_a > 0 ? b1 : new_bed_b > 0 ? b2 : 0,
+			new_bed_a > 0 ? d1 : new_bed_b > 0 ? d2 : 0,
+			new_bed_a > 0 ? new_bed_a : new_bed_b});
+	}
+	preview.available = true;
+	return preview;
+}
+
+int school::apply_dorm_adjustment(const dorm_adjustment_preview& preview)//核对并执行宿舍整体调整
+{
+	const dorm_adjustment_preview current = preview_dorm_adjustment(
+		preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id, preview.mode);
+	if (!current.issues.isEmpty())
+		return -5;
+	if (!current.available || current.before_a.beds != preview.before_a.beds || current.before_b.beds != preview.before_b.beds
+		|| current.before_a.gender != preview.before_a.gender || current.before_b.gender != preview.before_b.gender)
+		return -5;
+	switch (preview.mode)
+	{
+	case dorm_adjustment_mode::full_swap:
+		return swap_dorms(preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id);
+	case dorm_adjustment_mode::overlap_swap:
+		return swap_dorms_overlap(preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id);
+	case dorm_adjustment_mode::overlap_swap_and_evict:
+		return swap_dorms_overlap_evict(preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id);
+	case dorm_adjustment_mode::gender_dorm_swap:
+		return swap_gender_dorms(preview.before_a.building_id, preview.before_a.dorm_id, preview.before_b.building_id, preview.before_b.dorm_id);
+	}
+	return -1;
+}
+
 int school::swap_dorms(int b1, int d1, int b2, int d2)//同锁同人数宿舍整体互换
 {
 	if (!check::is_valid_building_id(b1) || !check::is_valid_dorm_id(d1) || !check::is_valid_building_id(b2) || !check::is_valid_dorm_id(d2) || (b1 == b2 && d1 == d2))

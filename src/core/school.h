@@ -29,6 +29,14 @@ enum class clear_scope
 	all
 };
 
+enum class dorm_adjustment_mode
+{
+	full_swap,
+	overlap_swap,
+	overlap_swap_and_evict,
+	gender_dorm_swap
+};
+
 struct accommodation_change
 {
 	int student_id = 0;
@@ -94,6 +102,29 @@ struct batch_clear_preview
 	QVector<accommodation_data_issue> issues;
 
 	bool can_apply() const { return issues.isEmpty() && !changes.isEmpty(); }
+};
+
+struct dorm_preview_state
+{
+	int building_id = 0;
+	int dorm_id = 0;
+	int gender = 0;
+	QVector<int> beds;
+};
+
+struct dorm_adjustment_preview
+{
+	dorm_adjustment_mode mode = dorm_adjustment_mode::full_swap;
+	bool available = false;
+	QString unavailable_reason;
+	dorm_preview_state before_a;
+	dorm_preview_state before_b;
+	dorm_preview_state after_a;
+	dorm_preview_state after_b;
+	QVector<accommodation_change> changes;
+	QVector<accommodation_data_issue> issues;
+
+	bool can_apply() const { return available && issues.isEmpty(); }
 };
 
 //学校顶层协调类。负责组合 studentmanager、dormmanager、buildingmanager
@@ -202,6 +233,8 @@ public:
 	int swap_dorms_overlap(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客留原处；一方为空时无操作成功
 	int swap_dorms_overlap_evict(int b1, int d1, int b2, int d2);//重叠人数互换，多余住客离宿；一方为空时无操作成功
 	int swap_gender_dorms(int b1, int d1, int b2, int d2);//混宿楼男舍与女舍互换，多余住客离宿；一方为空时无操作成功
+	dorm_adjustment_preview preview_dorm_adjustment(int b1, int d1, int b2, int d2, dorm_adjustment_mode mode) const;//生成两间宿舍整体调整的固定预览
+	int apply_dorm_adjustment(const dorm_adjustment_preview& preview);//重新核对预览后分发至对应宿舍调整事务
 
 private:
 	struct dorm_accommodation_snapshot
