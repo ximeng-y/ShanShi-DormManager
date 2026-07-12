@@ -20,6 +20,10 @@ public:
 	explicit AdvancedAdjustmentPage(QWidget* parent = nullptr);
 	~AdvancedAdjustmentPage();
 
+signals:
+	void student_open_requested(int student_id);
+	void dorm_open_requested(int building_id, int dorm_id);
+
 protected:
 	void showEvent(QShowEvent* event) override;
 

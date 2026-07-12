@@ -409,6 +409,15 @@ void StudentPage::reset_filters()
 	apply_filters();
 }
 
+void StudentPage::select_student(int student_id)
+{
+	if (school::instance().get_student(student_id) == nullptr)
+		return;
+	reset_filters();
+	selected_student_id = student_id;
+	apply_filters();
+}
+
 void StudentPage::show_student_summary(int student_id)
 {
 	const student* current_student = school::instance().get_student(student_id);

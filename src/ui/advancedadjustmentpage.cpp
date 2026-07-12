@@ -39,6 +39,8 @@ void AdvancedAdjustmentPage::refresh_summary()
 void AdvancedAdjustmentPage::open_batch_assignment()
 {
 	BatchAssignmentDialog dialog(this);
+	connect(&dialog, &BatchAssignmentDialog::student_navigation_requested, this, &AdvancedAdjustmentPage::student_open_requested);
+	connect(&dialog, &BatchAssignmentDialog::dorm_navigation_requested, this, &AdvancedAdjustmentPage::dorm_open_requested);
 	dialog.exec();
 	refresh_summary();
 }

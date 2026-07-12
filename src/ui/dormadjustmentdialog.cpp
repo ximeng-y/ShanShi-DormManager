@@ -159,10 +159,23 @@ void DormAdjustmentDialog::generate_preview()
 
 void DormAdjustmentDialog::show_preview()
 {
-	before_a_model->set_entries(entries_for_state(current_preview.before_a, &current_preview.after_b, false));
-	before_b_model->set_entries(entries_for_state(current_preview.before_b, &current_preview.after_a, false));
+	QVector<bedpreviewentry> before_a_entries = entries_for_state(current_preview.before_a, &current_preview.after_b, false);
+	QVector<bedpreviewentry> before_b_entries = entries_for_state(current_preview.before_b, &current_preview.after_a, false);
+	for (bedpreviewentry& entry : before_a_entries)
+		if (entry.student_id > 0 && !current_preview.after_a.beds.contains(entry.student_id) && !current_preview.after_b.beds.contains(entry.student_id))
+			entry.state = bedpreviewstate::evicted;
+	for (bedpreviewentry& entry : before_b_entries)
+		if (entry.student_id > 0 && !current_preview.after_a.beds.contains(entry.student_id) && !current_preview.after_b.beds.contains(entry.student_id))
+			entry.state = bedpreviewstate::evicted;
+	before_a_model->set_entries(before_a_entries);
+	before_b_model->set_entries(before_b_entries);
 	after_a_model->set_entries(entries_for_state(current_preview.after_a, &current_preview.before_b, true));
 	after_b_model->set_entries(entries_for_state(current_preview.after_b, &current_preview.before_a, true));
+	const auto gender_text = [](int gender) { return gender == 1 ? QStringLiteral("男生宿舍") : gender == 2 ? QStringLiteral("女生宿舍") : QStringLiteral("宿舍性别锁未设置"); };
+	ui->beforeALabel->setText(QStringLiteral("宿舍 A：%1号楼 %2室 · %3").arg(current_preview.before_a.building_id).arg(current_preview.before_a.dorm_id).arg(gender_text(current_preview.before_a.gender)));
+	ui->beforeBLabel->setText(QStringLiteral("宿舍 B：%1号楼 %2室 · %3").arg(current_preview.before_b.building_id).arg(current_preview.before_b.dorm_id).arg(gender_text(current_preview.before_b.gender)));
+	ui->afterALabel->setText(QStringLiteral("宿舍 A：%1号楼 %2室 · %3").arg(current_preview.after_a.building_id).arg(current_preview.after_a.dorm_id).arg(gender_text(current_preview.after_a.gender)));
+	ui->afterBLabel->setText(QStringLiteral("宿舍 B：%1号楼 %2室 · %3").arg(current_preview.after_b.building_id).arg(current_preview.after_b.dorm_id).arg(gender_text(current_preview.after_b.gender)));
 	change_model->clear(); change_model->setHorizontalHeaderLabels({QStringLiteral("学号"),QStringLiteral("姓名"),QStringLiteral("原位置"),QStringLiteral("新位置"),QStringLiteral("结果")});
 	for (const accommodation_change& c : current_preview.changes)
 	{

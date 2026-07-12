@@ -3,6 +3,7 @@
 #include "addbuildingdialog.h"
 #include "bedassignmentdialog.h"
 #include "bedmovedialog.h"
+#include "batchcleardialog.h"
 #include "adddormdialog.h"
 #include "bedtablemodel.h"
 #include "editbuildingdialog.h"
@@ -198,8 +199,15 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	setTabOrder(ui->removeSelectedBedButton, ui->moveWithinDormButton);
 	setTabOrder(ui->moveWithinDormButton, ui->moveToOtherDormButton);
 	setTabOrder(ui->moveToOtherDormButton, ui->cancelBedActionButton);
-	setTabOrder(ui->cancelBedActionButton, ui->editDormButton);
+	setTabOrder(ui->cancelBedActionButton, ui->clearDormButton);
+	setTabOrder(ui->clearDormButton, ui->editDormButton);
 	setTabOrder(ui->editDormButton, ui->removeDormButton);
+	connect(ui->clearDormButton, &QPushButton::clicked, this, [this]() {
+		BatchClearDialog dialog(this);
+		dialog.set_initial_dorm(selected_building_id, selected_dorm_id);
+		if (dialog.exec() == QDialog::Accepted)
+			refresh_data();
+	});
 	connect(ui->editDormButton, &QPushButton::clicked, this, [this]() {
 		EditDormDialog dialog(selected_building_id, selected_dorm_id, this);
 		if (dialog.exec() == QDialog::Accepted) {
@@ -263,6 +271,15 @@ void DormResourcePage::select_building(int building_id)
 	if (isVisible()) {
 		refresh_data();
 	}
+}
+
+void DormResourcePage::select_dorm(int building_id, int dorm_id)
+{
+	if (school::instance().get_dorm(building_id, dorm_id) == nullptr)
+		return;
+	select_building(building_id);
+	selected_dorm_id = dorm_id;
+	refresh_dorm_list();
 }
 
 void DormResourcePage::showEvent(QShowEvent* event)
@@ -409,6 +426,7 @@ void DormResourcePage::clear_dorm_detail()
 	ui->dormDetailContent->hide();
 	ui->editDormButton->setEnabled(false);
 	ui->removeDormButton->setEnabled(false);
+	ui->clearDormButton->setEnabled(false);
 	bed_model->set_dorm(0, 0);
 	update_bed_action_state(QModelIndex());
 }
@@ -437,6 +455,7 @@ void DormResourcePage::show_dorm_detail(int dorm_id)
 	ui->dormDetailContent->show();
 	ui->editDormButton->setEnabled(true);
 	ui->removeDormButton->setEnabled(true);
+	ui->clearDormButton->setEnabled(current_dorm->get_current_num() > 0);
 
 	bed_model->set_dorm(selected_building_id, selected_dorm_id);
 	ui->bedTableView->clearSelection();

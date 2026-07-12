@@ -23,6 +23,7 @@ public:
 	~DormResourcePage();
 	void refresh_data();//刷新楼栋与宿舍目录
 	void select_building(int building_id);//定位指定楼栋并重置宿舍号与状态筛选
+	void select_dorm(int building_id, int dorm_id);//重置筛选并定位指定宿舍
 
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新资源目录

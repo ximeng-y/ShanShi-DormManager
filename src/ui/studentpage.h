@@ -20,6 +20,7 @@ public:
 	explicit StudentPage(QWidget* parent = nullptr);
 	~StudentPage();
 	void refresh_data();//刷新学生目录与筛选结果
+	void select_student(int student_id);//重置筛选并定位指定学生
 
 signals:
 	void accommodation_requested(int student_id, bool assigned);//请求住宿任务页预填当前学生
