@@ -35,6 +35,7 @@ private:
 	void assign_selected_bed();//为当前空床办理指定床位入住
 	void remove_selected_occupant();//为当前住客办理退宿
 	void begin_within_dorm_move();//进入同宿舍空床目标选择状态
+	void move_selected_occupant_to_other_dorm();//为当前住客选择并执行跨宿舍调宿
 	void cancel_pending_bed_action();//取消床位目标选择状态
 	void complete_within_dorm_move(int target_bed_id);//确认并执行同宿舍换床
 

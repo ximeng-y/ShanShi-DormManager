@@ -2,6 +2,7 @@
 #include "./ui_dormresourcepage.h"
 #include "addbuildingdialog.h"
 #include "bedassignmentdialog.h"
+#include "bedmovedialog.h"
 #include "adddormdialog.h"
 #include "bedtablemodel.h"
 #include "editbuildingdialog.h"
@@ -77,6 +78,7 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	connect(ui->assignSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::assign_selected_bed);
 	connect(ui->removeSelectedBedButton, &QPushButton::clicked, this, &DormResourcePage::remove_selected_occupant);
 	connect(ui->moveWithinDormButton, &QPushButton::clicked, this, &DormResourcePage::begin_within_dorm_move);
+	connect(ui->moveToOtherDormButton, &QPushButton::clicked, this, &DormResourcePage::move_selected_occupant_to_other_dorm);
 	connect(ui->cancelBedActionButton, &QPushButton::clicked, this, &DormResourcePage::cancel_pending_bed_action);
 	ui->resourceSplitter->setStretchFactor(0, 0);
 	ui->resourceSplitter->setStretchFactor(1, 1);
@@ -172,6 +174,11 @@ DormResourcePage::DormResourcePage(QWidget* parent)
 	setTabOrder(ui->dormTable, ui->bedTableView);
 	setTabOrder(ui->bedTableView, ui->editDormButton);
 	setTabOrder(ui->editDormButton, ui->removeDormButton);
+	setTabOrder(ui->removeDormButton, ui->assignSelectedBedButton);
+	setTabOrder(ui->assignSelectedBedButton, ui->removeSelectedBedButton);
+	setTabOrder(ui->removeSelectedBedButton, ui->moveWithinDormButton);
+	setTabOrder(ui->moveWithinDormButton, ui->moveToOtherDormButton);
+	setTabOrder(ui->moveToOtherDormButton, ui->cancelBedActionButton);
 	connect(ui->editDormButton, &QPushButton::clicked, this, [this]() {
 		EditDormDialog dialog(selected_building_id, selected_dorm_id, this);
 		if (dialog.exec() == QDialog::Accepted) {
@@ -491,6 +498,57 @@ void DormResourcePage::begin_within_dorm_move()
 	ui->bedTableView->clearSelection();
 	ui->bedTableView->setCurrentIndex(QModelIndex());
 	update_bed_action_state(QModelIndex());
+}
+
+void DormResourcePage::move_selected_occupant_to_other_dorm()
+{
+	const int student_id = selected_student_id;
+	const student* current_student = school::instance().get_student(student_id);
+	const dorm* current_dorm = school::instance().get_dorm(selected_building_id, selected_dorm_id);
+	if (current_student == nullptr || current_dorm == nullptr
+		|| current_dorm->get_student_id(selected_bed_id) != student_id
+		|| current_student->get_building_id() != selected_building_id
+		|| current_student->get_dorm_id() != selected_dorm_id
+		|| current_student->get_bed_id() != selected_bed_id
+		|| current_student->get_floor() != selected_dorm_id / 100) {
+		uifeedback::show_critical(this, QStringLiteral("住宿记录异常"), QStringLiteral("当前床位与学生位置记录不一致，请暂停相关操作并核查数据。"));
+		refresh_data();
+		return;
+	}
+
+	const QString student_name = current_student->get_name();
+	BedMoveDialog dialog(student_id, this);
+	if (dialog.exec() != QDialog::Accepted) {
+		return;
+	}
+	const int target_building_id = dialog.target_building_id();
+	const int target_dorm_id = dialog.target_dorm_id();
+	const int target_bed_id = dialog.target_bed_id();
+	const int result = target_bed_id > 0
+		? school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id, target_bed_id)
+		: school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id);
+	if (result > 0) {
+		selected_building_id = target_building_id;
+		selected_dorm_id = target_dorm_id;
+		refresh_data();
+		uifeedback::show_success(this, QStringLiteral("调宿成功：%1（%2）已安排至%3号楼%4室%5号床。")
+			.arg(student_name).arg(student_id)
+			.arg(target_building_id).arg(target_dorm_id).arg(result));
+		return;
+	}
+	if (result == -10) {
+		uifeedback::show_critical(this, QStringLiteral("调宿恢复失败"), QStringLiteral("调宿执行失败且原床位未能完整恢复，请暂停后续操作并核查数据。"));
+	} else {
+		QString message = QStringLiteral("学生或目标住宿状态已经变化，请刷新后重试。");
+		if (result == -2) message = QStringLiteral("目标床位已经被占用。");
+		else if (result == -4) message = QStringLiteral("目标宿舍已经没有空床。");
+		else if (result == -6) message = QStringLiteral("学生不存在或尚未设置有效性别。");
+		else if (result == -7) message = QStringLiteral("目标楼栋或宿舍不接纳该学生性别。");
+		else if (result == -8) message = QStringLiteral("学生位置或宿舍床位记录不一致，请核查数据。");
+		uifeedback::show_error(this, QStringLiteral("无法完成调宿"), message,
+			QStringLiteral("业务返回值：%1").arg(result));
+	}
+	refresh_data();
 }
 
 void DormResourcePage::cancel_pending_bed_action()
