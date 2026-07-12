@@ -3,6 +3,7 @@
 #include "core/dorm.h"
 #include "core/school.h"
 #include "core/student.h"
+#include "system/check.h"
 
 #include <QHash>
 #include <QPair>
@@ -287,16 +288,9 @@ QStringList sampledatagenerator::validate_config(const sampledataconfig& config,
 		|| config.minimum_class_num > config.maximum_class_num) {
 		errors.append(QStringLiteral("班级范围必须处于1～99，且起始值不能大于结束值。"));
 	}
-	if (config.minimum_grade < 2000 || config.maximum_grade > 2999
+	if (config.minimum_grade < 2010 || config.maximum_grade > 2099
 		|| config.minimum_grade > config.maximum_grade) {
-		errors.append(QStringLiteral("年级范围必须处于2000～2999，且起始值不能大于结束值。"));
-	} else {
-		for (int grade = config.minimum_grade; grade <= config.maximum_grade; ++grade) {
-			if (grade % 100 < 10) {
-				errors.append(QStringLiteral("年级%1无法编码为合法8位学号：学号前两位必须是年级后两位且不能以0开头。").arg(grade));
-				break;
-			}
-		}
+		errors.append(QStringLiteral("年级范围必须处于2010～2099，且起始值不能大于结束值。"));
 	}
 	if (errors.isEmpty()) {
 		const plan generated_plan = create_plan(config, current_school);
@@ -368,9 +362,16 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 		}
 	}
 
-	QSet<int> used_student_ids;
+	QHash<int, QSet<int>> used_sequences_by_grade;
 	for (int student_id : current_school.get_all_student_ids()) {
-		used_student_ids.insert(student_id);
+		const student* existing_student = current_school.get_student(student_id);
+		if (existing_student == nullptr || !check::is_valid_grade(existing_student->get_grade())) {
+			continue;
+		}
+		const int sequence = check::student_id_sequence(existing_student->get_id());
+		if (check::is_valid_student_sequence(sequence)) {
+			used_sequences_by_grade[existing_student->get_grade()].insert(sequence);
+		}
 	}
 	QVector<int> male_student_indexes;
 	QVector<int> female_student_indexes;
@@ -387,12 +388,10 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 				const int profile_index = (first_profile + profile_offset) % profile_count;
 				grade = config.minimum_grade + profile_index / class_count;
 				class_num = config.minimum_class_num + profile_index % class_count;
-				const int first_sequence = random.bounded(9999) + 1;
-				for (int sequence_offset = 0; sequence_offset < 9999; ++sequence_offset) {
-					const int sequence = (first_sequence - 1 + sequence_offset) % 9999 + 1;
-					const int candidate = (grade % 100) * 1000000 + class_num * 10000 + sequence;
-					if (!used_student_ids.contains(candidate)) {
-						student_id = candidate;
+				const QSet<int>& used_sequences = used_sequences_by_grade[grade];
+				for (int sequence = 1; sequence <= 9999; ++sequence) {
+					if (!used_sequences.contains(sequence)) {
+						student_id = check::make_student_id(grade, class_num, sequence);
 						break;
 					}
 				}
@@ -400,7 +399,7 @@ sampledatagenerator::plan sampledatagenerator::create_plan(const sampledataconfi
 			if (student_id == 0) {
 				return false;
 			}
-			used_student_ids.insert(student_id);
+			used_sequences_by_grade[grade].insert(check::student_id_sequence(student_id));
 			plannedstudent student_plan;
 			student_plan.id = student_id;
 			student_plan.name = random_student_name(random);
