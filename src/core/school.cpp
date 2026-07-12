@@ -171,7 +171,7 @@ int school::suggest_student_id(int grade, int class_num) const//建议指定年�
 	for (int student_id : studentmanager::instance().all_ids())
 	{
 		const student* existing = studentmanager::instance().get(student_id);
-		if (existing != nullptr && existing->get_grade() == grade
+		if (existing != nullptr && existing->get_grade() == grade)
 		{
 			if (student_id != existing->get_id()
 				|| !check::is_student_id_consistent(existing->get_id(), existing->get_grade(), existing->get_class_num()))
