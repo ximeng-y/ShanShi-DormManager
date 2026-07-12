@@ -1154,6 +1154,116 @@ batch_assignment_preview school::preview_assign_unassigned_students(assignment_s
 	return preview;
 }
 
+reassignment_preview school::preview_reassign_all_students(reassignment_strategy strategy, quint32 random_seed) const//生成全校重新安排预览
+{
+	reassignment_preview preview;
+	preview.strategy = strategy;
+	preview.random_seed = random_seed;
+	preview.issues = collect_accommodation_issues();
+	if (!preview.issues.isEmpty())
+		return preview;
+
+	struct planned_dorm
+	{
+		int building_id = 0;
+		int dorm_id = 0;
+		int gender = 0;
+		QVector<int> beds;
+	};
+	QVector<planned_dorm> dorms;
+	for (const auto& key : get_all_dorm_keys())
+	{
+		const dorm* d = get_dorm(key.first, key.second);
+		if (d != nullptr)
+			dorms.append({key.first, key.second, 0, QVector<int>(d->get_max_num(), 0)});
+	}
+
+	QVector<int> candidates = get_all_student_ids();
+	preview.candidate_count = candidates.size();
+	QRandomGenerator random(random_seed);
+	if (strategy == reassignment_strategy::random)
+	{
+		for (int i = candidates.size() - 1; i > 0; --i)
+			candidates.swapItemsAt(i, random.bounded(i + 1));
+	}
+	else if (strategy == reassignment_strategy::preserve_building_first)
+	{
+		std::stable_sort(candidates.begin(), candidates.end(), [this](int left_id, int right_id)
+		{
+			const student* left = get_student(left_id);
+			const student* right = get_student(right_id);
+			const bool left_assigned = left != nullptr && left->get_building_id() > 0;
+			const bool right_assigned = right != nullptr && right->get_building_id() > 0;
+			return left_assigned != right_assigned ? left_assigned : left_id < right_id;
+		});
+	}
+
+	for (int student_id : candidates)
+	{
+		const student* s = get_student(student_id);
+		if (s == nullptr || (s->get_gender() != 1 && s->get_gender() != 2))
+		{
+			preview.unassigned_student_ids.append(student_id);
+			continue;
+		}
+		QVector<int> compatible;
+		QVector<int> original_building_compatible;
+		for (int i = 0; i < dorms.size(); ++i)
+		{
+			const building* b = get_building(dorms[i].building_id);
+			if (b == nullptr || !b->accepts_gender(s->get_gender())
+				|| (dorms[i].gender != 0 && dorms[i].gender != s->get_gender())
+				|| !dorms[i].beds.contains(0))
+				continue;
+			compatible.append(i);
+			if (s->get_building_id() > 0 && dorms[i].building_id == s->get_building_id())
+				original_building_compatible.append(i);
+		}
+		if (strategy == reassignment_strategy::preserve_building_first && !original_building_compatible.isEmpty())
+			compatible = original_building_compatible;
+		if (compatible.isEmpty())
+		{
+			preview.unassigned_student_ids.append(student_id);
+			continue;
+		}
+
+		int selected = compatible.first();
+		if (strategy == reassignment_strategy::random)
+			selected = compatible.at(random.bounded(compatible.size()));
+		else
+		{
+			for (int index : compatible)
+			{
+				const planned_dorm& current = dorms[index];
+				const planned_dorm& best = dorms[selected];
+				const int current_occupied = current.beds.size() - std::count(current.beds.cbegin(), current.beds.cend(), 0);
+				const int best_occupied = best.beds.size() - std::count(best.beds.cbegin(), best.beds.cend(), 0);
+				const bool better = current_occupied * best.beds.size() != best_occupied * current.beds.size()
+					? current_occupied * best.beds.size() > best_occupied * current.beds.size()
+					: current.building_id != best.building_id ? current.building_id < best.building_id
+					: current.dorm_id < best.dorm_id;
+				if (better)
+					selected = index;
+			}
+		}
+
+		planned_dorm& target = dorms[selected];
+		QVector<int> empty_beds;
+		for (int i = 0; i < target.beds.size(); ++i)
+			if (target.beds[i] == 0)
+				empty_beds.append(i + 1);
+		const int bed_id = strategy == reassignment_strategy::random
+			? empty_beds.at(random.bounded(empty_beds.size())) : empty_beds.first();
+		target.beds[bed_id - 1] = student_id;
+		if (target.gender == 0)
+			target.gender = s->get_gender();
+		preview.changes.append({student_id, s->get_gender(), s->get_building_id(), s->get_dorm_id(), s->get_bed_id(),
+			target.building_id, target.dorm_id, bed_id});
+	}
+	preview.available_bed_count = preview.changes.size();
+	return preview;
+}
+
 int school::apply_batch_assignment(const batch_assignment_preview& preview)//按固定预览执行补分
 {
 	if (preview.changes.isEmpty())
