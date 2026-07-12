@@ -162,6 +162,50 @@ bool school::add_student(const student& student_to_add)//添加学生
 	return studentmanager::instance().add(student_to_add);
 }
 
+int school::suggest_student_id(int grade, int class_num) const//建议指定年级班级的最小缺号学号
+{
+	if (!check::is_valid_grade(grade) || !check::is_valid_class_num(class_num))
+		return -1;
+	for (int student_id : studentmanager::instance().all_ids())
+	{
+		const student* existing = studentmanager::instance().get(student_id);
+		if (existing != nullptr && existing->get_grade() == grade
+			&& !check::is_student_id_consistent(existing->get_id(), existing->get_grade(), existing->get_class_num()))
+			return -1;
+	}
+	const int sequence = studentmanager::instance().next_available_sequence(grade);
+	if (sequence < 0)
+		return -1;
+	if (sequence == 0)
+		return -9;
+	return check::make_student_id(grade, class_num, sequence);
+}
+
+int school::add_student(const QString& name, int gender, int grade, int class_num, int sequence)//按统一学号规则添加学生
+{
+	if (!check::is_valid_student_name(name) || !check::is_valid_gender(gender)
+		|| !check::is_valid_grade(grade) || !check::is_valid_class_num(class_num) || sequence < 0)
+		return -1;
+	if (sequence == 0)
+	{
+		const int suggested_id = suggest_student_id(grade, class_num);
+		if (suggested_id < 0)
+			return suggested_id;
+		sequence = check::student_id_sequence(suggested_id);
+	}
+	if (!check::is_valid_student_sequence(sequence))
+		return -1;
+	if (studentmanager::instance().is_sequence_used(grade, sequence))
+		return -2;
+	const int student_id = check::make_student_id(grade, class_num, sequence);
+	if (studentmanager::instance().is_exists(student_id))
+		return -3;
+	student new_student;
+	const bool initialized = new_student.set_id(student_id) && new_student.set_name(name)
+		&& new_student.set_gender(gender) && new_student.set_grade(grade) && new_student.set_class_num(class_num);
+	return initialized && studentmanager::instance().add(new_student) ? student_id : -1;
+}
+
 int school::set_student_name(int student_id, const QString& name)//修改学生姓名
 {
 	if (!check::is_valid_student_id(student_id))
@@ -181,6 +225,68 @@ int school::set_student_grade(int student_id, int grade)//修改学生年级
 	if (!check::is_valid_student_id(student_id))
 		return -1;//student_id非法
 	return studentmanager::instance().set_student_grade(student_id, grade);
+}
+
+int school::change_student_academic_info(int old_student_id, int new_grade, int new_class_num)//原子迁移学生学号与学籍信息
+{
+	if (!check::is_valid_student_id(old_student_id) || !check::is_valid_grade(new_grade)
+		|| !check::is_valid_class_num(new_class_num))
+		return -1;
+	const student* current = studentmanager::instance().get(old_student_id);
+	if (current == nullptr)
+		return 0;
+	const student snapshot = *current;
+	if (!check::is_student_id_consistent(snapshot.get_id(), snapshot.get_grade(), snapshot.get_class_num()))
+		return -1;
+	const bool unassigned = snapshot.get_bed_id() == 0 && snapshot.get_dorm_id() == 0
+		&& snapshot.get_building_id() == 0 && snapshot.get_floor() == 0;
+	const bool assigned = snapshot.get_bed_id() > 0 && check::is_valid_dorm_id(snapshot.get_dorm_id())
+		&& check::is_valid_building_id(snapshot.get_building_id()) && snapshot.get_floor() == snapshot.get_dorm_id() / 100;
+	if (!unassigned && !assigned)
+		return -8;
+	if (assigned)
+	{
+		const dorm* current_dorm = dormmanager::instance().get(snapshot.get_building_id(), snapshot.get_dorm_id());
+		if (current_dorm == nullptr || current_dorm->get_student_id(snapshot.get_bed_id()) != old_student_id)
+			return -8;
+	}
+	int sequence = check::student_id_sequence(old_student_id);
+	if (new_grade != snapshot.get_grade())
+	{
+		sequence = studentmanager::instance().next_available_sequence(new_grade, old_student_id);
+		if (sequence < 0)
+			return -1;
+		if (sequence == 0)
+			return -9;
+	}
+	const int new_student_id = check::make_student_id(new_grade, new_class_num, sequence);
+	if (new_student_id == old_student_id)
+		return old_student_id;
+	if (studentmanager::instance().is_sequence_used(new_grade, sequence, old_student_id)
+		|| studentmanager::instance().is_exists(new_student_id))
+		return -2;
+	if (studentmanager::instance().rekey_student(old_student_id, new_student_id, new_grade, new_class_num) != 1)
+		return -5;
+	if (assigned && dormmanager::instance().replace_student_id_at_bed(snapshot.get_building_id(), snapshot.get_dorm_id(),
+		snapshot.get_bed_id(), old_student_id, new_student_id) != 1)
+	{
+		return studentmanager::instance().rekey_student(new_student_id, old_student_id,
+			snapshot.get_grade(), snapshot.get_class_num()) == 1 ? -5 : -6;
+	}
+	const student* updated = studentmanager::instance().get(new_student_id);
+	const dorm* updated_dorm = assigned ? dormmanager::instance().get(snapshot.get_building_id(), snapshot.get_dorm_id()) : nullptr;
+	const bool consistent = updated != nullptr
+		&& check::is_student_id_consistent(updated->get_id(), updated->get_grade(), updated->get_class_num())
+		&& (!assigned || (updated_dorm != nullptr && updated_dorm->get_student_id(snapshot.get_bed_id()) == new_student_id));
+	if (consistent)
+		return new_student_id;
+	bool bed_restored = true;
+	if (assigned)
+		bed_restored = dormmanager::instance().replace_student_id_at_bed(snapshot.get_building_id(), snapshot.get_dorm_id(),
+			snapshot.get_bed_id(), new_student_id, old_student_id) == 1;
+	const bool student_restored = studentmanager::instance().rekey_student(new_student_id, old_student_id,
+		snapshot.get_grade(), snapshot.get_class_num()) == 1;
+	return bed_restored && student_restored ? -5 : -6;
 }
 
 const dorm* school::get_available_dorm(int gender) const//获取指定性别最小顺位可用宿舍

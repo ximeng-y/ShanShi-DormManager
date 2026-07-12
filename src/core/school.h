@@ -44,9 +44,12 @@ public:
 
 	//学生基础资料管理
 	bool add_student(const student& student_to_add);//添加学生，字段非法、携带住宿位置或学号重复时返回false
+	int suggest_student_id(int grade, int class_num) const;//建议最小缺号完整学号，-1=参数或年级既有记录异常/-9=序号耗尽
+	int add_student(const QString& name, int gender, int grade, int class_num, int sequence = 0);//成功返回实际学号，-1=参数非法/-2=序号占用/-3=学号冲突/-9=耗尽
 	int set_student_name(int student_id, const QString& name);//修改学生姓名, 1=成功/0=学生不存在/-1=参数非法
 	int set_student_class_num(int student_id, int class_num);//修改学生班级, 1=成功/0=学生不存在/-1=参数非法
 	int set_student_grade(int student_id, int grade);//修改学生年级, 1=成功/0=学生不存在/-1=参数非法
+	int change_student_academic_info(int old_student_id, int new_grade, int new_class_num);//成功返回新学号，0=不存在/-1=参数或旧记录异常/-2=冲突/-5=失败已恢复/-6=恢复不完整/-8=住宿不一致/-9=耗尽
 
 	const dorm* get_available_dorm(int gender) const;//获取指定性别最小顺位可用宿舍
 	const dorm* get_available_dorm_random(int gender) const;//随机获取指定性别可用宿舍
