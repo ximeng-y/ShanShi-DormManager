@@ -29,6 +29,8 @@ protected:
 private:
 	void refresh_buildings();
 	void refresh_dorms(bool first);
+	void filter_dorm_selector(bool first, const QString& search_text, bool select_first = false);//按宿舍号与性别文字实时筛选
+	int selected_dorm_id(bool first) const;//仅返回由下拉结果明确选中的宿舍号
 	void refresh_current_views();
 	void refresh_modes();
 	void invalidate_preview();
@@ -47,6 +49,8 @@ private:
 	bedpreviewmodel* after_a_model;
 	bedpreviewmodel* after_b_model;
 	QStandardItemModel* change_model;
+	QVector<int> dorm_a_ids;
+	QVector<int> dorm_b_ids;
 	dorm_adjustment_preview current_preview;
 	bool fitted_to_screen = false;
 };

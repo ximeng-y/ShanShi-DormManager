@@ -3,13 +3,16 @@
 
 #include "studentdetaildialog.h"
 #include "uifeedback.h"
+#include "core/building.h"
 #include "core/dorm.h"
 #include "core/student.h"
 
+#include <QComboBox>
 #include <QHeaderView>
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QItemSelectionModel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScreen>
@@ -19,6 +22,24 @@
 #include <QStandardItemModel>
 
 #include <algorithm>
+
+namespace {
+QString building_selector_gender_text(int gender)
+{
+	if (gender == 1) return QStringLiteral("男舍");
+	if (gender == 2) return QStringLiteral("女舍");
+	if (gender == 3) return QStringLiteral("混宿");
+	return QStringLiteral("未知");
+}
+
+QString dorm_selector_gender_text(int gender)
+{
+	if (gender == 1) return QStringLiteral("男");
+	if (gender == 2) return QStringLiteral("女");
+	if (gender == 0) return QStringLiteral("未设置");
+	return QStringLiteral("未知");
+}
+}
 
 DormAdjustmentDialog::DormAdjustmentDialog(QWidget* parent)
 	: QDialog(parent), ui(new Ui::DormAdjustmentDialog)
@@ -60,6 +81,17 @@ DormAdjustmentDialog::DormAdjustmentDialog(QWidget* parent)
 	connect(ui->buildingBCombo, &QComboBox::currentIndexChanged, this, [this] { refresh_dorms(false); });
 	connect(ui->dormACombo, &QComboBox::currentIndexChanged, this, [this] { refresh_current_views(); });
 	connect(ui->dormBCombo, &QComboBox::currentIndexChanged, this, [this] { refresh_current_views(); });
+	for (QComboBox* combo : {ui->dormACombo, ui->dormBCombo})
+	{
+		combo->setEditable(true);
+		combo->setInsertPolicy(QComboBox::NoInsert);
+		combo->lineEdit()->setPlaceholderText(QStringLiteral("输入宿舍号或性别"));
+		combo->lineEdit()->setClearButtonEnabled(true);
+	}
+	connect(ui->dormACombo->lineEdit(), &QLineEdit::textEdited, this,
+		[this](const QString& text) { filter_dorm_selector(true, text); });
+	connect(ui->dormBCombo->lineEdit(), &QLineEdit::textEdited, this,
+		[this](const QString& text) { filter_dorm_selector(false, text); });
 	for (QRadioButton* radio : {ui->fullSwapRadio, ui->overlapRadio, ui->evictRadio, ui->genderSwapRadio})
 		connect(radio, &QRadioButton::toggled, this, [this] { invalidate_preview(); });
 	connect(ui->previewButton, &QPushButton::clicked, this, &DormAdjustmentDialog::generate_preview);
@@ -93,8 +125,12 @@ void DormAdjustmentDialog::refresh_buildings()
 	ui->buildingACombo->clear(); ui->buildingBCombo->clear();
 	for (int id : school::instance().get_all_building_ids())
 	{
-		ui->buildingACombo->addItem(QStringLiteral("%1号楼").arg(id), id);
-		ui->buildingBCombo->addItem(QStringLiteral("%1号楼").arg(id), id);
+		const building* current_building = school::instance().get_building(id);
+		if (current_building == nullptr) continue;
+		const QString text = QStringLiteral("%1号楼 · %2")
+			.arg(id).arg(building_selector_gender_text(current_building->get_for_gender()));
+		ui->buildingACombo->addItem(text, id);
+		ui->buildingBCombo->addItem(text, id);
 	}
 	if (ui->buildingBCombo->count() > 1) ui->buildingBCombo->setCurrentIndex(1);
 	refresh_dorms(true); refresh_dorms(false);
@@ -103,12 +139,64 @@ void DormAdjustmentDialog::refresh_buildings()
 void DormAdjustmentDialog::refresh_dorms(bool first)
 {
 	QComboBox* building_combo = first ? ui->buildingACombo : ui->buildingBCombo;
-	QComboBox* dorm_combo = first ? ui->dormACombo : ui->dormBCombo;
-	const QSignalBlocker blocker(dorm_combo);
-	dorm_combo->clear();
+	QVector<int>& dorm_ids = first ? dorm_a_ids : dorm_b_ids;
+	dorm_ids.clear();
 	for (const auto& key : school::instance().get_dorm_keys_of_building(building_combo->currentData().toInt()))
-		dorm_combo->addItem(QStringLiteral("%1室").arg(key.second), key.second);
+		dorm_ids.append(key.second);
+	filter_dorm_selector(first, QString(), true);
+}
+
+void DormAdjustmentDialog::filter_dorm_selector(bool first, const QString& search_text, bool select_first)
+{
+	QComboBox* combo = first ? ui->dormACombo : ui->dormBCombo;
+	QComboBox* building_combo = first ? ui->buildingACombo : ui->buildingBCombo;
+	const QVector<int>& dorm_ids = first ? dorm_a_ids : dorm_b_ids;
+	const int building_id = building_combo->currentData().toInt();
+	const QString trimmed_search = search_text.trimmed();
+	int match_count = 0;
+	{
+		const QSignalBlocker blocker(combo);
+		combo->clear();
+		for (int dorm_id : dorm_ids)
+		{
+			const dorm* current_dorm = school::instance().get_dorm(building_id, dorm_id);
+			if (current_dorm == nullptr) continue;
+			const QString gender_text = dorm_selector_gender_text(current_dorm->get_for_gender());
+			const QString item_text = QStringLiteral("%1室 · %2").arg(dorm_id).arg(gender_text);
+			if (!trimmed_search.isEmpty()
+				&& !item_text.contains(trimmed_search, Qt::CaseInsensitive))
+				continue;
+			combo->addItem(item_text, dorm_id);
+			++match_count;
+		}
+		if (!trimmed_search.isEmpty() && match_count == 0)
+		{
+			combo->addItem(QStringLiteral("没有匹配的宿舍"), 0);
+			if (auto* model = qobject_cast<QStandardItemModel*>(combo->model()))
+				model->item(0)->setEnabled(false);
+		}
+		if (select_first && match_count > 0)
+		{
+			combo->setCurrentIndex(0);
+		}
+		else
+		{
+			combo->setCurrentIndex(-1);
+			combo->lineEdit()->setText(search_text);
+			combo->lineEdit()->setCursorPosition(search_text.size());
+		}
+	}
+	if (trimmed_search.isEmpty()) combo->hidePopup();
+	else combo->showPopup();
 	refresh_current_views();
+}
+
+int DormAdjustmentDialog::selected_dorm_id(bool first) const
+{
+	const QComboBox* combo = first ? ui->dormACombo : ui->dormBCombo;
+	const int index = combo->currentIndex();
+	if (index < 0 || combo->currentText() != combo->itemText(index)) return 0;
+	return combo->itemData(index).toInt();
 }
 
 QVector<bedpreviewentry> DormAdjustmentDialog::entries_for_state(const dorm_preview_state& state, const dorm_preview_state* other, bool after) const
@@ -131,8 +219,8 @@ QVector<bedpreviewentry> DormAdjustmentDialog::entries_for_state(const dorm_prev
 
 void DormAdjustmentDialog::refresh_current_views()
 {
-	const int ba = ui->buildingACombo->currentData().toInt(), da = ui->dormACombo->currentData().toInt();
-	const int bb = ui->buildingBCombo->currentData().toInt(), db = ui->dormBCombo->currentData().toInt();
+	const int ba = ui->buildingACombo->currentData().toInt(), da = selected_dorm_id(true);
+	const int bb = ui->buildingBCombo->currentData().toInt(), db = selected_dorm_id(false);
 	const dorm* a = school::instance().get_dorm(ba, da); const dorm* b = school::instance().get_dorm(bb, db);
 	dorm_preview_state sa{ba, da, a == nullptr ? 0 : a->get_for_gender(), {}};
 	dorm_preview_state sb{bb, db, b == nullptr ? 0 : b->get_for_gender(), {}};
@@ -145,8 +233,8 @@ void DormAdjustmentDialog::refresh_current_views()
 
 void DormAdjustmentDialog::refresh_modes()
 {
-	const int ba = ui->buildingACombo->currentData().toInt(), da = ui->dormACombo->currentData().toInt();
-	const int bb = ui->buildingBCombo->currentData().toInt(), db = ui->dormBCombo->currentData().toInt();
+	const int ba = ui->buildingACombo->currentData().toInt(), da = selected_dorm_id(true);
+	const int bb = ui->buildingBCombo->currentData().toInt(), db = selected_dorm_id(false);
 	struct mode_item { QRadioButton* radio; QLabel* reason; dorm_adjustment_mode mode; QString available_text; };
 	const QList<mode_item> modes = {
 		{ui->fullSwapRadio, ui->fullSwapReasonLabel, dorm_adjustment_mode::full_swap, QStringLiteral("两间宿舍的全部住客互换。")},
@@ -184,7 +272,7 @@ dorm_adjustment_mode DormAdjustmentDialog::selected_mode() const
 
 void DormAdjustmentDialog::generate_preview()
 {
-	current_preview = school::instance().preview_dorm_adjustment(ui->buildingACombo->currentData().toInt(), ui->dormACombo->currentData().toInt(), ui->buildingBCombo->currentData().toInt(), ui->dormBCombo->currentData().toInt(), selected_mode());
+	current_preview = school::instance().preview_dorm_adjustment(ui->buildingACombo->currentData().toInt(), selected_dorm_id(true), ui->buildingBCombo->currentData().toInt(), selected_dorm_id(false), selected_mode());
 	if (!current_preview.issues.isEmpty()) {
 		QStringList details;
 		for (const accommodation_data_issue& issue : current_preview.issues) details.append(issue.message);
