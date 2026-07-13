@@ -221,9 +221,11 @@ public:
 	//返回值: >0=成功(释放的床位号)  0=学生未入住  -1=参数非法  -6=学生不存在  -8=学生记录指向的宿舍不存在或床位记录不一致
 	int remove_student_from_dorm(int student_id);//退宿但保留学籍
 	//调宿返回值: >0=成功(新床位号)  0=学生未入住  -1=参数非法  -2=目标床位占用  -4=目标宿舍已满
-	//-6=学生不存在或性别未设置  -7=目标楼/宿舍性别冲突  -8=源或目标宿舍不存在/住宿记录不一致  -10=失败后未能恢复原床位
+	//-6=学生不存在或性别未设置  -7=目标楼/宿舍性别冲突  -8=源或目标宿舍不存在/住宿记录不一致
+	//-10=失败后未能恢复原床位  -11=原宿舍不满足解锁条件，或解锁失败但调宿已恢复
 	int move_student_to_dorm(int building_id, int dorm_id, int student_id);//调往指定宿舍并自动分配最小空床位
 	int move_student_to_dorm(int building_id, int dorm_id, int student_id, int bed_id);//调往指定宿舍的指定空床位，同宿舍时用于换床
+	int move_student_to_dorm_reset_source_gender(int building_id, int dorm_id, int student_id, int bed_id = 0);//调宿并在原混宿楼单人宿舍变空后解除性别锁，bed_id=0自动选床
 	//返回值: 1=成功  -1=参数非法或同一学生  -2=学生不存在或性别未设置  -3=学生未入住或位置字段不完整
 	//-4=源宿舍不存在或住宿记录不一致  -5=目标约束异常或执行失败  -6=失败后未能完整恢复快照
 	int swap_students(int student_id1, int student_id2);//交换两名学生的床位，支持同宿舍及跨宿舍
@@ -284,7 +286,7 @@ private:
 	};
 	school() = default;//构造函数，单例模式禁止外部实例化
 	int clear_dorm_impl(int building_id, int dorm_id, bool reset_gender);//清空单间宿舍的共享实现
-	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed);//调宿与换床共享实现
+	int move_student_to_dorm_impl(int building_id, int dorm_id, int student_id, int bed_id, bool specified_bed, bool reset_source_gender);//调宿、换床与原宿舍解锁共享实现
 	bool fill_dorm(int building_id, int dorm_id, const QVector<int>& student_ids);//按顺序向宿舍回填学生
 	bool is_dorm_consistent(int building_id, int dorm_id) const;//双向核对床位与学生位置字段
 	QVector<accommodation_data_issue> collect_accommodation_issues() const;//逐床核对全校住宿数据并返回面向UI的异常信息

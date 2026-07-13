@@ -8,6 +8,7 @@
 #include "system/check.h"
 #include "uifeedback.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QEvent>
 #include <QInputMethodEvent>
@@ -104,6 +105,7 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	ui->moveBuildingCombo->setAccessibleName(QStringLiteral("调宿目标楼栋"));
 	ui->moveDormCombo->setAccessibleName(QStringLiteral("调宿目标宿舍"));
 	ui->moveBedCombo->setAccessibleName(QStringLiteral("调宿目标床位"));
+	ui->moveResetSourceGenderCheck->setAccessibleName(QStringLiteral("调离后解除原宿舍性别锁"));
 	ui->moveBuildingCombo->setToolTip(QStringLiteral("仅显示接纳当前学生性别且存在可用宿舍的楼栋。"));
 	ui->moveDormCombo->setToolTip(QStringLiteral("仅显示接纳当前学生性别且尚未住满的宿舍。"));
 	ui->moveBedCombo->setToolTip(QStringLiteral("跨宿舍可自动选择最小空床位；同宿舍换床必须选择其他空床。"));
@@ -162,7 +164,8 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	setTabOrder(ui->moveStudentSpin, ui->moveBuildingCombo);
 	setTabOrder(ui->moveBuildingCombo, ui->moveDormCombo);
 	setTabOrder(ui->moveDormCombo, ui->moveBedCombo);
-	setTabOrder(ui->moveBedCombo, ui->moveSubmitButton);
+	setTabOrder(ui->moveBedCombo, ui->moveResetSourceGenderCheck);
+	setTabOrder(ui->moveResetSourceGenderCheck, ui->moveSubmitButton);
 }
 
 bool AccommodationPage::eventFilter(QObject* watched, QEvent* event)
@@ -220,6 +223,11 @@ void AccommodationPage::refresh_after_student_search(QComboBox* combo)
 
 void AccommodationPage::refresh_move_buildings()//按学生性别与可用目标刷新楼栋下拉框
 {
+	{
+		const QSignalBlocker unlock_blocker(ui->moveResetSourceGenderCheck);
+		ui->moveResetSourceGenderCheck->setChecked(false);
+		ui->moveResetSourceGenderCheck->setEnabled(false);
+	}
 	const QSignalBlocker blocker(ui->moveBuildingCombo);
 	ui->moveBuildingCombo->clear();
 	const student* current_student = school::instance().get_student(selected_student_id(ui->moveStudentSpin));
@@ -751,11 +759,15 @@ void AccommodationPage::update_move_preview()
 	const int student_id = selected_student_id(ui->moveStudentSpin);
 	const student* current_student = school::instance().get_student(student_id);
 	if (!check::is_valid_student_id(student_id) || current_student == nullptr) {
+		ui->moveResetSourceGenderCheck->setChecked(false);
+		ui->moveResetSourceGenderCheck->setEnabled(false);
 		ui->movePreviewLabel->setText(QStringLiteral("请输入姓名或学号，并从匹配结果中选择一名已入住学生。"));
 		return;
 	}
 	const bool assigned = school::instance().get_assigned_student_ids().contains(student_id);
 	if (!assigned || !has_consistent_accommodation(*current_student)) {
+		ui->moveResetSourceGenderCheck->setChecked(false);
+		ui->moveResetSourceGenderCheck->setEnabled(false);
 		ui->movePreviewLabel->setText(has_any_accommodation(*current_student)
 			? QStringLiteral("%1\n\n住宿位置记录异常，不能办理调宿。").arg(accommodation_student_text(*current_student))
 			: QStringLiteral("%1\n\n当前未入住，请先办理入住。").arg(accommodation_student_text(*current_student)));
@@ -768,6 +780,8 @@ void AccommodationPage::update_move_preview()
 	const int target_dorm_id = ui->moveDormCombo->currentData().toInt();
 	const dorm* target = school::instance().get_dorm(target_building_id, target_dorm_id);
 	if (target == nullptr) {
+		ui->moveResetSourceGenderCheck->setChecked(false);
+		ui->moveResetSourceGenderCheck->setEnabled(false);
 		ui->movePreviewLabel->setText(QStringLiteral("%1\n\n当前位置：%2\n当前没有符合该学生性别与空床条件的目标宿舍。")
 			.arg(accommodation_student_text(*current_student), accommodation_position_text(*current_student)));
 		return;
@@ -781,6 +795,10 @@ void AccommodationPage::update_move_preview()
 	const building* target_building = school::instance().get_building(target->get_building_id());
 	const bool same_dorm = target->get_building_id() == current_student->get_building_id()
 		&& target->get_id() == current_student->get_dorm_id();
+	const bool can_reset_source_gender = can_reset_source_gender_after_move(*current_student,
+		target->get_building_id(), target->get_id());
+	if (!can_reset_source_gender) ui->moveResetSourceGenderCheck->setChecked(false);
+	ui->moveResetSourceGenderCheck->setEnabled(can_reset_source_gender);
 	const bool valid_same_dorm_target = !same_dorm
 		|| (target_bed_id > 0 && target_bed_id != current_student->get_bed_id());
 	const bool accepts_gender = target_building != nullptr
@@ -790,6 +808,19 @@ void AccommodationPage::update_move_preview()
 		? target->is_bed_occupied(target_bed_id) == 0
 		: !target->is_full();
 	ui->moveSubmitButton->setEnabled(valid_same_dorm_target && accepts_gender && bed_available);
+}
+
+bool AccommodationPage::can_reset_source_gender_after_move(const student& current_student,
+	int target_building_id, int target_dorm_id) const
+{
+	if (!has_consistent_accommodation(current_student)
+		|| (current_student.get_building_id() == target_building_id && current_student.get_dorm_id() == target_dorm_id))
+		return false;
+	const building* source_building = school::instance().get_building(current_student.get_building_id());
+	const dorm* source_dorm = school::instance().get_dorm(current_student.get_building_id(), current_student.get_dorm_id());
+	return source_building != nullptr && source_building->get_for_gender() == 3
+		&& source_dorm != nullptr && source_dorm->get_current_num() == 1
+		&& (source_dorm->get_for_gender() == 1 || source_dorm->get_for_gender() == 2);
 }
 
 void AccommodationPage::submit_move()
@@ -820,6 +851,12 @@ void AccommodationPage::submit_move()
 	const int target_building_id = target->get_building_id();
 	const int target_dorm_id = target->get_id();
 	const int target_bed_id = ui->moveBedCombo->currentData().toInt();
+	const bool reset_source_gender = ui->moveResetSourceGenderCheck->isChecked();
+	if (reset_source_gender && !can_reset_source_gender_after_move(*current_student, target_building_id, target_dorm_id)) {
+		uifeedback::show_error(this, QStringLiteral("无法解除原宿舍性别锁"),
+			QStringLiteral("只有从混宿楼的单人宿舍调往其它宿舍时，才能在学生调离后解除原宿舍性别锁。"));
+		return;
+	}
 	if (target_building_id == current_student->get_building_id() && target_dorm_id == current_student->get_dorm_id()) {
 		if (target_bed_id == 0) {
 			uifeedback::show_error(this, QStringLiteral("无法办理换床"), QStringLiteral("同宿舍换床必须指定一个不同的目标床位。"));
@@ -854,15 +891,20 @@ void AccommodationPage::submit_move()
 	const QString target_position = target_bed_id > 0
 		? QStringLiteral("%1号楼 %2室 %3号床").arg(target_building_id).arg(target_dorm_id).arg(target_bed_id)
 		: QStringLiteral("%1号楼 %2室的最小空床位").arg(target_building_id).arg(target_dorm_id);
+	const QString reset_notice = reset_source_gender
+		? QStringLiteral("\n原宿舍性别锁：学生调离后解除") : QString();
 	if (!uifeedback::confirm_action(this, QStringLiteral("确认调宿 / 换床"),
-		QStringLiteral("%1\n\n原位置：%2\n目标位置：%3").arg(accommodation_student_text(*current_student), original_position, target_position),
+		QStringLiteral("%1\n\n原位置：%2\n目标位置：%3%4")
+			.arg(accommodation_student_text(*current_student), original_position, target_position, reset_notice),
 		QStringLiteral("确认调整"))) {
 		return;
 	}
 
-	const int result = target_bed_id > 0
-		? school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id, target_bed_id)
-		: school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id);
+	const int result = reset_source_gender
+		? school::instance().move_student_to_dorm_reset_source_gender(target_building_id, target_dorm_id, student_id, target_bed_id)
+		: (target_bed_id > 0
+			? school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id, target_bed_id)
+			: school::instance().move_student_to_dorm(target_building_id, target_dorm_id, student_id));
 	if (result <= 0) {
 		show_move_error(result);
 		refresh_move_buildings();
@@ -891,6 +933,7 @@ void AccommodationPage::show_move_error(int result)
 	else if (result == -4) message = QStringLiteral("目标宿舍已经住满。");
 	else if (result == -6) message = QStringLiteral("学生不存在或尚未设置有效性别。");
 	else if (result == -7) message = QStringLiteral("目标楼栋或宿舍不接纳该学生性别。");
+	else if (result == -11) message = QStringLiteral("原宿舍不满足解锁条件，或解除性别锁失败且调宿已恢复。");
 	else message = QStringLiteral("输入参数无效，请检查目标楼栋、宿舍和床位。");
 	uifeedback::show_error(this, QStringLiteral("无法办理调宿"), message, QStringLiteral("业务返回值：%1").arg(result));
 }

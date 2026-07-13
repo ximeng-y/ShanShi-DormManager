@@ -53,6 +53,7 @@ private:
 	void refresh_move_buildings();//按学生性别与可用宿舍刷新目标楼栋
 	void refresh_move_dorms();//按目标楼栋刷新可用宿舍
 	void refresh_move_beds();//按目标宿舍刷新可用床位
+	bool can_reset_source_gender_after_move(const student& current_student, int target_building_id, int target_dorm_id) const;//判断调离后能否解除原宿舍性别锁
 	void submit_move();//提交调宿或同宿舍换床业务
 	void show_move_error(int result);//解释调宿返回码与恢复失败
 	void update_swap_preview();//刷新两名学生当前位置预览
