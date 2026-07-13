@@ -9,11 +9,15 @@
 #include "uifeedback.h"
 
 #include <QComboBox>
+#include <QEvent>
+#include <QInputMethodEvent>
 #include <QLineEdit>
+#include <QPointer>
 #include <QSet>
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStandardItemModel>
+#include <QTimer>
 
 namespace {
 QString accommodation_student_text(const student& current_student)
@@ -85,6 +89,9 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	configure_student_selector(ui->moveStudentSpin);
 	configure_student_selector(ui->swapStudent1Spin);
 	configure_student_selector(ui->swapStudent2Spin);
+	for (QComboBox* combo : {ui->assignStudentSpin, ui->removeStudentSpin, ui->moveStudentSpin,
+		ui->swapStudent1Spin, ui->swapStudent2Spin})
+		combo->lineEdit()->installEventFilter(this);
 	ui->assignStudentSpin->setAccessibleName(QStringLiteral("入住学生姓名或学号"));
 	ui->removeStudentSpin->setAccessibleName(QStringLiteral("退宿学生姓名或学号"));
 	ui->moveStudentSpin->setAccessibleName(QStringLiteral("调宿学生姓名或学号"));
@@ -105,8 +112,7 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		refresh_assign_buildings();
 	});
 	connect(ui->assignStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
-		filter_student_selector(ui->assignStudentSpin, text);
-		refresh_assign_buildings();
+		handle_student_search_text(ui->assignStudentSpin, text);
 	});
 	connect(ui->assignStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { refresh_assign_buildings(); });
 	connect(ui->assignBuildingSpin, &QComboBox::currentIndexChanged, this, [this]() { refresh_assign_dorms(); });
@@ -114,14 +120,12 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	connect(ui->assignBedSpin, &QComboBox::currentIndexChanged, this, [this]() { update_assign_preview(); });
 	connect(ui->assignSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_assignment);
 	connect(ui->removeStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
-		filter_student_selector(ui->removeStudentSpin, text);
-		update_remove_preview();
+		handle_student_search_text(ui->removeStudentSpin, text);
 	});
 	connect(ui->removeStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { update_remove_preview(); });
 	connect(ui->removeSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_remove);
 	connect(ui->moveStudentSpin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
-		filter_student_selector(ui->moveStudentSpin, text);
-		refresh_move_buildings();
+		handle_student_search_text(ui->moveStudentSpin, text);
 	});
 	connect(ui->moveStudentSpin, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_buildings(); });
 	connect(ui->moveBuildingCombo, &QComboBox::currentIndexChanged, this, [this]() { refresh_move_dorms(); });
@@ -129,8 +133,7 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	connect(ui->moveBedCombo, &QComboBox::currentIndexChanged, this, [this]() { update_move_preview(); });
 	connect(ui->moveSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_move);
 	connect(ui->swapStudent1Spin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
-		filter_student_selector(ui->swapStudent1Spin, text);
-		update_swap_preview();
+		handle_student_search_text(ui->swapStudent1Spin, text);
 	});
 	connect(ui->swapStudent1Spin, &QComboBox::currentIndexChanged, this, [this]() {
 		const int second_id = selected_student_id(ui->swapStudent2Spin);
@@ -140,8 +143,7 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 		update_swap_preview();
 	});
 	connect(ui->swapStudent2Spin->lineEdit(), &QLineEdit::textEdited, this, [this](const QString& text) {
-		filter_student_selector(ui->swapStudent2Spin, text);
-		update_swap_preview();
+		handle_student_search_text(ui->swapStudent2Spin, text);
 	});
 	connect(ui->swapStudent2Spin, &QComboBox::currentIndexChanged, this, [this]() { update_swap_preview(); });
 	connect(ui->swapSubmitButton, &QPushButton::clicked, this, &AccommodationPage::submit_swap);
@@ -161,6 +163,59 @@ AccommodationPage::AccommodationPage(QWidget* parent)
 	setTabOrder(ui->moveBuildingCombo, ui->moveDormCombo);
 	setTabOrder(ui->moveDormCombo, ui->moveBedCombo);
 	setTabOrder(ui->moveBedCombo, ui->moveSubmitButton);
+}
+
+bool AccommodationPage::eventFilter(QObject* watched, QEvent* event)
+{
+	if (event->type() == QEvent::InputMethod)
+	{
+		QComboBox* combo = student_selector_for_editor(watched);
+		if (combo != nullptr)
+		{
+			auto* input_method_event = static_cast<QInputMethodEvent*>(event);
+			QLineEdit* editor = combo->lineEdit();
+			editor->setProperty("studentSearchImeEventActive", true);
+			editor->setProperty("studentSearchImeComposing", !input_method_event->preeditString().isEmpty());
+			const QPointer<QComboBox> guarded_combo(combo);
+			QTimer::singleShot(0, this, [this, guarded_combo] {
+				if (guarded_combo == nullptr || guarded_combo->lineEdit() == nullptr) return;
+				QLineEdit* guarded_editor = guarded_combo->lineEdit();
+				guarded_editor->setProperty("studentSearchImeEventActive", false);
+				if (!guarded_editor->property("studentSearchImeComposing").toBool())
+					handle_student_search_text(guarded_combo, guarded_editor->text());
+			});
+		}
+	}
+	return QWidget::eventFilter(watched, event);
+}
+
+QComboBox* AccommodationPage::student_selector_for_editor(QObject* editor) const
+{
+	for (QComboBox* combo : {ui->assignStudentSpin, ui->removeStudentSpin, ui->moveStudentSpin,
+		ui->swapStudent1Spin, ui->swapStudent2Spin})
+	{
+		if (combo->lineEdit() == editor) return combo;
+	}
+	return nullptr;
+}
+
+void AccommodationPage::handle_student_search_text(QComboBox* combo, const QString& search_text)
+{
+	if (combo == nullptr || combo->lineEdit() == nullptr) return;
+	QLineEdit* editor = combo->lineEdit();
+	if (editor->property("studentSearchImeEventActive").toBool()
+		|| editor->property("studentSearchImeComposing").toBool())
+		return;
+	filter_student_selector(combo, search_text);
+	refresh_after_student_search(combo);
+}
+
+void AccommodationPage::refresh_after_student_search(QComboBox* combo)
+{
+	if (combo == ui->assignStudentSpin) refresh_assign_buildings();
+	else if (combo == ui->removeStudentSpin) update_remove_preview();
+	else if (combo == ui->moveStudentSpin) refresh_move_buildings();
+	else if (combo == ui->swapStudent1Spin || combo == ui->swapStudent2Spin) update_swap_preview();
 }
 
 void AccommodationPage::refresh_move_buildings()//按学生性别与可用目标刷新楼栋下拉框
@@ -311,7 +366,7 @@ void AccommodationPage::filter_student_selector(QComboBox* combo, const QString&
 	}
 	if (trimmed_search.isEmpty()) {
 		combo->hidePopup();
-	} else {
+	} else if (combo->isVisible() && combo->lineEdit()->hasFocus()) {
 		combo->showPopup();
 	}
 }

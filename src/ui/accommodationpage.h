@@ -13,6 +13,7 @@ QT_END_NAMESPACE
 
 class QShowEvent;
 class QComboBox;
+class QEvent;
 class student;
 
 //住宿安排页面。按任务组织入住、退宿、调宿换床与学生互换流程。
@@ -28,10 +29,14 @@ public:
 
 protected:
 	void showEvent(QShowEvent* event) override;//页面显示时刷新住宿任务预览
+	bool eventFilter(QObject* watched, QEvent* event) override;//输入法合成期间延后学生搜索，避免弹层重入
 
 private:
 	void refresh_student_selectors();//按各任务适用的入住状态刷新可搜索学生下拉框
 	void populate_student_selector(QComboBox* combo, const QList<int>& student_ids, int excluded_student_id = 0);//填充姓名、性别与学号搜索项
+	void handle_student_search_text(QComboBox* combo, const QString& search_text);//按输入法状态安全触发筛选与关联刷新
+	void refresh_after_student_search(QComboBox* combo);//刷新当前学生选择器对应的业务预览
+	QComboBox* student_selector_for_editor(QObject* editor) const;//按输入框定位所属学生下拉框
 	void filter_student_selector(QComboBox* combo, const QString& search_text);//实时筛选下拉内容并显示无匹配提示
 	int selected_student_id(const QComboBox* combo) const;//仅返回由下拉结果明确选中的学生学号
 	void select_student(QComboBox* combo, int student_id);//按稳定学号预选下拉项
