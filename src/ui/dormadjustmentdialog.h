@@ -49,8 +49,6 @@ private:
 	bedpreviewmodel* after_a_model;
 	bedpreviewmodel* after_b_model;
 	QStandardItemModel* change_model;
-	QVector<int> dorm_a_ids;
-	QVector<int> dorm_b_ids;
 	dorm_adjustment_preview current_preview;
 	bool fitted_to_screen = false;
 };

@@ -20,6 +20,7 @@
 #include <QSignalBlocker>
 #include <QShortcut>
 #include <QStandardItemModel>
+#include <QVariant>
 
 #include <algorithm>
 
@@ -139,10 +140,11 @@ void DormAdjustmentDialog::refresh_buildings()
 void DormAdjustmentDialog::refresh_dorms(bool first)
 {
 	QComboBox* building_combo = first ? ui->buildingACombo : ui->buildingBCombo;
-	QVector<int>& dorm_ids = first ? dorm_a_ids : dorm_b_ids;
-	dorm_ids.clear();
+	QComboBox* dorm_combo = first ? ui->dormACombo : ui->dormBCombo;
+	QVariantList dorm_ids;
 	for (const auto& key : school::instance().get_dorm_keys_of_building(building_combo->currentData().toInt()))
-		dorm_ids.append(key.second);
+		dorm_ids.append(QVariant(key.second));
+	dorm_combo->setProperty("availableDormIds", dorm_ids);
 	filter_dorm_selector(first, QString(), true);
 }
 
@@ -150,15 +152,16 @@ void DormAdjustmentDialog::filter_dorm_selector(bool first, const QString& searc
 {
 	QComboBox* combo = first ? ui->dormACombo : ui->dormBCombo;
 	QComboBox* building_combo = first ? ui->buildingACombo : ui->buildingBCombo;
-	const QVector<int>& dorm_ids = first ? dorm_a_ids : dorm_b_ids;
+	const QVariantList dorm_ids = combo->property("availableDormIds").toList();
 	const int building_id = building_combo->currentData().toInt();
 	const QString trimmed_search = search_text.trimmed();
 	int match_count = 0;
 	{
 		const QSignalBlocker blocker(combo);
 		combo->clear();
-		for (int dorm_id : dorm_ids)
+		for (const QVariant& dorm_value : dorm_ids)
 		{
+			const int dorm_id = dorm_value.toInt();
 			const dorm* current_dorm = school::instance().get_dorm(building_id, dorm_id);
 			if (current_dorm == nullptr) continue;
 			const QString gender_text = dorm_selector_gender_text(current_dorm->get_for_gender());
