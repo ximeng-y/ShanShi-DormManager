@@ -6,6 +6,7 @@ release/
 .opencode/
 .agents/
 .claude/
+.zcodeignore
 CMakeUserPresets.json
 docs/
 out/
