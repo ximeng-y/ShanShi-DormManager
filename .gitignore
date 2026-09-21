@@ -7,9 +7,10 @@ release/
 .agents/
 .claude/
 CMakeUserPresets.json
-docs/rawdocx/
+docs/
 out/
 .vscode/
 .XMAgent-Logs/
 AGENTS.md
+CLAUDE.md
 .XMTEMP/
